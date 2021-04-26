@@ -52,10 +52,18 @@ pub struct Screen {
 }
 
 #[derive(Debug, Clone)]
+pub enum Payment {
+    Cash,
+    Swish,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     None,
     Calc(calc::Message),
-    Sell(Item),
+    SellItem(Item),
+    TogglePrint(bool),
+    Sell(Payment),
 }
 
 impl Application for Screen {
@@ -90,7 +98,7 @@ impl Application for Screen {
         match message {
             Message::None => (),
             Message::Calc(m) => self.calc.update(m),
-            Message::Sell(i) => {
+            Message::SellItem(i) => {
                 match self.reciept.get_mut(&i) {
                     Some(it) => {
                         *it = match (i, it.clone()) {
@@ -107,6 +115,12 @@ impl Application for Screen {
                     }
                 }
                 self.calc.update(calc::Message::Clear);
+            }
+            Message::TogglePrint(b) => self.print = b,
+            Message::Sell(_p) => {
+                let r: Vec<Item> = self.reciept.values().map(|v| v.clone()).collect();
+                self.reciept = HashMap::new();
+                println!("{:?}", r);
             }
         };
         Command::none()
@@ -142,12 +156,14 @@ impl Application for Screen {
                     )
                     .height(Length::Fill)
                     .into(),
-                Checkbox::new(self.print, "Kivtto", |_| Message::None).into(),
+                Checkbox::new(self.print, "Kivtto", |b| Message::TogglePrint(b)).into(),
                 Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
+                    .on_press(Message::Sell(Payment::Cash))
                     .padding(DEF_PADDING)
                     .width(Length::Fill)
                     .into(),
                 Button::new(&mut self.swish, Text::new("Swish").size(BIG_TEXT))
+                    .on_press(Message::Sell(Payment::Swish))
                     .padding(DEF_PADDING)
                     .width(Length::Fill)
                     .into(),

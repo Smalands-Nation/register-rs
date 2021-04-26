@@ -57,7 +57,7 @@ impl Item {
             )
             .width(Length::Fill)
             .style(Clickable)
-            .on_press(Message::Sell(Self::Sold(name.to_string(), *price, 1)))
+            .on_press(Message::SellItem(Self::Sold(name.to_string(), *price, 1)))
             .into(),
             Self::Sold(name, price, num) => container::Container::new(
                 Column::new()
