@@ -1,5 +1,5 @@
 use {
-    crate::{helper::Clickable, Message},
+    crate::{helper::Clickable, Message, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
     iced::{
         button, container, Align, Button, Color, Column, Element, HorizontalAlignment, Length, Row,
         Text,
@@ -39,11 +39,13 @@ impl Item {
                 container::Container::new(
                     Column::new()
                         .align_items(Align::Center)
-                        .spacing(5)
+                        .spacing(SMALL_PADDING)
                         .push(Text::new(name.as_str()))
-                        .push(Text::new(format!("{:.2} kr", *price as f32 / 100.0)).size(20)),
+                        .push(
+                            Text::new(format!("{:.2} kr", *price as f32 / 100.0)).size(SMALL_TEXT),
+                        ),
                 )
-                .padding(10)
+                .padding(DEF_PADDING)
                 .width(Length::Fill)
                 .style(Style(container::Style {
                     text_color: Some(Color::BLACK),
@@ -60,23 +62,23 @@ impl Item {
             Self::Sold(name, price, num) => container::Container::new(
                 Column::new()
                     .align_items(Align::Center)
-                    .spacing(5)
+                    .spacing(SMALL_PADDING)
                     .push(Text::new(name.as_str()))
                     .push(
                         Row::new()
                             .push(
                                 Text::new(format!("{}x{:.2} kr", *num, *price as f32 / 100.0))
-                                    .size(20),
+                                    .size(SMALL_TEXT),
                             )
                             .push(
                                 Text::new(format!("{:.2} kr", (*num * *price) as f32 / 100.0))
-                                    .size(20)
+                                    .size(SMALL_TEXT)
                                     .width(Length::Fill)
                                     .horizontal_alignment(HorizontalAlignment::Right),
                             ),
                     ),
             )
-            .padding(10)
+            .padding(DEF_PADDING)
             .width(Length::Fill)
             .style(Style(container::Style {
                 text_color: Some(Color::BLACK),

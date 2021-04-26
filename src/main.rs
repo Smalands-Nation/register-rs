@@ -2,8 +2,8 @@ use {
     calc::Calc,
     grid::Grid,
     iced::{
-        scrollable, window, Application, Clipboard, Column, Command, Container, Element, Font,
-        Length, Row, Rule, Scrollable, Settings, Space, Text,
+        button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
+        Container, Element, Font, Length, Row, Rule, Scrollable, Settings, Space, Text,
     },
     item::Item,
     std::collections::HashMap,
@@ -13,6 +13,13 @@ mod calc;
 mod grid;
 mod helper;
 mod item;
+
+const BIG_TEXT: u16 = 45;
+const DEF_TEXT: u16 = 35;
+const SMALL_TEXT: u16 = 20;
+
+const DEF_PADDING: u16 = 10;
+const SMALL_PADDING: u16 = 5;
 
 const FONT: Font = Font::External {
     name: "IBM Plex Mono",
@@ -29,7 +36,7 @@ pub fn main() -> iced::Result {
             Font::External { bytes, .. } => Some(bytes),
             _ => None,
         },
-        default_text_size: 35,
+        default_text_size: DEF_TEXT,
         ..Settings::default()
     })
 }
@@ -39,10 +46,14 @@ pub struct Screen {
     menu: Vec<Item>,
     reciept: HashMap<Item, Item>,
     scroll: scrollable::State,
+    print: bool,
+    cash: button::State,
+    swish: button::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    None,
     Calc(calc::Message),
     Sell(Item),
 }
@@ -63,6 +74,9 @@ impl Application for Screen {
                 menu,
                 reciept: HashMap::new(),
                 scroll: scrollable::State::new(),
+                print: false,
+                cash: button::State::new(),
+                swish: button::State::new(),
             },
             Command::none(),
         )
@@ -74,6 +88,7 @@ impl Application for Screen {
 
     fn update(&mut self, message: Message, _: &mut Clipboard) -> Command<Message> {
         match message {
+            Message::None => (),
             Message::Calc(m) => self.calc.update(m),
             Message::Sell(i) => {
                 match self.reciept.get_mut(&i) {
@@ -100,35 +115,46 @@ impl Application for Screen {
     fn view(&mut self) -> Element<Message> {
         Row::with_children(vec![
             Container::new(self.calc.view().map(Message::Calc))
-                .padding(10)
+                .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
                 .width(Length::FillPortion(3))
                 .height(Length::Fill)
                 .into(),
-            Rule::vertical(10).into(),
+            Rule::vertical(DEF_PADDING).into(),
             Grid::with_children(
                 self.menu.len() as u32 / 3,
                 3,
                 self.menu.iter_mut().map(|i| i.view()).collect(),
             )
             .width(Length::FillPortion(8))
-            .spacing(10)
-            .padding(10)
+            .spacing(DEF_PADDING)
+            .padding(DEF_PADDING)
             .into(),
-            Rule::vertical(10).into(),
+            Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
-                Text::new("Kvitto").size(45).into(),
+                Text::new("Kvitto").size(BIG_TEXT).into(),
                 self.reciept
                     .values_mut()
-                    .fold(Scrollable::new(&mut self.scroll).spacing(10), |c, i| {
-                        c.push(i.view())
-                    })
+                    .fold(
+                        Scrollable::new(&mut self.scroll).spacing(DEF_PADDING),
+                        |c, i| c.push(i.view()),
+                    )
+                    .height(Length::Fill)
+                    .into(),
+                Checkbox::new(self.print, "Kivtto", |_| Message::None).into(),
+                Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
+                    .padding(DEF_PADDING)
+                    .width(Length::Fill)
+                    .into(),
+                Button::new(&mut self.swish, Text::new("Swish").size(BIG_TEXT))
+                    .padding(DEF_PADDING)
+                    .width(Length::Fill)
                     .into(),
             ])
             .width(Length::FillPortion(3))
-            .spacing(10)
-            .padding(10)
+            .spacing(DEF_PADDING)
+            .padding(DEF_PADDING)
             .into(),
         ])
         .into()

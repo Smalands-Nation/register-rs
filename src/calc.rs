@@ -1,5 +1,5 @@
 use {
-    crate::grid::Grid,
+    crate::{grid::Grid, BIG_TEXT, DEF_PADDING, DEF_TEXT},
     iced::{button, Button, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text},
 };
 
@@ -37,8 +37,7 @@ impl Calc {
     }
 
     pub fn view(&mut self) -> Element<Message> {
-        let fs = 55;
-        let sq = 60;
+        let sq: u32 = 15 + BIG_TEXT as u32;
         Column::new()
             .push(
                 Row::new()
@@ -46,7 +45,7 @@ impl Calc {
                         Text::new(format!("{:>3}x", self.0))
                             .horizontal_alignment(HorizontalAlignment::Left),
                     )
-                    .push(Rule::vertical(10))
+                    .push(Rule::vertical(DEF_PADDING))
                     .push(
                         Text::new(if self.1 != 0 {
                             format!("{}", self.1)
@@ -56,10 +55,10 @@ impl Calc {
                         .width(Length::Fill)
                         .horizontal_alignment(HorizontalAlignment::Right),
                     )
-                    .max_height(35)
-                    .max_width(sq * 3 + 10 * 2),
+                    .max_height(DEF_TEXT.into())
+                    .max_width(sq * 3 + (DEF_PADDING as u32) * 2),
             )
-            .push(Space::with_height(Length::Units(10)))
+            .push(Space::with_height(Length::Units(DEF_PADDING)))
             .push(
                 Grid::with_children(
                     4,
@@ -69,15 +68,16 @@ impl Calc {
                         .enumerate()
                         .map(move |(i, st)| {
                             match i {
-                                0..=8 => Button::new(st, Text::new(format!("{}", i + 1)).size(fs))
-                                    .on_press(Message::Update(i as u32 + 1)),
-                                9 => Button::new(st, Text::new("c").size(fs))
-                                    .on_press(Message::Clear),
-                                10 => Button::new(st, Text::new("0").size(fs))
-                                    .on_press(Message::Update(0)),
-                                _ => {
-                                    Button::new(st, Text::new("x").size(fs)).on_press(Message::Save)
+                                0..=8 => {
+                                    Button::new(st, Text::new(format!("{}", i + 1)).size(BIG_TEXT))
+                                        .on_press(Message::Update(i as u32 + 1))
                                 }
+                                9 => Button::new(st, Text::new("c").size(BIG_TEXT))
+                                    .on_press(Message::Clear),
+                                10 => Button::new(st, Text::new("0").size(BIG_TEXT))
+                                    .on_press(Message::Update(0)),
+                                _ => Button::new(st, Text::new("x").size(BIG_TEXT))
+                                    .on_press(Message::Save),
                             }
                             .min_height(sq)
                             .min_width(sq)
@@ -85,7 +85,7 @@ impl Calc {
                         })
                         .collect(),
                 )
-                .spacing(10),
+                .spacing(DEF_PADDING),
             )
             .into()
     }
