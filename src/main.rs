@@ -6,6 +6,7 @@ use {
         Length, Row, Rule, Scrollable, Settings, Space, Text,
     },
     item::Item,
+    std::collections::HashMap,
 };
 
 mod calc;
@@ -36,7 +37,7 @@ pub fn main() -> iced::Result {
 pub struct Screen {
     calc: Calc,
     menu: Vec<Item>,
-    reciept: Vec<Item>,
+    reciept: HashMap<Item, Item>,
     scroll: scrollable::State,
 }
 
@@ -60,7 +61,7 @@ impl Application for Screen {
             Self {
                 calc: Calc::new(),
                 menu,
-                reciept: Vec::new(),
+                reciept: HashMap::new(),
                 scroll: scrollable::State::new(),
             },
             Command::none(),
@@ -75,20 +76,20 @@ impl Application for Screen {
         match message {
             Message::Calc(m) => self.calc.update(m),
             Message::Sell(i) => {
-                let mut merged = false;
-                for it in self.reciept.iter_mut() {
-                    *it = match (i.clone().sell(self.calc.0), it.clone()) {
-                        (Item::Sold(n1, p1, x1), Item::Sold(n2, p2, x2))
-                            if n1 == n2 && p1 == p2 =>
-                        {
-                            merged = true;
-                            Item::Sold(n1, p1, x1 + x2)
-                        }
-                        (_, it @ _) => it,
-                    };
-                }
-                if !merged {
-                    self.reciept.push(i);
+                match self.reciept.get_mut(&i) {
+                    Some(it) => {
+                        *it = match (i, it.clone()) {
+                            (Item::Sold(n1, p1, x1), Item::Sold(n2, p2, x2))
+                                if n1 == n2 && p1 == p2 =>
+                            {
+                                Item::Sold(n1, p1, x1 + x2)
+                            }
+                            (_, it @ _) => it,
+                        };
+                    }
+                    None => {
+                        self.reciept.insert(i.clone(), i);
+                    }
                 }
                 self.calc.update(calc::Message::Clear);
             }
@@ -119,7 +120,7 @@ impl Application for Screen {
             Column::with_children(vec![
                 Text::new("Kvitto").size(45).into(),
                 self.reciept
-                    .iter_mut()
+                    .values_mut()
                     .fold(Scrollable::new(&mut self.scroll).spacing(10), |c, i| {
                         c.push(i.view())
                     })

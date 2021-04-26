@@ -4,9 +4,14 @@ use {
         button, container, Align, Button, Color, Column, Element, HorizontalAlignment, Length, Row,
         Text,
     },
+    std::{
+        cmp::{Eq, PartialEq},
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    },
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq)]
 pub enum Item {
     OnMenu(String, u32, button::State),
     Sold(String, u32, u32),
@@ -83,6 +88,33 @@ impl Item {
             .into(),
             Self::Invisible => Column::new().width(Length::Fill).into(),
         }
+    }
+}
+
+impl Hash for Item {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        match self {
+            Self::OnMenu(name, price, _) | Self::Sold(name, price, _) => {
+                state.write(name.as_bytes());
+                state.write_u32(*price);
+            }
+            Self::Invisible => {
+                state.write(b"Item::Invisible");
+            }
+        }
+    }
+}
+
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        let mut h1 = DefaultHasher::new();
+        let mut h2 = DefaultHasher::new();
+        self.hash(&mut h1);
+        other.hash(&mut h2);
+        h1.finish() == h2.finish()
     }
 }
 
