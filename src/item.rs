@@ -13,52 +13,65 @@ use {
 
 #[derive(Clone, Debug, Eq)]
 pub enum Item {
-    OnMenu(String, u32, button::State),
-    Sold(String, u32, u32),
+    OnMenu(String, i32, button::State),
+    OnMenuSpecial(String, i32, button::State),
+    Sold(String, i32, i32),
+    SoldSpecial(String, i32),
     Invisible,
 }
 
 impl Item {
-    pub fn new(name: &str, price: u32) -> Self {
+    pub fn new(name: &str, price: i32) -> Self {
         Self::OnMenu(name.into(), price, button::State::new())
     }
 
-    pub fn sell(self, num: u32) -> Self {
+    pub fn new_special(name: &str, price: i32) -> Self {
+        Self::OnMenuSpecial(name.into(), price, button::State::new())
+    }
+
+    pub fn sell(self, num: i32) -> Self {
         match self {
             Self::OnMenu(name, price, _) | Self::Sold(name, price, _) => {
                 Self::Sold(name, price, num)
+            }
+            Self::OnMenuSpecial(name, price, _) | Self::SoldSpecial(name, price) => {
+                Self::SoldSpecial(name, price * num)
             }
             Self::Invisible => self,
         }
     }
 
     pub fn view(&mut self) -> Element<Message> {
+        let clone = self.clone();
         match self {
-            Self::OnMenu(name, price, state) => Button::new(
-                state,
-                container::Container::new(
-                    Column::new()
-                        .align_items(Align::Center)
-                        .spacing(SMALL_PADDING)
-                        .push(Text::new(name.as_str()))
-                        .push(
-                            Text::new(format!("{:.2} kr", *price as f32 / 100.0)).size(SMALL_TEXT),
-                        ),
+            Self::OnMenu(name, price, state) | Self::OnMenuSpecial(name, price, state) => {
+                Button::new(
+                    state,
+                    container::Container::new(
+                        Column::new()
+                            .align_items(Align::Center)
+                            .spacing(SMALL_PADDING)
+                            .push(Text::new(name.as_str()))
+                            .push(
+                                Text::new(format!("{:.2} kr", *price as f32 / 100.0))
+                                    .size(SMALL_TEXT),
+                            ),
+                    )
+                    .padding(DEF_PADDING)
+                    .width(Length::Fill)
+                    .style(Style(container::Style {
+                        text_color: Some(Color::BLACK),
+                        background: None,
+                        border_radius: 2f32,
+                        border_width: 2f32,
+                        border_color: Color::BLACK,
+                    })),
                 )
-                .padding(DEF_PADDING)
                 .width(Length::Fill)
-                .style(Style(container::Style {
-                    text_color: Some(Color::BLACK),
-                    background: None,
-                    border_radius: 2f32,
-                    border_width: 2f32,
-                    border_color: Color::BLACK,
-                })),
-            )
-            .width(Length::Fill)
-            .style(Clickable)
-            .on_press(Message::SellItem(Self::Sold(name.to_string(), *price, 1)))
-            .into(),
+                .style(Clickable)
+                .on_press(Message::SellItem(clone))
+                .into()
+            }
             Self::Sold(name, price, num) => container::Container::new(
                 Column::new()
                     .align_items(Align::Center)
@@ -88,6 +101,28 @@ impl Item {
                 border_color: Color::BLACK,
             }))
             .into(),
+            Self::SoldSpecial(name, price) => container::Container::new(
+                Column::new()
+                    .align_items(Align::Center)
+                    .spacing(SMALL_PADDING)
+                    .push(Text::new(name.as_str()))
+                    .push(
+                        Text::new(format!("{:.2} kr", *price as f32 / 100.0))
+                            .size(SMALL_TEXT)
+                            .width(Length::Fill)
+                            .horizontal_alignment(HorizontalAlignment::Right),
+                    ),
+            )
+            .padding(DEF_PADDING)
+            .width(Length::Fill)
+            .style(Style(container::Style {
+                text_color: Some(Color::BLACK),
+                background: None,
+                border_radius: 2f32,
+                border_width: 2f32,
+                border_color: Color::BLACK,
+            }))
+            .into(),
             Self::Invisible => Column::new().width(Length::Fill).into(),
         }
     }
@@ -101,7 +136,12 @@ impl Hash for Item {
         match self {
             Self::OnMenu(name, price, _) | Self::Sold(name, price, _) => {
                 state.write(name.as_bytes());
-                state.write_u32(*price);
+                state.write_i32(*price);
+            }
+            Self::OnMenuSpecial(name, _, _) | Self::SoldSpecial(name, _) => {
+                let mut h_name = name.clone();
+                h_name.push_str("__Special__");
+                state.write(h_name.as_bytes())
             }
             Self::Invisible => {
                 state.write(b"Item::Invisible");

@@ -3,7 +3,8 @@ use {
     grid::Grid,
     iced::{
         button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
-        Container, Element, Font, Length, Row, Rule, Scrollable, Settings, Space, Text,
+        Container, Element, Font, HorizontalAlignment, Length, Row, Rule, Scrollable, Settings,
+        Space, Text,
     },
     item::Item,
     std::collections::HashMap,
@@ -26,6 +27,11 @@ const FONT: Font = Font::External {
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
 
+const ICONS: Font = Font::External {
+    name: "icons",
+    bytes: include_bytes!("../resources/icons.ttf"),
+};
+
 pub fn main() -> iced::Result {
     Screen::run(Settings {
         window: window::Settings {
@@ -46,6 +52,8 @@ pub struct Screen {
     menu: Vec<Item>,
     reciept: HashMap<Item, Item>,
     scroll: scrollable::State,
+    clear: button::State,
+    total: i32,
     print: bool,
     cash: button::State,
     swish: button::State,
@@ -62,6 +70,7 @@ pub enum Message {
     None,
     Calc(calc::Message),
     SellItem(Item),
+    ClearReciept,
     TogglePrint(bool),
     Sell(Payment),
 }
@@ -74,6 +83,10 @@ impl Application for Screen {
     fn new(_: Self::Flags) -> (Self, Command<Message>) {
         let mut menu = vec![Item::new("Åbro", 1500); 4]; //Db request here
         menu.push(Item::new("Xide", 1500));
+        menu.append(&mut vec![
+            Item::new_special("Special", 100),
+            Item::new_special("Rabatt", -100),
+        ]);
         menu.append(&mut vec![Item::Invisible; 3 - menu.len() % 3]);
 
         (
@@ -82,6 +95,8 @@ impl Application for Screen {
                 menu,
                 reciept: HashMap::new(),
                 scroll: scrollable::State::new(),
+                clear: button::State::new(),
+                total: 0,
                 print: false,
                 cash: button::State::new(),
                 swish: button::State::new(),
@@ -94,11 +109,16 @@ impl Application for Screen {
         String::from("Menu")
     }
 
-    fn update(&mut self, message: Message, _: &mut Clipboard) -> Command<Message> {
+    fn update(&mut self, message: Message, _clip: &mut Clipboard) -> Command<Message> {
         match message {
             Message::None => (),
             Message::Calc(m) => self.calc.update(m),
+            Message::ClearReciept => {
+                self.reciept = HashMap::new();
+                self.total = 0;
+            }
             Message::SellItem(i) => {
+                let i = i.sell(self.calc.0 as i32);
                 match self.reciept.get_mut(&i) {
                     Some(it) => {
                         *it = match (i, it.clone()) {
@@ -107,6 +127,9 @@ impl Application for Screen {
                             {
                                 Item::Sold(n1, p1, x1 + x2)
                             }
+                            (Item::SoldSpecial(n1, p1), Item::SoldSpecial(n2, p2)) if n1 == n2 => {
+                                Item::SoldSpecial(n1, p1 + p2)
+                            }
                             (_, it @ _) => it,
                         };
                     }
@@ -114,12 +137,19 @@ impl Application for Screen {
                         self.reciept.insert(i.clone(), i);
                     }
                 }
+                self.total = self.reciept.values_mut().fold(0i32, |acc, n| {
+                    acc + match n {
+                        Item::Sold(_, price, num) => *price * *num,
+                        Item::SoldSpecial(_, price) => *price,
+                        _ => 0,
+                    }
+                });
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(_p) => {
                 let r: Vec<Item> = self.reciept.values().map(|v| v.clone()).collect();
-                self.reciept = HashMap::new();
+                self.update(Message::ClearReciept, _clip);
                 println!("{:?}", r);
             }
         };
@@ -147,7 +177,14 @@ impl Application for Screen {
             .into(),
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
-                Text::new("Kvitto").size(BIG_TEXT).into(),
+                Row::new()
+                    .push(Text::new("Kvitto").size(BIG_TEXT))
+                    .push(Space::with_width(Length::Fill))
+                    .push(
+                        Button::new(&mut self.clear, Text::new("\u{F1F8}").font(ICONS))
+                            .on_press(Message::ClearReciept),
+                    )
+                    .into(),
                 self.reciept
                     .values_mut()
                     .fold(
@@ -156,7 +193,8 @@ impl Application for Screen {
                     )
                     .height(Length::Fill)
                     .into(),
-                Checkbox::new(self.print, "Kivtto", |b| Message::TogglePrint(b)).into(),
+                Text::new(format!("Total: {:.2}kr", self.total as f32 / 100.0)).into(),
+                Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
                 Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
                     .on_press(Message::Sell(Payment::Cash))
                     .padding(DEF_PADDING)
