@@ -1,5 +1,5 @@
 use {
-    crate::{helper::Clickable, Message, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
+    crate::{helper::Clickable, screens::menu::Message, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
     iced::{
         button, container, Align, Button, Color, Column, Element, HorizontalAlignment, Length, Row,
         Text,
