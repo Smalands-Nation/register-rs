@@ -15,4 +15,4 @@ rusqlite = "0.25.3"
 git = "https://github.com/iced-rs/iced_aw"
 branch = "main"
 default-features = false
-features = ["tab_bar", "tabs"]
+features = ["tab_bar", "tabs", "modal", "card"]

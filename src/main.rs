@@ -1,19 +1,15 @@
 use {
     crate::{
-        error::{Error, Result},
+        error::Error,
         icons::Icon,
-        screens::{Message, Screen},
+        screens::{manager, menu, Manager, Menu, Message, Screen},
     },
-    calc::Calc,
-    grid::Grid,
     iced::{
-        button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
-        Container, Element, Font, HorizontalAlignment, Length, Row, Rule, Scrollable, Settings,
-        Space, Text,
+        window, Application, Clipboard, Column, Command, Element, Font, Length, Settings, Text,
     },
-    iced_aw::{TabBar, TabLabel},
-    rusqlite::Connection,
-    std::collections::HashMap,
+    iced_aw::{modal, Card, Modal, TabLabel, Tabs},
+    rusqlite::{params, Connection},
+    std::sync::{Arc, Mutex},
 };
 
 pub mod calc;
@@ -35,6 +31,8 @@ pub const FONT: Font = Font::External {
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
 
+pub type Marc<T> = Arc<Mutex<T>>;
+
 pub fn main() -> iced::Result {
     App::run(Settings {
         window: window::Settings {
@@ -51,10 +49,11 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    con: Option<Connection>,
+    con: Marc<Connection>,
+    err: modal::State<Option<Error>>,
     tab: usize,
-    err: Option<Error>,
-    screen: Screen,
+    menu: Menu,
+    manager: Manager,
 }
 
 impl Application for App {
@@ -63,22 +62,26 @@ impl Application for App {
     type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
+        let mut cmds = Vec::new();
+
+        let (menu, mcmd) = Menu::new();
+        cmds.push(mcmd);
+
+        let (manager, mcmd) = Manager::new();
+        cmds.push(mcmd);
+
         (
-            match Connection::open("../smaland.db") {
-                Ok(con) => Self {
-                    con: Some(con),
-                    tab: 0,
-                    err: None,
-                    screen: screens::Menu::new(Vec::new()).into(),
+            Self {
+                con: match Connection::open("./smaland.db") {
+                    Ok(con) => Arc::new(Mutex::new(con)),
+                    Err(e) => panic!("{}", e),
                 },
-                Err(e) => Self {
-                    con: None,
-                    tab: 0,
-                    err: Some(e.into()),
-                    screen: screens::Menu::new(Vec::new()).into(),
-                },
+                err: modal::State::new(None),
+                tab: 0,
+                menu,
+                manager,
             },
-            Command::none(),
+            Command::batch(cmds),
         )
     }
 
@@ -87,32 +90,77 @@ impl Application for App {
     }
 
     fn update(&mut self, msg: Self::Message, _clip: &mut Clipboard) -> Command<Self::Message> {
-        match (&mut self.screen, msg) {
-            (_, Message::SwapTab(n)) => {
+        match msg {
+            Message::SwapTab(n) => {
                 self.tab = n;
                 match n {
-                    0 => self.screen = screens::Menu::new(Vec::new()).into(),
-                    _ => (),
+                    1 => self.manager.update(manager::Message::Refresh),
+                    _ => self.menu.update(menu::Message::Refresh),
                 }
+            }
+            Message::ReadDB(f) => match f(self.con.clone()) {
+                Ok(Message::Menu(m)) => self.menu.update(m),
+                Ok(Message::Manager(m)) => self.manager.update(m),
+                Err(e) => {
+                    *self.err.inner_mut() = Some(e.into());
+                    Command::none()
+                }
+                _ => Command::none(),
+            },
+            Message::WriteDB(q) => match self.con.lock().unwrap().execute(&q, params![]) {
+                Ok(_) => Command::none(),
+                Err(e) => {
+                    *self.err.inner_mut() = Some(e.into());
+                    Command::none()
+                }
+            },
+            Message::CloseModal => {
+                *self.err.inner_mut() = None;
                 Command::none()
             }
-            (Screen::Menu(s), Message::Menu(msg)) => s.update(msg).map(Message::Menu),
-            _ => Command::none(),
+            Message::Menu(msg) => self.menu.update(msg),
+            Message::Manager(msg) => self.manager.update(msg),
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        Column::new()
-            .push(
-                TabBar::new(self.tab, Message::SwapTab)
+        if let Some(_) = self.err.inner() {
+            self.err.show(true);
+        } else {
+            self.err.show(false);
+        }
+
+        Modal::new(
+            &mut self.err,
+            Column::new().push(
+                Tabs::new(self.tab, Message::SwapTab)
                     .icon_font(icons::ICON_FONT)
-                    .push(TabLabel::IconText(Icon::Menu.into(), String::from("Meny")))
-                    .push(TabLabel::IconText(
-                        Icon::Settings.into(),
-                        String::from("Hantera"),
-                    )),
-            )
-            .push(self.screen.view())
-            .into()
+                    .height(Length::Shrink)
+                    .push(
+                        TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
+                        self.menu.view(),
+                    )
+                    .push(
+                        TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                        self.manager.view(),
+                    ),
+            ),
+            |state| {
+                Card::new(
+                    Text::new("Error"),
+                    Text::new(match state {
+                        Some(e) => format!("{:#?}", e),
+                        None => String::new(),
+                    })
+                    .size(SMALL_TEXT),
+                )
+                .max_width(650)
+                .padding(DEF_PADDING.into())
+                .on_close(Message::CloseModal)
+                .into()
+            },
+        )
+        .backdrop(Message::CloseModal)
+        .into()
     }
 }

@@ -2,10 +2,8 @@ use giftwrap::Wrap;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Wrap)]
+#[derive(Wrap, Debug)]
 pub enum Error {
     Sqlite(rusqlite::Error),
     Other(String),
 }
-
-//TODO Error screen type (error popup)

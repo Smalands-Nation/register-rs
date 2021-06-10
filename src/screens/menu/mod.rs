@@ -1,6 +1,7 @@
 pub use {
     crate::{
-        calc, calc::Calc, error::Result, grid::Grid, icons::Icon, BIG_TEXT, DEF_PADDING, DEF_TEXT,
+        calc, calc::Calc, error::Error, error::Result, grid::Grid, icons::Icon, screens,
+        screens::Screen, Marc, BIG_TEXT, DEF_PADDING, DEF_TEXT,
     },
     iced::{
         button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
@@ -8,8 +9,8 @@ pub use {
         Space, Text,
     },
     item::Item,
-    rusqlite::Connection,
-    std::collections::HashMap,
+    rusqlite::{params, Connection},
+    std::{collections::HashMap, future, sync::Arc},
 };
 
 pub mod item;
@@ -34,38 +35,60 @@ pub enum Payment {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    None,
+    Refresh,
     Calc(calc::Message),
     SellItem(Item),
     ClearReciept,
     TogglePrint(bool),
     Sell(Payment),
+    LoadMenu(Vec<Item>),
 }
 
-impl Menu {
-    pub fn new(mut menu: Vec<Item>) -> Self {
-        menu.append(&mut vec![
-            Item::new_special("Special", 100),
-            Item::new_special("Rabatt", -100),
-        ]);
-        menu.append(&mut vec![Item::Invisible; 3 - menu.len() % 3]);
+impl Screen for Menu {
+    type ExMessage = screens::Message;
+    type InMessage = Message;
 
-        Self {
-            calc: Calc::new(),
-            menu,
-            reciept: HashMap::new(),
-            scroll: scrollable::State::new(),
-            clear: button::State::new(),
-            total: 0,
-            print: false,
-            cash: button::State::new(),
-            swish: button::State::new(),
-        }
+    fn new() -> (Self, Command<Self::ExMessage>) {
+        (
+            Self {
+                calc: Calc::new(),
+                menu: vec![],
+                reciept: HashMap::new(),
+                scroll: scrollable::State::new(),
+                clear: button::State::new(),
+                total: 0,
+                print: false,
+                cash: button::State::new(),
+                swish: button::State::new(),
+            },
+            Command::perform(future::ready(()), |_| {
+                Self::ExMessage::Menu(Message::Refresh)
+            }),
+        )
     }
 
-    pub fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
         match message {
-            Message::None => (),
+            Message::Refresh => {
+                return Command::perform(
+                    future::ready::<fn(Marc<Connection>) -> Result<Self::ExMessage>>(|con| {
+                        Ok(Self::ExMessage::Menu(Message::LoadMenu(
+                            con.lock()
+                                .unwrap()
+                                .prepare("SELECT name, price FROM menu WHERE available=true")?
+                                .query_map(params![], |row| {
+                                    Ok(Item::new(
+                                        row.get::<usize, String>(0)?.as_str(),
+                                        row.get(1)?,
+                                    ))
+                                })?
+                                .map(|item| item.unwrap())
+                                .collect(),
+                        )))
+                    }),
+                    Self::ExMessage::ReadDB,
+                )
+            }
             Message::Calc(m) => self.calc.update(m),
             Message::ClearReciept => {
                 self.reciept = HashMap::new();
@@ -106,12 +129,19 @@ impl Menu {
                 self.update(Message::ClearReciept);
                 println!("{:?}", r);
             }
+            Message::LoadMenu(mut menu) => {
+                menu.append(&mut vec![
+                    Item::new_special("Special", 100),
+                    Item::new_special("Rabatt", -100),
+                ]);
+                self.menu = menu;
+            }
         };
         Command::none()
     }
 
-    pub fn view(&mut self) -> Element<Message> {
-        Row::with_children(vec![
+    fn view(&mut self) -> Element<Self::ExMessage> {
+        Element::<Self::InMessage>::from(Row::with_children(vec![
             Container::new(self.calc.view().map(Message::Calc))
                 .padding(DEF_PADDING)
                 .center_x()
@@ -164,7 +194,7 @@ impl Menu {
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),
-        ])
-        .into()
+        ]))
+        .map(Self::ExMessage::Menu)
     }
 }

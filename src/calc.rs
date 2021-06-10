@@ -1,6 +1,8 @@
 use {
     crate::{grid::Grid, BIG_TEXT, DEF_PADDING, DEF_TEXT},
-    iced::{button, Button, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text},
+    iced::{
+        button, Align, Button, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text,
+    },
 };
 
 pub struct Calc(pub u32, u32, [button::State; 12]);
@@ -39,6 +41,7 @@ impl Calc {
     pub fn view(&mut self) -> Element<Message> {
         let sq: u32 = 15 + BIG_TEXT as u32;
         Column::new()
+            .align_items(Align::Center)
             .push(
                 Row::new()
                     .push(

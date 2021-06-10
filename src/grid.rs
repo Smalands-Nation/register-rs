@@ -1,4 +1,4 @@
-use iced::{Column, Element, Length, Row};
+use iced::{Align, Column, Element, Length, Row, Space};
 
 pub struct Grid<'a, Message> {
     rows: u32,
@@ -73,6 +73,7 @@ impl<'a, Message> Grid<'a, Message> {
 impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
     fn from(g: Grid<'a, Message>) -> Self {
         let mut col = Column::new()
+            .align_items(Align::Center)
             .width(g.width)
             .height(g.height)
             .padding(g.padding)
@@ -81,7 +82,7 @@ impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
             .max_width(g.max_width);
         let mut r = Row::new()
             .spacing(g.spacing)
-            .max_height(g.max_height / g.rows);
+            .max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
         let mut i = 0;
         for child in g.children {
             r = r.push(child);
@@ -90,9 +91,12 @@ impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
                 col = col.push(r);
                 r = Row::new()
                     .spacing(g.spacing)
-                    .max_height(g.max_height / g.rows);
+                    .max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
                 i = 0;
             }
+        }
+        for _ in 0..(g.cols - i) {
+            r = r.push(Space::with_width(Length::FillPortion(1)));
         }
         col.push(r).into()
     }

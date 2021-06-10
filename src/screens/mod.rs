@@ -1,13 +1,21 @@
-mod menu;
+pub mod manager;
+pub mod menu;
 
-pub use menu::Menu;
-use {giftwrap::Wrap, iced::Element};
+use {
+    crate::{error::Result, Marc},
+    iced::{Command, Element},
+    rusqlite::Connection,
+};
+pub use {manager::Manager, menu::Menu};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    None,
     SwapTab(usize),
+    ReadDB(fn(Marc<Connection>) -> Result<Message>),
+    WriteDB(String),
+    CloseModal,
     Menu(menu::Message),
+    Manager(manager::Message),
 }
 
 impl std::fmt::Display for Message {
@@ -16,15 +24,11 @@ impl std::fmt::Display for Message {
     }
 }
 
-#[derive(Wrap)]
-pub enum Screen {
-    Menu(Menu),
-}
+pub trait Screen: Sized {
+    type InMessage;
+    type ExMessage;
 
-impl Screen {
-    pub fn view(&mut self) -> Element<Message> {
-        match self {
-            Self::Menu(m) => m.view().map(Message::Menu),
-        }
-    }
+    fn new() -> (Self, Command<Self::ExMessage>);
+    fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage>;
+    fn view(&mut self) -> Element<Self::ExMessage>;
 }

@@ -1,8 +1,12 @@
 use {
-    crate::{helper::Clickable, screens::menu::Message, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
+    crate::{
+        helper::{Clickable, Style},
+        screens::menu::Message,
+        DEF_PADDING, SMALL_PADDING, SMALL_TEXT,
+    },
     iced::{
-        button, container, Align, Button, Color, Column, Element, HorizontalAlignment, Length, Row,
-        Text,
+        button, container, Align, Button, Color, Column, Container, Element, HorizontalAlignment,
+        Length, Row, Text,
     },
     std::{
         cmp::{Eq, PartialEq},
@@ -47,9 +51,8 @@ impl Item {
             Self::OnMenu(name, price, state) | Self::OnMenuSpecial(name, price, state) => {
                 Button::new(
                     state,
-                    container::Container::new(
+                    Container::new(
                         Column::new()
-                            .align_items(Align::Center)
                             .spacing(SMALL_PADDING)
                             .push(Text::new(name.as_str()))
                             .push(
@@ -72,9 +75,8 @@ impl Item {
                 .on_press(Message::SellItem(clone))
                 .into()
             }
-            Self::Sold(name, price, num) => container::Container::new(
+            Self::Sold(name, price, num) => Container::new(
                 Column::new()
-                    .align_items(Align::Center)
                     .spacing(SMALL_PADDING)
                     .push(Text::new(name.as_str()))
                     .push(
@@ -101,9 +103,8 @@ impl Item {
                 border_color: Color::BLACK,
             }))
             .into(),
-            Self::SoldSpecial(name, price) => container::Container::new(
+            Self::SoldSpecial(name, price) => Container::new(
                 Column::new()
-                    .align_items(Align::Center)
                     .spacing(SMALL_PADDING)
                     .push(Text::new(name.as_str()))
                     .push(
@@ -157,13 +158,5 @@ impl PartialEq for Item {
         self.hash(&mut h1);
         other.hash(&mut h2);
         h1.finish() == h2.finish()
-    }
-}
-
-struct Style(container::Style);
-
-impl container::StyleSheet for Style {
-    fn style(&self) -> container::Style {
-        self.0
     }
 }
