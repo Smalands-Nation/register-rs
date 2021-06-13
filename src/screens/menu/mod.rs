@@ -15,6 +15,7 @@ pub use {
     },
     item::Item,
     rusqlite::{params, Connection},
+    serde_json::json,
     std::{collections::HashMap, future, sync::Arc},
 };
 
@@ -36,6 +37,15 @@ pub struct Menu {
 pub enum Payment {
     Cash,
     Swish,
+}
+
+impl From<Payment> for String {
+    fn from(p: Payment) -> String {
+        String::from(match p {
+            Payment::Swish => "Swish",
+            Payment::Cash => "Cash",
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +83,7 @@ impl Screen for Menu {
     }
 
     fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
+        let reciept = self.reciept.clone();
         match message {
             Message::Refresh => {
                 return Command::perform(
@@ -129,10 +140,28 @@ impl Screen for Menu {
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
-            Message::Sell(_p) => {
-                let r: Vec<Item> = self.reciept.values().map(|v| v.clone()).collect();
+            Message::Sell(p) => {
+                let sum = self.total.clone();
+                let r: Vec<serde_json::Value> = reciept
+                    .values()
+                    .filter_map(|v| match v {
+                        Item::SoldSpecial(name, p) => Some(json!({"name": name, "price": p})),
+                        Item::Sold(name, p, n) => Some(json!({"name": name, "price": p, "num": n})),
+                        _ => None,
+                    })
+                    .collect();
                 self.update(Message::ClearReciept);
-                println!("{:?}", r);
+                if r.len() > 0 {
+                    return Command::perform(
+                        future::ready(format!(
+                            "INSERT INTO reciepts (items, sum, method) VALUES ('{}', {}, '{}')",
+                            serde_json::ser::to_string(&r).unwrap(),
+                            sum,
+                            String::from(p),
+                        )),
+                        Self::ExMessage::WriteDB,
+                    );
+                }
             }
             Message::LoadMenu(mut menu) => {
                 menu.append(&mut vec![
