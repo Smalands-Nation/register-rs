@@ -1183,6 +1183,7 @@ dependencies = [
  "iced_native",
  "iced_style",
  "iced_web",
+ "num-traits",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -2150,6 +2151,7 @@ dependencies = [
  "giftwrap",
  "iced",
  "iced_aw",
+ "num-traits",
  "rusqlite",
 ]
 

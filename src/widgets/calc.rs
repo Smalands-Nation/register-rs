@@ -1,5 +1,5 @@
 use {
-    crate::{grid::Grid, BIG_TEXT, DEF_PADDING, DEF_TEXT},
+    crate::{widgets::grid::Grid, BIG_TEXT, DEF_PADDING, DEF_TEXT},
     iced::{
         button, Align, Button, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text,
     },

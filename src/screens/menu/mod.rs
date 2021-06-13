@@ -1,7 +1,12 @@
 pub use {
     crate::{
-        calc, calc::Calc, error::Error, error::Result, grid::Grid, icons::Icon, screens,
-        screens::Screen, Marc, BIG_TEXT, DEF_PADDING, DEF_TEXT,
+        error::Error,
+        error::Result,
+        icons::Icon,
+        screens,
+        screens::Screen,
+        widgets::{calc, calc::Calc, grid::Grid},
+        Marc, BIG_TEXT, DEF_PADDING, DEF_TEXT,
     },
     iced::{
         button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
@@ -75,7 +80,7 @@ impl Screen for Menu {
                         Ok(Self::ExMessage::Menu(Message::LoadMenu(
                             con.lock()
                                 .unwrap()
-                                .prepare("SELECT name, price FROM menu WHERE available=true")?
+                                .prepare("SELECT name, price FROM menu WHERE available=true ORDER BY name DESC")?
                                 .query_map(params![], |row| {
                                     Ok(Item::new(
                                         row.get::<usize, String>(0)?.as_str(),
@@ -131,8 +136,8 @@ impl Screen for Menu {
             }
             Message::LoadMenu(mut menu) => {
                 menu.append(&mut vec![
-                    Item::new_special("Special", 100),
-                    Item::new_special("Rabatt", -100),
+                    Item::new_special("Special", 1),
+                    Item::new_special("Rabatt", -1),
                 ]);
                 self.menu = menu;
             }
@@ -177,7 +182,7 @@ impl Screen for Menu {
                     )
                     .height(Length::Fill)
                     .into(),
-                Text::new(format!("Total: {:.2}kr", self.total as f32 / 100.0)).into(),
+                Text::new(format!("Total: {}kr", self.total)).into(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
                 Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
                     .on_press(Message::Sell(Payment::Cash))

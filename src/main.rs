@@ -12,12 +12,11 @@ use {
     std::sync::{Arc, Mutex},
 };
 
-pub mod calc;
 pub mod error;
-pub mod grid;
-pub mod helper;
 pub mod icons;
 pub mod screens;
+pub mod styles;
+pub mod widgets;
 
 pub const BIG_TEXT: u16 = 45;
 pub const DEF_TEXT: u16 = 35;

@@ -1,8 +1,7 @@
 use {
     crate::{
-        helper::{Clickable, Style},
-        screens::menu::Message,
-        DEF_PADDING, SMALL_PADDING, SMALL_TEXT,
+        screens::menu::Message, styles, widgets::clickable::Clickable, DEF_PADDING, SMALL_PADDING,
+        SMALL_TEXT,
     },
     iced::{
         button, container, Align, Button, Color, Column, Container, Element, HorizontalAlignment,
@@ -49,29 +48,25 @@ impl Item {
         let clone = self.clone();
         match self {
             Self::OnMenu(name, price, state) | Self::OnMenuSpecial(name, price, state) => {
-                Button::new(
+                Clickable::new(
                     state,
                     Container::new(
                         Column::new()
                             .spacing(SMALL_PADDING)
                             .push(Text::new(name.as_str()))
-                            .push(
-                                Text::new(format!("{:.2} kr", *price as f32 / 100.0))
-                                    .size(SMALL_TEXT),
-                            ),
+                            .push(Text::new(format!("{} kr", price)).size(SMALL_TEXT)),
                     )
                     .padding(DEF_PADDING)
                     .width(Length::Fill)
-                    .style(Style(container::Style {
+                    .style(styles::Container {
                         text_color: Some(Color::BLACK),
                         background: None,
                         border_radius: 2f32,
                         border_width: 2f32,
                         border_color: Color::BLACK,
-                    })),
+                    }),
                 )
                 .width(Length::Fill)
-                .style(Clickable)
                 .on_press(Message::SellItem(clone))
                 .into()
             }
@@ -81,12 +76,9 @@ impl Item {
                     .push(Text::new(name.as_str()))
                     .push(
                         Row::new()
+                            .push(Text::new(format!("{}x{} kr", num, price)).size(SMALL_TEXT))
                             .push(
-                                Text::new(format!("{}x{:.2} kr", *num, *price as f32 / 100.0))
-                                    .size(SMALL_TEXT),
-                            )
-                            .push(
-                                Text::new(format!("{:.2} kr", (*num * *price) as f32 / 100.0))
+                                Text::new(format!("{} kr", *num * *price))
                                     .size(SMALL_TEXT)
                                     .width(Length::Fill)
                                     .horizontal_alignment(HorizontalAlignment::Right),
@@ -95,20 +87,20 @@ impl Item {
             )
             .padding(DEF_PADDING)
             .width(Length::Fill)
-            .style(Style(container::Style {
+            .style(styles::Container {
                 text_color: Some(Color::BLACK),
                 background: None,
                 border_radius: 2f32,
                 border_width: 2f32,
                 border_color: Color::BLACK,
-            }))
+            })
             .into(),
             Self::SoldSpecial(name, price) => Container::new(
                 Column::new()
                     .spacing(SMALL_PADDING)
                     .push(Text::new(name.as_str()))
                     .push(
-                        Text::new(format!("{:.2} kr", *price as f32 / 100.0))
+                        Text::new(format!("{} kr", price))
                             .size(SMALL_TEXT)
                             .width(Length::Fill)
                             .horizontal_alignment(HorizontalAlignment::Right),
@@ -116,13 +108,13 @@ impl Item {
             )
             .padding(DEF_PADDING)
             .width(Length::Fill)
-            .style(Style(container::Style {
+            .style(styles::Container {
                 text_color: Some(Color::BLACK),
                 background: None,
                 border_radius: 2f32,
                 border_width: 2f32,
                 border_color: Color::BLACK,
-            }))
+            })
             .into(),
             Self::Invisible => Column::new().width(Length::Fill).into(),
         }

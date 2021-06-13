@@ -9,6 +9,7 @@ pub enum Icon {
     Trash,
     Menu,
     Settings,
+    Cross,
 }
 
 impl From<Icon> for char {
@@ -17,6 +18,7 @@ impl From<Icon> for char {
             Icon::Trash => '\u{eebb}',
             Icon::Menu => '\u{eb8b}',
             Icon::Settings => '\u{efe1}',
+            Icon::Cross => '\u{eee4}',
         }
     }
 }

@@ -10,9 +10,10 @@ edition = "2018"
 giftwrap = "0.1.0"
 iced = "0.3.0"
 rusqlite = "0.25.3"
+num-traits = "0.2.14"
 
 [dependencies.iced_aw]
 git = "https://github.com/iced-rs/iced_aw"
 branch = "main"
 default-features = false
-features = ["tab_bar", "tabs", "modal", "card"]
+features = ["tab_bar", "tabs", "modal", "card", "number_input"]
