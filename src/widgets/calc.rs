@@ -1,8 +1,7 @@
 use {
-    crate::{widgets::grid::Grid, BIG_TEXT, DEF_PADDING, DEF_TEXT},
-    iced::{
-        button, Align, Button, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text,
-    },
+    super::{Grid, SquareButton},
+    crate::styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+    iced::{button, Align, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text},
 };
 
 pub struct Calc(pub u32, u32, [button::State; 12]);
@@ -39,7 +38,6 @@ impl Calc {
     }
 
     pub fn view(&mut self) -> Element<Message> {
-        let sq: u32 = 15 + BIG_TEXT as u32;
         Column::new()
             .align_items(Align::Center)
             .push(
@@ -59,7 +57,7 @@ impl Calc {
                         .horizontal_alignment(HorizontalAlignment::Right),
                     )
                     .max_height(DEF_TEXT.into())
-                    .max_width(sq * 3 + (DEF_PADDING as u32) * 2),
+                    .max_width((SQUARE_BUTTON * 3 + DEF_PADDING * 2) as u32),
             )
             .push(Space::with_height(Length::Units(DEF_PADDING)))
             .push(
@@ -71,19 +69,13 @@ impl Calc {
                         .enumerate()
                         .map(move |(i, st)| {
                             match i {
-                                0..=8 => {
-                                    Button::new(st, Text::new(format!("{}", i + 1)).size(BIG_TEXT))
-                                        .on_press(Message::Update(i as u32 + 1))
-                                }
-                                9 => Button::new(st, Text::new("c").size(BIG_TEXT))
-                                    .on_press(Message::Clear),
-                                10 => Button::new(st, Text::new("0").size(BIG_TEXT))
+                                0..=8 => SquareButton::new(st, Text::new(format!("{}", i + 1)))
+                                    .on_press(Message::Update(i as u32 + 1)),
+                                9 => SquareButton::new(st, Text::new("c")).on_press(Message::Clear),
+                                10 => SquareButton::new(st, Text::new("0"))
                                     .on_press(Message::Update(0)),
-                                _ => Button::new(st, Text::new("x").size(BIG_TEXT))
-                                    .on_press(Message::Save),
+                                _ => SquareButton::new(st, Text::new("x")).on_press(Message::Save),
                             }
-                            .min_height(sq)
-                            .min_width(sq)
                             .into()
                         })
                         .collect(),

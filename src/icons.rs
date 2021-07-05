@@ -10,6 +10,10 @@ pub enum Icon {
     Menu,
     Settings,
     Cross,
+    Reciept,
+    Print,
+    Left,
+    Right,
 }
 
 impl From<Icon> for char {
@@ -19,6 +23,10 @@ impl From<Icon> for char {
             Icon::Menu => '\u{eb8b}',
             Icon::Settings => '\u{efe1}',
             Icon::Cross => '\u{eee4}',
+            Icon::Reciept => '\u{ef72}',
+            Icon::Print => '\u{efc6}',
+            Icon::Left => '\u{ea9d}',
+            Icon::Right => '\u{eaa0}',
         }
     }
 }

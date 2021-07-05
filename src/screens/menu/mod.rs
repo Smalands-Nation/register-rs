@@ -1,51 +1,38 @@
 pub use {
+    super::Screen,
     crate::{
-        error::Error,
-        error::Result,
+        error::{Error, Result},
         icons::Icon,
-        screens,
-        screens::Screen,
-        widgets::{calc, calc::Calc, grid::Grid},
-        Marc, BIG_TEXT, DEF_PADDING, DEF_TEXT,
+        payment::Payment,
+        styles::{BIG_TEXT, DEF_PADDING, DEF_TEXT, RECIEPT_WIDTH},
+        widgets::{
+            calc::{self, Calc},
+            Grid, Reciept, SquareButton,
+        },
     },
+    chrono::Local,
     iced::{
-        button, scrollable, window, Application, Button, Checkbox, Clipboard, Column, Command,
-        Container, Element, Font, HorizontalAlignment, Length, Row, Rule, Scrollable, Settings,
-        Space, Text,
+        button::{self, Button},
+        scrollable::{self, Scrollable},
+        window, Align, Application, Checkbox, Clipboard, Column, Command, Container, Element, Font,
+        HorizontalAlignment, Length, Row, Rule, Settings, Space, Text,
     },
-    item::Item,
-    rusqlite::{params, Connection},
-    serde_json::json,
-    std::{collections::HashMap, future, sync::Arc},
+    indexmap::IndexMap,
+    rusqlite::params,
+    std::future,
 };
 
 pub mod item;
+pub use item::Item;
 
 pub struct Menu {
     calc: Calc,
     menu: Vec<Item>,
-    reciept: HashMap<Item, Item>,
-    scroll: scrollable::State,
+    reciept: Reciept<Message>,
     clear: button::State,
-    total: i32,
     print: bool,
     cash: button::State,
     swish: button::State,
-}
-
-#[derive(Debug, Clone)]
-pub enum Payment {
-    Cash,
-    Swish,
-}
-
-impl From<Payment> for String {
-    fn from(p: Payment) -> String {
-        String::from(match p {
-            Payment::Swish => "Swish",
-            Payment::Cash => "Cash",
-        })
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +47,7 @@ pub enum Message {
 }
 
 impl Screen for Menu {
-    type ExMessage = screens::Message;
+    type ExMessage = super::Message;
     type InMessage = Message;
 
     fn new() -> (Self, Command<Self::ExMessage>) {
@@ -68,27 +55,21 @@ impl Screen for Menu {
             Self {
                 calc: Calc::new(),
                 menu: vec![],
-                reciept: HashMap::new(),
-                scroll: scrollable::State::new(),
+                reciept: Reciept::new(),
                 clear: button::State::new(),
-                total: 0,
                 print: false,
                 cash: button::State::new(),
                 swish: button::State::new(),
             },
-            Command::perform(future::ready(()), |_| {
-                Self::ExMessage::Menu(Message::Refresh)
-            }),
+            Command::perform(future::ready(()), |_| Message::Refresh.into()),
         )
     }
 
     fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
-        let reciept = self.reciept.clone();
         match message {
             Message::Refresh => {
-                return Command::perform(
-                    future::ready::<fn(Marc<Connection>) -> Result<Self::ExMessage>>(|con| {
-                        Ok(Self::ExMessage::Menu(Message::LoadMenu(
+                return DB!(|con| {
+                    Ok(Message::LoadMenu(
                             con.lock()
                                 .unwrap()
                                 .prepare("SELECT name, price FROM menu WHERE available=true ORDER BY name DESC")?
@@ -96,77 +77,44 @@ impl Screen for Menu {
                                     Ok(Item::new(
                                         row.get::<usize, String>(0)?.as_str(),
                                         row.get(1)?,
+                                        false,
                                     ))
                                 })?
                                 .map(|item| item.unwrap())
                                 .collect(),
-                        )))
-                    }),
-                    Self::ExMessage::ReadDB,
-                )
+                        ).into())
+                })
             }
             Message::Calc(m) => self.calc.update(m),
             Message::ClearReciept => {
-                self.reciept = HashMap::new();
-                self.total = 0;
+                self.reciept = Reciept::new();
             }
             Message::SellItem(i) => {
-                let i = i.sell(self.calc.0 as i32);
-                match self.reciept.get_mut(&i) {
-                    Some(it) => {
-                        *it = match (i, it.clone()) {
-                            (Item::Sold(n1, p1, x1), Item::Sold(n2, p2, x2))
-                                if n1 == n2 && p1 == p2 =>
-                            {
-                                Item::Sold(n1, p1, x1 + x2)
-                            }
-                            (Item::SoldSpecial(n1, p1), Item::SoldSpecial(n2, p2)) if n1 == n2 => {
-                                Item::SoldSpecial(n1, p1 + p2)
-                            }
-                            (_, it @ _) => it,
-                        };
-                    }
-                    None => {
-                        self.reciept.insert(i.clone(), i);
-                    }
-                }
-                self.total = self.reciept.values_mut().fold(0i32, |acc, n| {
-                    acc + match n {
-                        Item::Sold(_, price, num) => *price * *num,
-                        Item::SoldSpecial(_, price) => *price,
-                        _ => 0,
-                    }
-                });
+                self.reciept.add(i.sell(self.calc.0 as i32));
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let sum = self.total.clone();
-                let r: Vec<serde_json::Value> = reciept
-                    .values()
-                    .filter_map(|v| match v {
-                        Item::SoldSpecial(name, p) => Some(json!({"name": name, "price": p})),
-                        Item::Sold(name, p, n) => Some(json!({"name": name, "price": p, "num": n})),
-                        _ => None,
-                    })
-                    .collect();
-                self.update(Message::ClearReciept);
-                if r.len() > 0 {
-                    return Command::perform(
-                        future::ready(format!(
-                            "INSERT INTO reciepts (items, sum, method) VALUES ('{}', {}, '{}')",
-                            serde_json::ser::to_string(&r).unwrap(),
-                            sum,
-                            String::from(p),
-                        )),
-                        Self::ExMessage::WriteDB,
-                    );
+                let reciept = self.reciept.clone();
+                if self.reciept.len() > 0 {
+                    return DB!(move |con| {
+                        con.lock().unwrap().execute(
+                                "INSERT INTO reciepts (time, items, sum, method) VALUES (?1, ?2, ?3, ?4)",
+                                params![
+                                Local::now(),
+                                reciept.json(),
+                                reciept.sum(),
+                                String::from(p),
+                                ]
+                            )?;
+                        Ok(Message::ClearReciept.into())
+                    });
                 }
             }
             Message::LoadMenu(mut menu) => {
                 menu.append(&mut vec![
-                    Item::new_special("Special", 1),
-                    Item::new_special("Rabatt", -1),
+                    Item::new("Special", 1, true),
+                    Item::new("Rabatt", -1, true),
                 ]);
                 self.menu = menu;
             }
@@ -180,7 +128,7 @@ impl Screen for Menu {
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
-                .width(Length::FillPortion(3))
+                .width(Length::Units(RECIEPT_WIDTH))
                 .height(Length::Fill)
                 .into(),
             Rule::vertical(DEF_PADDING).into(),
@@ -189,7 +137,7 @@ impl Screen for Menu {
                 3,
                 self.menu.iter_mut().map(|i| i.view()).collect(),
             )
-            .width(Length::FillPortion(8))
+            .width(Length::Fill)
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),
@@ -199,19 +147,12 @@ impl Screen for Menu {
                     .push(Text::new("Kvitto").size(BIG_TEXT))
                     .push(Space::with_width(Length::Fill))
                     .push(
-                        Button::new(&mut self.clear, Text::from(Icon::Trash))
+                        SquareButton::new(&mut self.clear, Text::from(Icon::Trash))
                             .on_press(Message::ClearReciept),
                     )
+                    .align_items(Align::Center)
                     .into(),
-                self.reciept
-                    .values_mut()
-                    .fold(
-                        Scrollable::new(&mut self.scroll).spacing(DEF_PADDING),
-                        |c, i| c.push(i.view()),
-                    )
-                    .height(Length::Fill)
-                    .into(),
-                Text::new(format!("Total: {}kr", self.total)).into(),
+                self.reciept.view(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
                 Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
                     .on_press(Message::Sell(Payment::Cash))
@@ -224,7 +165,7 @@ impl Screen for Menu {
                     .width(Length::Fill)
                     .into(),
             ])
-            .width(Length::FillPortion(3))
+            .width(Length::Units(RECIEPT_WIDTH))
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),

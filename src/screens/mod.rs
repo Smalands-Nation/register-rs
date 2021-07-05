@@ -1,26 +1,56 @@
+macro_rules! DB {
+    ($fn:expr) => {
+        iced::Command::perform(
+            std::future::ready::<
+                std::sync::Arc<
+                    dyn Fn(
+                            std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>,
+                        ) -> Result<crate::screens::Message>
+                        + Send
+                        + Sync,
+                >,
+            >(std::sync::Arc::new($fn)),
+            crate::screens::Message::DB,
+        );
+    };
+}
+
 pub mod manager;
 pub mod menu;
+pub mod transactions;
 
 use {
-    crate::{error::Result, Marc},
+    crate::error::Result,
+    giftwrap::Wrap,
     iced::{Command, Element},
     rusqlite::Connection,
+    std::sync::{Arc, Mutex},
 };
-pub use {manager::Manager, menu::Menu};
+pub use {manager::Manager, menu::Menu, transactions::Transactions};
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Wrap)]
 pub enum Message {
+    #[noWrap]
     SwapTab(usize),
-    ReadDB(fn(Marc<Connection>) -> Result<Message>),
-    WriteDB(String),
+    #[noWrap]
+    DB(Arc<dyn Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync>),
+    #[noWrap]
     CloseModal,
     Menu(menu::Message),
+    Transactions(transactions::Message),
     Manager(manager::Message),
 }
 
-impl std::fmt::Display for Message {
+impl std::fmt::Debug for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Self::SwapTab(n) => write!(f, "SwapTab({:?})", n),
+            Self::DB(_) => write!(f, "DB(_)"),
+            Self::CloseModal => write!(f, "CloseModal"),
+            Self::Menu(n) => write!(f, "Menu({:?})", n),
+            Self::Transactions(n) => write!(f, "Transactions({:?})", n),
+            Self::Manager(n) => write!(f, "Manager({:?})", n),
+        }
     }
 }
 

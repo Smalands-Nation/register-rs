@@ -1,19 +1,22 @@
 use {
+    super::Screen,
     crate::{
-        error::{Error, Result},
+        error::Result,
         icons::Icon,
-        screens,
-        screens::Screen,
-        widgets::{grid::Grid, numberinput::NumberInput, textinput::TextInput},
-        Marc, BIG_TEXT, DEF_PADDING,
+        styles::{BIG_TEXT, DEF_PADDING, RECIEPT_WIDTH},
+        widgets::{Grid, NumberInput, SquareButton, TextInput},
     },
-    iced::{button, button::Button, Column, Command, Element, Length, Row, Rule, Space, Text},
-    item::Item,
-    rusqlite::{params, Connection},
-    std::{collections::HashMap, future},
+    iced::{
+        button::{self, Button},
+        Align, Column, Command, Element, Length, Row, Rule, Space, Text,
+    },
+    indexmap::IndexMap,
+    rusqlite::params,
+    std::future,
 };
 
 pub mod item;
+pub use item::Item;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -22,7 +25,7 @@ pub enum Mode {
 }
 
 pub struct Manager {
-    menu: HashMap<String, Item>,
+    menu: IndexMap<String, Item>,
     mode: Mode,
     name: TextInput,
     price: NumberInput<u32>,
@@ -43,64 +46,61 @@ pub enum Message {
 }
 
 impl Screen for Manager {
-    type ExMessage = screens::Message;
+    type ExMessage = super::Message;
     type InMessage = Message;
 
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                menu: HashMap::new(),
+                menu: IndexMap::new(),
                 mode: Mode::New,
                 name: TextInput::new(),
                 price: NumberInput::new(),
                 cancel: button::State::new(),
                 save: button::State::new(),
             },
-            Command::perform(future::ready(()), |_| {
-                Self::ExMessage::Manager(Message::Refresh)
-            }),
+            Command::perform(future::ready(()), |_| Message::Refresh.into()),
         )
     }
 
     fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                return Command::perform(
-                    future::ready::<fn(Marc<Connection>) -> Result<Self::ExMessage>>(|con| {
-                        Ok(Self::ExMessage::Manager(Message::LoadMenu(
-                            con.lock()
-                                .unwrap()
-                                .prepare(
-                                    "SELECT name, price, available FROM menu ORDER BY name DESC",
-                                )?
-                                .query_map(params![], |row| {
-                                    Ok(Item::new(
-                                        row.get::<usize, String>(0)?.as_str(),
-                                        row.get(1)?,
-                                        row.get(2)?,
-                                    ))
-                                })?
-                                .map(|item| item.unwrap())
-                                .collect(),
-                        )))
-                    }),
-                    Self::ExMessage::ReadDB,
-                )
+                self.mode = Mode::New;
+                return DB!(|con| {
+                    Ok(Message::LoadMenu(
+                        con.lock()
+                            .unwrap()
+                            .prepare("SELECT name, price, available FROM menu ORDER BY name DESC")?
+                            .query_map(params![], |row| {
+                                Ok(Item::new(
+                                    row.get::<usize, String>(0)?.as_str(),
+                                    row.get(1)?,
+                                    row.get(2)?,
+                                ))
+                            })?
+                            .map(|item| item.unwrap())
+                            .collect(),
+                    )
+                    .into())
+                });
             }
             Message::ToggleItem(name, a) => match self.menu.get_mut(&name) {
                 Some(i) => {
                     i.available = a;
-                    return Command::perform(
-                        future::ready(format!(
-                            "UPDATE menu SET available={} WHERE name=\"{}\"",
-                            i.available, i.name,
-                        )),
-                        Self::ExMessage::WriteDB,
-                    );
+                    let clone = i.clone();
+                    return DB!(move |con| {
+                        con.lock().unwrap().execute(
+                            "UPDATE menu SET available=?1 WHERE name=?2",
+                            params![clone.available, clone.name],
+                        )?;
+                        Ok(Message::Refresh.into())
+                    });
                 }
                 None => (),
             },
             Message::LoadMenu(m) => {
+                self.menu.clear();
                 for item in m {
                     self.menu.insert(item.clone().name, item);
                 }
@@ -118,30 +118,27 @@ impl Screen for Manager {
                 self.price.update(None);
             }
             Message::Save => {
-                return Command::batch(vec![
-                    match &self.mode {
-                        Mode::New => Command::perform(
-                            future::ready(format!(
-                            "INSERT INTO menu (name, price, available) VALUES (\"{}\", {}, true)",
-                            self.name.value(),
-                            self.price.value().unwrap_or(0),
-                        )),
-                            Self::ExMessage::WriteDB,
-                        ),
-                        Mode::Update(name) => Command::perform(
-                            future::ready(format!(
-                                "UPDATE menu SET name=\"{}\", price={} WHERE name=\"{}\"",
-                                self.name.value(),
-                                self.price.value().unwrap_or(0),
-                                name,
-                            )),
-                            Self::ExMessage::WriteDB,
-                        ),
-                    },
-                    Command::perform(future::ready(()), |_| {
-                        Self::ExMessage::Manager(Message::Refresh)
+                let name = self.name.value();
+                let price = self.price.value().unwrap_or(0);
+                return match &self.mode {
+                    Mode::New => DB!(move |con| {
+                        con.lock().unwrap().execute(
+                            "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
+                            params![name, price],
+                        )?;
+                        Ok(Message::Refresh.into())
                     }),
-                ]);
+                    Mode::Update(old_name) => {
+                        let old_name = old_name.clone();
+                        DB!(move |con| {
+                            con.lock().unwrap().execute(
+                                "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
+                                params![name, price, old_name],
+                            )?;
+                            Ok(Message::Refresh.into())
+                        })
+                    }
+                };
             }
         }
         Command::none()
@@ -154,28 +151,28 @@ impl Screen for Manager {
                 3,
                 self.menu.iter_mut().map(|(_, i)| i.view()).collect(),
             )
-            .width(Length::FillPortion(8))
+            .width(Length::Fill)
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
                 Row::new()
-                    .push(
-                        Text::new(format!(
-                            "{} Vara",
-                            match self.mode {
-                                Mode::New => "Ny",
-                                Mode::Update(_) => "Ändra",
-                            }
-                        ))
-                        .size(BIG_TEXT),
-                    )
+                    .push(Column::with_children(match &self.mode {
+                        Mode::New => {
+                            vec![Text::new("Ny").size(BIG_TEXT).into(), Text::new(" ").into()]
+                        }
+                        Mode::Update(v) => vec![
+                            Text::new("Ändrar").size(BIG_TEXT).into(),
+                            Text::new(v).into(),
+                        ],
+                    }))
                     .push(Space::with_width(Length::Fill))
                     .push(
-                        Button::new(&mut self.cancel, Text::from(Icon::Cross))
+                        SquareButton::new(&mut self.cancel, Text::from(Icon::Cross))
                             .on_press(Message::Cancel),
                     )
+                    .align_items(Align::Start)
                     .into(),
                 Space::with_height(Length::FillPortion(1)).into(),
                 Text::new("Namn").into(),
@@ -196,7 +193,7 @@ impl Screen for Manager {
                     .width(Length::Fill)
                     .into(),
             ])
-            .width(Length::FillPortion(3))
+            .width(Length::Units(RECIEPT_WIDTH))
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),

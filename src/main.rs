@@ -2,40 +2,43 @@ use {
     crate::{
         error::Error,
         icons::Icon,
-        screens::{manager, menu, Manager, Menu, Message, Screen},
+        screens::{
+            manager::{self, Manager},
+            menu::{self, Menu},
+            transactions::{self, Transactions},
+            Message, Screen,
+        },
+        styles::{DEF_PADDING, DEF_TEXT, SMALL_TEXT},
     },
     iced::{
         window, Application, Clipboard, Column, Command, Element, Font, Length, Settings, Text,
     },
-    iced_aw::{modal, Card, Modal, TabLabel, Tabs},
-    rusqlite::{params, Connection},
+    iced_aw::{
+        modal::{self, Modal},
+        Card, TabLabel, Tabs,
+    },
+    rusqlite::Connection,
     std::sync::{Arc, Mutex},
 };
 
 pub mod error;
 pub mod icons;
+pub mod payment;
 pub mod screens;
 pub mod styles;
 pub mod widgets;
-
-pub const BIG_TEXT: u16 = 45;
-pub const DEF_TEXT: u16 = 35;
-pub const SMALL_TEXT: u16 = 20;
-
-pub const DEF_PADDING: u16 = 10;
-pub const SMALL_PADDING: u16 = 5;
 
 pub const FONT: Font = Font::External {
     name: "IBM Plex Mono",
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
 
-pub type Marc<T> = Arc<Mutex<T>>;
+//pub type Marc<T> = Arc<Mutex<T>>;
 
 pub fn main() -> iced::Result {
     App::run(Settings {
         window: window::Settings {
-            min_size: Some((1300, 600)),
+            min_size: Some((1360, 600)),
             ..window::Settings::default()
         },
         default_font: match FONT {
@@ -48,10 +51,11 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    con: Marc<Connection>,
+    con: Arc<Mutex<Connection>>,
     err: modal::State<Option<Error>>,
     tab: usize,
     menu: Menu,
+    transactions: Transactions,
     manager: Manager,
 }
 
@@ -66,6 +70,9 @@ impl Application for App {
         let (menu, mcmd) = Menu::new();
         cmds.push(mcmd);
 
+        let (transactions, mcmd) = Transactions::new();
+        cmds.push(mcmd);
+
         let (manager, mcmd) = Manager::new();
         cmds.push(mcmd);
 
@@ -78,6 +85,7 @@ impl Application for App {
                 err: modal::State::new(None),
                 tab: 0,
                 menu,
+                transactions,
                 manager,
             },
             Command::batch(cmds),
@@ -93,12 +101,14 @@ impl Application for App {
             Message::SwapTab(n) => {
                 self.tab = n;
                 match n {
-                    1 => self.manager.update(manager::Message::Refresh),
+                    2 => self.manager.update(manager::Message::Refresh),
+                    1 => self.transactions.update(transactions::Message::Refresh),
                     _ => self.menu.update(menu::Message::Refresh),
                 }
             }
-            Message::ReadDB(f) => match f(self.con.clone()) {
+            Message::DB(f) => match f(self.con.clone()) {
                 Ok(Message::Menu(m)) => self.menu.update(m),
+                Ok(Message::Transactions(m)) => self.transactions.update(m),
                 Ok(Message::Manager(m)) => self.manager.update(m),
                 Err(e) => {
                     *self.err.inner_mut() = Some(e.into());
@@ -106,18 +116,12 @@ impl Application for App {
                 }
                 _ => Command::none(),
             },
-            Message::WriteDB(q) => match self.con.lock().unwrap().execute(&q, params![]) {
-                Ok(_) => Command::none(),
-                Err(e) => {
-                    *self.err.inner_mut() = Some(e.into());
-                    Command::none()
-                }
-            },
             Message::CloseModal => {
                 *self.err.inner_mut() = None;
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),
+            Message::Transactions(msg) => self.transactions.update(msg),
             Message::Manager(msg) => self.manager.update(msg),
         }
     }
@@ -138,6 +142,10 @@ impl Application for App {
                     .push(
                         TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
                         self.menu.view(),
+                    )
+                    .push(
+                        TabLabel::IconText(Icon::Reciept.into(), String::from("Kvitton")),
+                        self.transactions.view(),
                     )
                     .push(
                         TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),

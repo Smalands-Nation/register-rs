@@ -1,9 +1,10 @@
 use {
+    super::Message,
     crate::{
-        screens::manager::Message, styles, widgets::clickable::Clickable, DEF_PADDING,
-        SMALL_PADDING, SMALL_TEXT,
+        styles::{BORDERED, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
+        widgets::Clickable,
     },
-    iced::{button, container, Align, Checkbox, Color, Column, Element, Length, Text},
+    iced::{button, container, Checkbox, Column, Element, Length, Text},
 };
 
 #[derive(Debug, Clone)]
@@ -43,13 +44,7 @@ impl Item {
             )
             .padding(DEF_PADDING)
             .width(Length::Fill)
-            .style(styles::Container {
-                text_color: Some(Color::BLACK),
-                background: None,
-                border_radius: 2f32,
-                border_width: 2f32,
-                border_color: Color::BLACK,
-            }),
+            .style(BORDERED),
         )
         .on_press(Message::EditItem(clone))
         .width(Length::Fill)
