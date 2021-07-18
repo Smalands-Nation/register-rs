@@ -2,9 +2,11 @@ use {
     super::Clickable,
     crate::{
         payment::Payment,
+        reciept,
         screens::transactions::Item,
         styles::{DEF_PADDING, RECIEPT_WIDTH},
     },
+    core::ops::{Deref, DerefMut},
     iced::{
         button,
         scrollable::{self, Scrollable},
@@ -18,9 +20,7 @@ pub struct Reciept<M> {
     scroll: scrollable::State,
     click: button::State,
     message: Option<M>,
-    items: IndexMap<String, Item>,
-    sum: i32,
-    payment: Payment,
+    inner: reciept::Reciept,
 }
 
 impl<M> Reciept<M>
@@ -36,44 +36,8 @@ where
             scroll: scrollable::State::new(),
             click: button::State::new(),
             message: None,
-            items,
-            sum,
-            payment,
+            inner: reciept::Reciept::new_from(items, sum, payment),
         }
-    }
-
-    pub fn add(&mut self, item: Item) {
-        self.sum += item.price_total();
-        match self.items.get_mut(&item.name()) {
-            Some(it) => {
-                *it = match it.clone() {
-                    Item::Regular { name, price, num } => Item::Regular {
-                        name,
-                        price,
-                        num: num + item.num(),
-                    },
-                    Item::Special { name, price } => Item::Special {
-                        name,
-                        price: price + item.num(),
-                    },
-                };
-            }
-            None => {
-                self.items.insert(item.name(), item);
-            }
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
-    pub fn sum(&self) -> i32 {
-        self.sum
-    }
-
-    pub fn json(&self) -> String {
-        serde_json::ser::to_string(&self.items).unwrap()
     }
 
     pub fn on_press(mut self, msg: M) -> Self {
@@ -86,7 +50,8 @@ where
             &mut self.click,
             Column::new()
                 .push(
-                    self.items
+                    self.inner
+                        .items
                         .values_mut()
                         .fold(
                             Scrollable::new(&mut self.scroll).spacing(DEF_PADDING),
@@ -94,7 +59,7 @@ where
                         )
                         .height(Length::Fill),
                 )
-                .push(Text::new(format!("Total: {}kr", self.sum)))
+                .push(Text::new(format!("Total: {}kr", self.inner.sum)))
                 .width(Length::Units(RECIEPT_WIDTH))
                 .spacing(DEF_PADDING),
         )
@@ -105,5 +70,19 @@ where
             None => body,
         }
         .into()
+    }
+}
+
+impl<M> Deref for Reciept<M> {
+    type Target = reciept::Reciept;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<M> DerefMut for Reciept<M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

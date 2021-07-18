@@ -1,30 +1,16 @@
-macro_rules! DB {
-    ($fn:expr) => {
-        iced::Command::perform(
-            std::future::ready::<
-                std::sync::Arc<
-                    dyn Fn(
-                            std::sync::Arc<std::sync::Mutex<rusqlite::Connection>>,
-                        ) -> Result<crate::screens::Message>
-                        + Send
-                        + Sync,
-                >,
-            >(std::sync::Arc::new($fn)),
-            crate::screens::Message::DB,
-        );
-    };
-}
-
 pub mod manager;
 pub mod menu;
 pub mod transactions;
 
 use {
-    crate::error::Result,
+    crate::error::{Error, Result},
     giftwrap::Wrap,
     iced::{Command, Element},
     rusqlite::Connection,
-    std::sync::{Arc, Mutex},
+    std::{
+        future,
+        sync::{Arc, Mutex},
+    },
 };
 pub use {manager::Manager, menu::Menu, transactions::Transactions};
 
@@ -36,6 +22,7 @@ pub enum Message {
     DB(Arc<dyn Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync>),
     #[noWrap]
     CloseModal,
+    Error(Error),
     Menu(menu::Message),
     Transactions(transactions::Message),
     Manager(manager::Message),
@@ -47,6 +34,7 @@ impl std::fmt::Debug for Message {
             Self::SwapTab(n) => write!(f, "SwapTab({:?})", n),
             Self::DB(_) => write!(f, "DB(_)"),
             Self::CloseModal => write!(f, "CloseModal"),
+            Self::Error(n) => write!(f, "Error({:?})", n),
             Self::Menu(n) => write!(f, "Menu({:?})", n),
             Self::Transactions(n) => write!(f, "Transactions({:?})", n),
             Self::Manager(n) => write!(f, "Manager({:?})", n),
@@ -61,4 +49,11 @@ pub trait Screen: Sized {
     fn new() -> (Self, Command<Self::ExMessage>);
     fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage>;
     fn view(&mut self) -> Element<Self::ExMessage>;
+}
+
+pub fn db<FN>(func: FN) -> Command<Message>
+where
+    FN: Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync + 'static,
+{
+    future::ready(Message::DB(Arc::new(func))).into()
 }

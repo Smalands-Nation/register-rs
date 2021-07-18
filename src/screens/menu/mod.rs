@@ -1,9 +1,10 @@
 pub use {
-    super::Screen,
+    super::{db, Screen},
     crate::{
         error::{Error, Result},
         icons::Icon,
         payment::Payment,
+        print,
         styles::{BIG_TEXT, DEF_PADDING, DEF_TEXT, RECIEPT_WIDTH},
         widgets::{
             calc::{self, Calc},
@@ -19,7 +20,7 @@ pub use {
     },
     indexmap::IndexMap,
     rusqlite::params,
-    std::future,
+    std::{future, sync::Arc},
 };
 
 pub mod item;
@@ -61,14 +62,14 @@ impl Screen for Menu {
                 cash: button::State::new(),
                 swish: button::State::new(),
             },
-            Command::perform(future::ready(()), |_| Message::Refresh.into()),
+            future::ready(Message::Refresh.into()).into(),
         )
     }
 
     fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
         match message {
             Message::Refresh => {
-                return DB!(|con| {
+                return db(|con| {
                     Ok(Message::LoadMenu(
                             con.lock()
                                 .unwrap()
@@ -95,20 +96,26 @@ impl Screen for Menu {
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let reciept = self.reciept.clone();
+                let reciept = (*self.reciept).clone();
                 if self.reciept.len() > 0 {
-                    return DB!(move |con| {
-                        con.lock().unwrap().execute(
-                                "INSERT INTO reciepts (time, items, sum, method) VALUES (?1, ?2, ?3, ?4)",
-                                params![
-                                Local::now(),
-                                reciept.json(),
-                                reciept.sum(),
-                                String::from(p),
-                                ]
-                            )?;
-                        Ok(Message::ClearReciept.into())
-                    });
+                    return Command::perform(
+                        print::print(reciept.clone(), Local::now()),
+                        move |r| {
+                            let reciept = reciept.clone();
+                            match r {
+                                Ok(_) => super::Message::DB(Arc::new(move |con| {
+                                    con.lock()
+                                        .unwrap()
+                                        .execute(
+                                            "INSERT INTO reciepts (time, items, sum, method) VALUES (?1, ?2, ?3, ?4)",
+                                            params![Local::now(), reciept.json(), reciept.sum, String::from(p)]
+                                        )?;
+                                    Ok(Message::ClearReciept.into())
+                                })),
+                                Err(e) => super::Message::Error(e),
+                            }
+                        },
+                    );
                 }
             }
             Message::LoadMenu(mut menu) => {

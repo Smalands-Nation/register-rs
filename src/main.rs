@@ -18,12 +18,17 @@ use {
         Card, TabLabel, Tabs,
     },
     rusqlite::Connection,
-    std::sync::{Arc, Mutex},
+    std::{
+        future,
+        sync::{Arc, Mutex},
+    },
 };
 
 pub mod error;
 pub mod icons;
 pub mod payment;
+pub mod print;
+pub mod reciept;
 pub mod screens;
 pub mod styles;
 pub mod widgets;
@@ -32,8 +37,6 @@ pub const FONT: Font = Font::External {
     name: "IBM Plex Mono",
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
-
-//pub type Marc<T> = Arc<Mutex<T>>;
 
 pub fn main() -> iced::Result {
     App::run(Settings {
@@ -110,14 +113,15 @@ impl Application for App {
                 Ok(Message::Menu(m)) => self.menu.update(m),
                 Ok(Message::Transactions(m)) => self.transactions.update(m),
                 Ok(Message::Manager(m)) => self.manager.update(m),
-                Err(e) => {
-                    *self.err.inner_mut() = Some(e.into());
-                    Command::none()
-                }
+                Err(e) => future::ready(Message::Error(e)).into(),
                 _ => Command::none(),
             },
             Message::CloseModal => {
                 *self.err.inner_mut() = None;
+                Command::none()
+            }
+            Message::Error(e) => {
+                *self.err.inner_mut() = Some(e.into());
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),

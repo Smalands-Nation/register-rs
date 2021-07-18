@@ -995,9 +995,9 @@ dependencies = [
 
 [[package]]
 name = "genpdf"
-version = "0.2.0-alpha.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9cc8fff6ec17a088896b4dd6df9ed45a2fd95b09e42961c484867bdd002b71f"
+checksum = "a1c422344482708cb32db843cf3f55f27918cd24fec7b505bde895a1e8702c34"
 dependencies = [
  "derive_more",
  "image",
@@ -1196,9 +1196,9 @@ dependencies = [
 
 [[package]]
 name = "giftwrap"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9e1128f9d3fb88c46f5cb72f06d6df3ec55fdffafdb0de2352fbb809b478bf5"
+checksum = "ec71aed735b2378b324d8147cf53bd8929dea3a201fd8ec32e64e5be923ee4e0"
 dependencies = [
  "proc-macro2",
  "quote",

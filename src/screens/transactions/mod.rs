@@ -1,12 +1,13 @@
 use {
-    super::Screen,
+    super::{db, Screen},
     crate::{
-        error::Result,
         icons::Icon,
         payment::Payment,
+        print,
         styles::{BORDERED, DEF_PADDING, RECIEPT_WIDTH},
         widgets::{Clickable, Reciept, SquareButton},
     },
+    chrono::{DateTime, Local},
     iced::{button, Column, Command, Container, Element, Length, Row, Rule, Space, Text},
     indexmap::IndexMap,
     rusqlite::params,
@@ -19,11 +20,11 @@ pub use item::Item;
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(IndexMap<String, Reciept<Message>>),
-    Append(IndexMap<String, Reciept<Message>>),
+    Init(IndexMap<DateTime<Local>, Reciept<Message>>),
+    Append(IndexMap<DateTime<Local>, Reciept<Message>>),
     ScrollLeft,
     ScrollRight,
-    Select(String),
+    Select(DateTime<Local>),
     Deselect,
     Print,
 }
@@ -33,8 +34,8 @@ pub struct Transactions {
     right: button::State,
     deselect: button::State,
     print: button::State,
-    reciepts: IndexMap<String, Reciept<Message>>,
-    selected: Option<Reciept<Message>>,
+    reciepts: IndexMap<DateTime<Local>, Reciept<Message>>,
+    selected: Option<(DateTime<Local>, Reciept<Message>)>,
     offset: usize,
 }
 
@@ -53,22 +54,22 @@ impl Screen for Transactions {
                 selected: None,
                 offset: 0,
             },
-            Command::perform(future::ready(()), |_| Message::Refresh.into()),
+            future::ready(Message::Refresh.into()).into(),
         )
     }
 
     fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                return DB!(|con| {
+                return db(|con| {
                     Ok(Message::Init(
                             con.lock()
                                 .unwrap()
-                                .prepare("SELECT * FROM reciepts where time > date('now','-1 day','localtime') ORDER BY time DESC")? //All reciepts from last 24h, potentially bad for performance
+                                .prepare("SELECT * FROM reciepts where time > date('now','-1 day') ORDER BY time DESC")? //All reciepts from last 24h, potentially bad for performance
                                 .query_map(params![], |row| {
                                     Ok((
                                         //God hates me so all of these are type annotated
-                                        row.get::<usize,String>(0)?,
+                                        row.get::<usize,DateTime<Local>>(0)?,
                                         serde_json::de::from_str(
                                             row.get::<usize, String>(1)?.as_str(),
                                         )
@@ -97,9 +98,23 @@ impl Screen for Transactions {
                 self.offset += 1
             }
             Message::Select(time) => {
-                self.selected = self.reciepts.get(&time).map(|rec| rec.clone())
+                self.selected = self
+                    .reciepts
+                    .get_key_value(&time)
+                    .map(|(k, v)| (k.clone(), v.clone()));
             }
             Message::Deselect => self.selected = None,
+            Message::Print => {
+                if let Some((time, reciept)) = &self.selected {
+                    return Command::perform(
+                        print::print((**reciept).clone(), time.clone()),
+                        |r| match r {
+                            Ok(_) => Message::Deselect.into(),
+                            Err(e) => super::Message::Error(e),
+                        },
+                    );
+                }
+            }
             _ => (),
         }
         Command::none()
@@ -158,7 +173,7 @@ impl Screen for Transactions {
                 .push(Rule::vertical(DEF_PADDING))
                 .push(
                     match &mut self.selected {
-                        Some(sel) => Column::new().push(sel.view()),
+                        Some((_, rec)) => Column::new().push(rec.view()),
                         None => Column::new()
                             .push(Space::new(Length::Units(RECIEPT_WIDTH), Length::Fill)),
                     }

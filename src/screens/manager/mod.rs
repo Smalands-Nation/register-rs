@@ -1,7 +1,6 @@
 use {
-    super::Screen,
+    super::{db, Screen},
     crate::{
-        error::Result,
         icons::Icon,
         styles::{BIG_TEXT, DEF_PADDING, RECIEPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton, TextInput},
@@ -59,7 +58,7 @@ impl Screen for Manager {
                 cancel: button::State::new(),
                 save: button::State::new(),
             },
-            Command::perform(future::ready(()), |_| Message::Refresh.into()),
+            future::ready(Message::Refresh.into()).into(),
         )
     }
 
@@ -67,7 +66,7 @@ impl Screen for Manager {
         match msg {
             Message::Refresh => {
                 self.mode = Mode::New;
-                return DB!(|con| {
+                return db(|con| {
                     Ok(Message::LoadMenu(
                         con.lock()
                             .unwrap()
@@ -89,7 +88,7 @@ impl Screen for Manager {
                 Some(i) => {
                     i.available = a;
                     let clone = i.clone();
-                    return DB!(move |con| {
+                    return db(move |con| {
                         con.lock().unwrap().execute(
                             "UPDATE menu SET available=?1 WHERE name=?2",
                             params![clone.available, clone.name],
@@ -121,7 +120,7 @@ impl Screen for Manager {
                 let name = self.name.value();
                 let price = self.price.value().unwrap_or(0);
                 return match &self.mode {
-                    Mode::New => DB!(move |con| {
+                    Mode::New => db(move |con| {
                         con.lock().unwrap().execute(
                             "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
                             params![name, price],
@@ -130,7 +129,7 @@ impl Screen for Manager {
                     }),
                     Mode::Update(old_name) => {
                         let old_name = old_name.clone();
-                        DB!(move |con| {
+                        db(move |con| {
                             con.lock().unwrap().execute(
                                 "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
                                 params![name, price, old_name],
