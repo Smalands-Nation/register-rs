@@ -41,6 +41,12 @@ impl Reciept {
                 self.items.insert(item.name(), item);
             }
         }
+        self.items.sort_by(|_, v1, _, v2| match (v1, v2) {
+            (Item::Regular { .. }, Item::Regular { .. })
+            | (Item::Special { .. }, Item::Special { .. }) => std::cmp::Ordering::Equal,
+            (Item::Regular { .. }, Item::Special { .. }) => std::cmp::Ordering::Less,
+            (Item::Special { .. }, Item::Regular { .. }) => std::cmp::Ordering::Greater,
+        });
     }
 
     pub fn len(&self) -> usize {
