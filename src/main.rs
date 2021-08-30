@@ -24,6 +24,7 @@ use {
     },
 };
 
+pub mod config;
 pub mod error;
 pub mod icons;
 pub mod payment;
@@ -81,9 +82,9 @@ impl Application for App {
 
         (
             Self {
-                con: match Connection::open("./smaland.db") {
+                con: match config::init_db() {
                     Ok(con) => Arc::new(Mutex::new(con)),
-                    Err(e) => panic!("{}", e),
+                    Err(e) => panic!("{:#?}", e),
                 },
                 err: modal::State::new(None),
                 tab: 0,

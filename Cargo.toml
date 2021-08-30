@@ -14,6 +14,7 @@ serde_json = "1.0.59"
 serde = "1.0.117"
 serde_derive = "1.0.117"
 chrono = "0.4.19"
+dirs = "3.0.2"
 
 [dependencies.rusqlite]
 version  = "0.25.3"
