@@ -29,7 +29,7 @@ pub mod error;
 pub mod icons;
 pub mod payment;
 pub mod print;
-pub mod reciept;
+pub mod receipt;
 pub mod screens;
 pub mod styles;
 pub mod widgets;
@@ -149,7 +149,7 @@ impl Application for App {
                         self.menu.view(),
                     )
                     .push(
-                        TabLabel::IconText(Icon::Reciept.into(), String::from("Kvitton")),
+                        TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
                         self.transactions.view(),
                     )
                     .push(

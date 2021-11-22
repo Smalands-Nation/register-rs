@@ -2,9 +2,9 @@ use {
     super::Clickable,
     crate::{
         payment::Payment,
-        reciept,
+        receipt,
         screens::transactions::Item,
-        styles::{DEF_PADDING, RECIEPT_WIDTH},
+        styles::{DEF_PADDING, RECEIPT_WIDTH},
     },
     core::ops::{Deref, DerefMut},
     iced::{
@@ -16,19 +16,19 @@ use {
 };
 
 #[derive(Debug, Clone)]
-pub struct Reciept<M> {
+pub struct Receipt<M> {
     scroll: scrollable::State,
     click: button::State,
     message: Option<M>,
-    inner: reciept::Reciept,
+    inner: receipt::Receipt,
 }
 
-impl<M> Reciept<M>
+impl<M> Receipt<M>
 where
     M: Clone,
 {
-    pub fn new() -> Self {
-        Self::new_from(IndexMap::new(), 0, Payment::Swish)
+    pub fn new(payment: Payment) -> Self {
+        Self::new_from(IndexMap::new(), 0, payment)
     }
 
     pub fn new_from(items: IndexMap<String, Item>, sum: i32, payment: Payment) -> Self {
@@ -36,7 +36,7 @@ where
             scroll: scrollable::State::new(),
             click: button::State::new(),
             message: None,
-            inner: reciept::Reciept::new_from(items, sum, payment),
+            inner: receipt::Receipt::new_from(items, sum, payment),
         }
     }
 
@@ -60,7 +60,7 @@ where
                         .height(Length::Fill),
                 )
                 .push(Text::new(format!("Total: {}kr", self.inner.sum)))
-                .width(Length::Units(RECIEPT_WIDTH))
+                .width(Length::Units(RECEIPT_WIDTH))
                 .spacing(DEF_PADDING),
         )
         .padding(0)
@@ -73,15 +73,15 @@ where
     }
 }
 
-impl<M> Deref for Reciept<M> {
-    type Target = reciept::Reciept;
+impl<M> Deref for Receipt<M> {
+    type Target = receipt::Receipt;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<M> DerefMut for Reciept<M> {
+impl<M> DerefMut for Receipt<M> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }

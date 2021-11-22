@@ -2,7 +2,7 @@ use {
     super::{db, Screen},
     crate::{
         icons::Icon,
-        styles::{BIG_TEXT, DEF_PADDING, RECIEPT_WIDTH},
+        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton, TextInput},
     },
     iced::{
@@ -70,7 +70,7 @@ impl Screen for Manager {
                     Ok(Message::LoadMenu(
                         con.lock()
                             .unwrap()
-                            .prepare("SELECT name, price, available FROM menu ORDER BY name DESC")?
+                            .prepare("SELECT name, price, available FROM menu WHERE special = 0 ORDER BY name DESC")?
                             .query_map(params![], |row| {
                                 Ok(Item::new(
                                     row.get::<usize, String>(0)?.as_str(),
@@ -192,7 +192,7 @@ impl Screen for Manager {
                     .width(Length::Fill)
                     .into(),
             ])
-            .width(Length::Units(RECIEPT_WIDTH))
+            .width(Length::Units(RECEIPT_WIDTH))
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),

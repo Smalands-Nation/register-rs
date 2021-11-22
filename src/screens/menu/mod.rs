@@ -5,10 +5,10 @@ pub use {
         icons::Icon,
         payment::Payment,
         print,
-        styles::{BIG_TEXT, DEF_PADDING, DEF_TEXT, RECIEPT_WIDTH},
+        styles::{BIG_TEXT, DEF_PADDING, DEF_TEXT, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
-            Grid, Reciept, SquareButton,
+            Grid, Receipt, SquareButton,
         },
     },
     chrono::Local,
@@ -29,7 +29,7 @@ pub use item::Item;
 pub struct Menu {
     calc: Calc,
     menu: Vec<Item>,
-    reciept: Reciept<Message>,
+    receipt: Receipt<Message>,
     clear: button::State,
     print: bool,
     cash: button::State,
@@ -41,7 +41,7 @@ pub enum Message {
     Refresh,
     Calc(calc::Message),
     SellItem(Item),
-    ClearReciept,
+    ClearReceipt,
     TogglePrint(bool),
     Sell(Payment),
     LoadMenu(Vec<Item>),
@@ -56,7 +56,7 @@ impl Screen for Menu {
             Self {
                 calc: Calc::new(),
                 menu: vec![],
-                reciept: Reciept::new(),
+                receipt: Receipt::new(Payment::Swish),
                 clear: button::State::new(),
                 print: false,
                 cash: button::State::new(),
@@ -73,12 +73,12 @@ impl Screen for Menu {
                     Ok(Message::LoadMenu(
                             con.lock()
                                 .unwrap()
-                                .prepare("SELECT name, price FROM menu WHERE available=true ORDER BY name DESC")?
+                                .prepare("SELECT name, price, special FROM menu WHERE available=true ORDER BY special ASC, name DESC")?
                                 .query_map(params![], |row| {
                                     Ok(Item::new(
                                         row.get::<usize, String>(0)?.as_str(),
                                         row.get(1)?,
-                                        false,
+                                        row.get(2)?,
                                     ))
                                 })?
                                 .map(|item| item.unwrap())
@@ -87,30 +87,41 @@ impl Screen for Menu {
                 })
             }
             Message::Calc(m) => self.calc.update(m),
-            Message::ClearReciept => {
-                self.reciept = Reciept::new();
+            Message::ClearReceipt => {
+                self.receipt = Receipt::new(Payment::Swish);
             }
             Message::SellItem(i) => {
-                self.reciept.add(i.sell(self.calc.0 as i32));
+                self.receipt.add(i.sell(self.calc.0 as i32));
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let reciept = (*self.reciept).clone();
-                if self.reciept.len() > 0 {
+                let receipt = (*self.receipt).clone();
+                if self.receipt.len() > 0 {
                     return Command::perform(
-                        print::print(reciept.clone(), Local::now()),
+                        print::print(receipt.clone(), Local::now()),
                         move |r| {
-                            let reciept = reciept.clone();
+                            let receipt = receipt.clone();
                             match r {
                                 Ok(_) => super::Message::DB(Arc::new(move |con| {
-                                    con.lock()
-                                        .unwrap()
-                                        .execute(
-                                            "INSERT INTO reciepts (time, items, sum, method) VALUES (?1, ?2, ?3, ?4)",
-                                            params![Local::now(), reciept.json(), reciept.sum, String::from(p)]
-                                        )?;
-                                    Ok(Message::ClearReciept.into())
+                                    let time = Local::now();
+
+                                    let con = con.lock().unwrap();
+
+                                    con.execute(
+                                        "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+                                        params![time, String::from(p)],
+                                    )?;
+
+                                    let mut stmt = con.prepare(
+                                        "INSERT INTO receipt_item (receipt, item, amount) VALUES (?1, ?2, ?3)",
+                                    )?;
+
+                                    for item in receipt.items.values() {
+                                        stmt.execute(params![time, item.name(), item.num()])?;
+                                    }
+
+                                    Ok(Message::ClearReceipt.into())
                                 })),
                                 Err(e) => super::Message::Error(e),
                             }
@@ -118,11 +129,7 @@ impl Screen for Menu {
                     );
                 }
             }
-            Message::LoadMenu(mut menu) => {
-                menu.append(&mut vec![
-                    Item::new("Special", 1, true),
-                    Item::new("Rabatt", -1, true),
-                ]);
+            Message::LoadMenu(menu) => {
                 self.menu = menu;
             }
         };
@@ -135,7 +142,7 @@ impl Screen for Menu {
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
-                .width(Length::Units(RECIEPT_WIDTH))
+                .width(Length::Units(RECEIPT_WIDTH))
                 .height(Length::Fill)
                 .into(),
             Rule::vertical(DEF_PADDING).into(),
@@ -155,11 +162,11 @@ impl Screen for Menu {
                     .push(Space::with_width(Length::Fill))
                     .push(
                         SquareButton::new(&mut self.clear, Text::from(Icon::Trash))
-                            .on_press(Message::ClearReciept),
+                            .on_press(Message::ClearReceipt),
                     )
                     .align_items(Align::Center)
                     .into(),
-                self.reciept.view(),
+                self.receipt.view(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
                 Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
                     .on_press(Message::Sell(Payment::Cash))
@@ -172,7 +179,7 @@ impl Screen for Menu {
                     .width(Length::Fill)
                     .into(),
             ])
-            .width(Length::Units(RECIEPT_WIDTH))
+            .width(Length::Units(RECEIPT_WIDTH))
             .spacing(DEF_PADDING)
             .padding(DEF_PADDING)
             .into(),

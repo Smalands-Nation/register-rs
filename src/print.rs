@@ -1,7 +1,7 @@
 use {
     crate::{
         error::Result,
-        reciept::{Item, Reciept},
+        receipt::{Item, Receipt},
         styles::DEF_TEXT,
     },
     chrono::{DateTime, Local},
@@ -21,7 +21,7 @@ const fn pt_to_mm(pt: f64) -> Mm {
 const PAGE_WIDTH: f64 = 203.200_128; //pt_to_mm(8.0 * 72.0);
 const PAGE_HEIGHT: f64 = 279.400_176; //pt_to_mm(11.0 * 72.0);
 
-pub async fn print(reciept: Reciept, time: DateTime<Local>) -> Result<()> {
+pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
     let font = fonts::FontData::new(
         if let iced::Font::External { bytes, .. } = crate::FONT {
             bytes.to_vec()
@@ -58,7 +58,7 @@ pub async fn print(reciept: Reciept, time: DateTime<Local>) -> Result<()> {
     doc.push(Paragraph::new("302 49 Halmstad").aligned(Alignment::Center));
     doc.push(Paragraph::new("–".repeat(24)).aligned(Alignment::Center));
 
-    for item in reciept.items.values() {
+    for item in receipt.items.values() {
         match item {
             Item::Regular { name, price, num } => {
                 doc.push(Text::new(name));
@@ -87,7 +87,7 @@ pub async fn print(reciept: Reciept, time: DateTime<Local>) -> Result<()> {
         let mut tbl = TableLayout::new(vec![1, 1]);
         tbl.row()
             .element(Text::new("Total"))
-            .element(Paragraph::new(format!("{}kr", reciept.sum)).aligned(Alignment::Right))
+            .element(Paragraph::new(format!("{}kr", receipt.sum)).aligned(Alignment::Right))
             .push()
             .expect("Couldn't Table Total");
         tbl
@@ -96,7 +96,7 @@ pub async fn print(reciept: Reciept, time: DateTime<Local>) -> Result<()> {
         let mut tbl = TableLayout::new(vec![1, 1]);
         tbl.row()
             .element(Text::new("Betalt via"))
-            .element(Paragraph::new(String::from(reciept.payment)).aligned(Alignment::Right))
+            .element(Paragraph::new(String::from(receipt.payment)).aligned(Alignment::Right))
             .push()
             .expect("Couldn't Table Payment");
         tbl

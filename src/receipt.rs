@@ -2,15 +2,15 @@ pub use crate::screens::transactions::Item;
 use {crate::payment::Payment, indexmap::IndexMap};
 
 #[derive(Debug, Clone)]
-pub struct Reciept {
+pub struct Receipt {
     pub items: IndexMap<String, Item>,
     pub sum: i32,
     pub payment: Payment,
 }
 
-impl Reciept {
-    pub fn new() -> Self {
-        Self::new_from(IndexMap::new(), 0, Payment::Swish)
+impl Receipt {
+    pub fn new(payment: Payment) -> Self {
+        Self::new_from(IndexMap::new(), 0, payment)
     }
 
     pub fn new_from(items: IndexMap<String, Item>, sum: i32, payment: Payment) -> Self {
@@ -51,9 +51,5 @@ impl Reciept {
 
     pub fn len(&self) -> usize {
         self.items.len()
-    }
-
-    pub fn json(&self) -> String {
-        serde_json::ser::to_string(&self.items).unwrap()
     }
 }

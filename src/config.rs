@@ -1,7 +1,4 @@
-use {
-    crate::error::{Error, Result},
-    rusqlite::Connection,
-};
+use {crate::error::Result, rusqlite::Connection};
 
 pub fn init_db() -> Result<Connection> {
     match dirs::config_dir() {
@@ -15,7 +12,7 @@ pub fn init_db() -> Result<Connection> {
                 },
             };
             conf_path.push("db.db");
-            let mut conn = Connection::open(conf_path)?;
+            let conn = Connection::open(conf_path)?;
             conn.execute_batch(include_str!("../db.sql"))?;
             Ok(conn)
         }

@@ -35,5 +35,5 @@ pub const BORDERED: Container = Container {
     border_color: Color::BLACK,
 };
 
-pub const RECIEPT_WIDTH: u16 = 300;
+pub const RECEIPT_WIDTH: u16 = 300;
 pub const SQUARE_BUTTON: u16 = 15 + BIG_TEXT;

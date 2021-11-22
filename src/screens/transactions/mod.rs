@@ -4,8 +4,8 @@ use {
         icons::Icon,
         payment::Payment,
         print,
-        styles::{BORDERED, DEF_PADDING, RECIEPT_WIDTH},
-        widgets::{Clickable, Reciept, SquareButton},
+        styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{Clickable, Receipt, SquareButton},
     },
     chrono::{DateTime, Local},
     iced::{button, Column, Command, Container, Element, Length, Row, Rule, Space, Text},
@@ -20,8 +20,8 @@ pub use item::Item;
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(IndexMap<DateTime<Local>, Reciept<Message>>),
-    Append(IndexMap<DateTime<Local>, Reciept<Message>>),
+    Init(IndexMap<DateTime<Local>, Receipt<Message>>),
+    Append(IndexMap<DateTime<Local>, Receipt<Message>>),
     ScrollLeft,
     ScrollRight,
     Select(DateTime<Local>),
@@ -34,8 +34,8 @@ pub struct Transactions {
     right: button::State,
     deselect: button::State,
     print: button::State,
-    reciepts: IndexMap<DateTime<Local>, Reciept<Message>>,
-    selected: Option<(DateTime<Local>, Reciept<Message>)>,
+    receipts: IndexMap<DateTime<Local>, Receipt<Message>>,
+    selected: Option<(DateTime<Local>, Receipt<Message>)>,
     offset: usize,
 }
 
@@ -50,7 +50,7 @@ impl Screen for Transactions {
                 right: button::State::new(),
                 deselect: button::State::new(),
                 print: button::State::new(),
-                reciepts: IndexMap::new(),
+                receipts: IndexMap::new(),
                 selected: None,
                 offset: 0,
             },
@@ -65,49 +65,65 @@ impl Screen for Transactions {
                     Ok(Message::Init(
                             con.lock()
                                 .unwrap()
-                                .prepare("SELECT * FROM reciepts where time > date('now','-1 day') ORDER BY time DESC")? //All reciepts from last 24h, potentially bad for performance
+                                .prepare("SELECT * FROM receipts_view WHERE time > date('now','-1 day') ORDER BY time DESC")? //All receipts from last 24h, potentially bad for performance
                                 .query_map(params![], |row| {
                                     Ok((
                                         //God hates me so all of these are type annotated
+                                        //time
                                         row.get::<usize,DateTime<Local>>(0)?,
-                                        serde_json::de::from_str(
-                                            row.get::<usize, String>(1)?.as_str(),
-                                        )
-                                        .unwrap(),
+                                        //item
+                                        row.get::<usize, String>(1)?,
+                                        //amount
                                         row.get::<usize, i32>(2)?,
-                                        match row.get::<usize, String>(3)?.as_str() {
+                                        //price
+                                        row.get::<usize, i32>(3)?,
+                                        //special
+                                        row.get::<usize, bool>(4)?,
+                                        //method
+                                        match row.get::<usize, String>(5)?.as_str() {
                                             "Cash" => Payment::Cash,
                                             _ => Payment::Swish,
                                         },
                                     ))
                                 })?
-                                .fold(IndexMap::new(), |mut hm, row| {
-                                    let row = row.unwrap();
-                                    hm.insert(row.0.clone(), Reciept::new_from(row.1, row.2, row.3).on_press(Message::Select(row.0)));
+                                .map(|row| row.unwrap())
+                                .map(|(time, item, num, price, special, method)| (time, match (item, special) {
+                                    (name, true) => Item::Special{name, price: num},
+                                    (name, false) => Item::Regular{name, price, num},
+                                }, method))
+                                .fold(IndexMap::new(), |mut hm, (time, item, method)| {
+                                    match hm.get_mut(&time) {
+                                        Some(receipt) => (*receipt).add(item),
+                                        None => {
+                                            let mut receipt = Receipt::new(method);
+                                            receipt.add(item);
+                                            hm.insert(time.clone(), receipt.on_press(Message::Select(time)));
+                                            }
+                                        }
                                     hm
                                 }),
                         ).into())
                 });
             }
-            Message::Init(map) => self.reciepts = map,
-            Message::Append(map) => self.reciepts.extend(map),
+            Message::Init(map) => self.receipts = map,
+            Message::Append(map) => self.receipts.extend(map),
             Message::ScrollLeft if self.offset > 0 => self.offset -= 1,
             Message::ScrollRight
-                if self.reciepts.len() != 0 && self.offset < (self.reciepts.len() - 1) / 3 =>
+                if self.receipts.len() != 0 && self.offset < (self.receipts.len() - 1) / 3 =>
             {
                 self.offset += 1
             }
             Message::Select(time) => {
                 self.selected = self
-                    .reciepts
+                    .receipts
                     .get_key_value(&time)
                     .map(|(k, v)| (k.clone(), v.clone()));
             }
             Message::Deselect => self.selected = None,
             Message::Print => {
-                if let Some((time, reciept)) = &self.selected {
+                if let Some((time, receipt)) = &self.selected {
                     return Command::perform(
-                        print::print((**reciept).clone(), time.clone()),
+                        print::print((**receipt).clone(), time.clone()),
                         |r| match r {
                             Ok(_) => Message::Deselect.into(),
                             Err(e) => super::Message::Error(e),
@@ -125,7 +141,7 @@ impl Screen for Transactions {
             Row::new()
                 .push(
                     Container::new(
-                        self.reciepts
+                        self.receipts
                             .values_mut()
                             .skip(self.offset * 3)
                             .take(3)
@@ -175,7 +191,7 @@ impl Screen for Transactions {
                     match &mut self.selected {
                         Some((_, rec)) => Column::new().push(rec.view()),
                         None => Column::new()
-                            .push(Space::new(Length::Units(RECIEPT_WIDTH), Length::Fill)),
+                            .push(Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill)),
                     }
                     .push(
                         Row::new()
@@ -192,7 +208,7 @@ impl Screen for Transactions {
                             .spacing(DEF_PADDING),
                     )
                     .padding(DEF_PADDING)
-                    .width(Length::Units(RECIEPT_WIDTH)),
+                    .width(Length::Units(RECEIPT_WIDTH)),
                 ),
         )
         .map(Self::ExMessage::Transactions)

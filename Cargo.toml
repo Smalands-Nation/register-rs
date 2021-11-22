@@ -8,13 +8,16 @@ edition = "2018"
 
 [dependencies]
 giftwrap = "0.2.0"
-iced = "0.3.0"
 num-traits = "0.2.14"
 serde_json = "1.0.59"
 serde = "1.0.117"
 serde_derive = "1.0.117"
 chrono = "0.4.19"
 dirs = "3.0.2"
+
+[dependencies.iced]
+version = "0.3.0"
+features = ["glow"]
 
 [dependencies.rusqlite]
 version  = "0.25.3"
