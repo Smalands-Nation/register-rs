@@ -1,0 +1,3 @@
+
+[alias]
+build-win = "build --target x86_64-pc-windows-gnu --target-dir ./target"
