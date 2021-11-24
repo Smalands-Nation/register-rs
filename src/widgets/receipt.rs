@@ -54,7 +54,9 @@ where
                         .items
                         .values_mut()
                         .fold(
-                            Scrollable::new(&mut self.scroll).spacing(DEF_PADDING),
+                            Scrollable::new(&mut self.scroll)
+                                .spacing(DEF_PADDING)
+                                .scrollbar_width(10),
                             |col, item| col.push(item.view()),
                         )
                         .height(Length::Fill),

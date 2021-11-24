@@ -5,6 +5,7 @@ use {
         screens::{
             manager::{self, Manager},
             menu::{self, Menu},
+            sales::{self, Sales},
             transactions::{self, Transactions},
             Message, Screen,
         },
@@ -61,6 +62,7 @@ struct App {
     menu: Menu,
     transactions: Transactions,
     manager: Manager,
+    sales: Sales,
 }
 
 impl Application for App {
@@ -86,6 +88,9 @@ impl Application for App {
         let (manager, mcmd) = Manager::new();
         cmds.push(mcmd);
 
+        let (sales, mcmd) = Sales::new();
+        cmds.push(mcmd);
+
         (
             Self {
                 con: match config::init_db() {
@@ -97,6 +102,7 @@ impl Application for App {
                 menu,
                 transactions,
                 manager,
+                sales,
             },
             Command::batch(cmds),
         )
@@ -112,7 +118,8 @@ impl Application for App {
             Message::SwapTab(n) => {
                 self.tab = n;
                 match n {
-                    2 => self.manager.update(manager::Message::Refresh),
+                    3 => self.manager.update(manager::Message::Refresh),
+                    2 => self.sales.update(sales::Message::Refresh),
                     1 => self.transactions.update(transactions::Message::Refresh),
                     _ => self.menu.update(menu::Message::Refresh),
                 }
@@ -121,6 +128,7 @@ impl Application for App {
                 Ok(Message::Menu(m)) => self.menu.update(m),
                 Ok(Message::Transactions(m)) => self.transactions.update(m),
                 Ok(Message::Manager(m)) => self.manager.update(m),
+                Ok(Message::Sales(m)) => self.sales.update(m),
                 Err(e) => future::ready(Message::Error(e)).into(),
                 _ => Command::none(),
             },
@@ -135,6 +143,7 @@ impl Application for App {
             Message::Menu(msg) => self.menu.update(msg),
             Message::Transactions(msg) => self.transactions.update(msg),
             Message::Manager(msg) => self.manager.update(msg),
+            Message::Sales(msg) => self.sales.update(msg),
         }
     }
 
@@ -158,6 +167,10 @@ impl Application for App {
                     .push(
                         TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
                         self.transactions.view(),
+                    )
+                    .push(
+                        TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                        self.sales.view(),
                     )
                     .push(
                         TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),

@@ -80,10 +80,7 @@ impl Screen for Transactions {
                                         //special
                                         row.get::<usize, bool>(4)?,
                                         //method
-                                        match row.get::<usize, String>(5)?.as_str() {
-                                            "Cash" => Payment::Cash,
-                                            _ => Payment::Swish,
-                                        },
+                                        Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
                                     ))
                                 })?
                                 .map(|row| row.unwrap())

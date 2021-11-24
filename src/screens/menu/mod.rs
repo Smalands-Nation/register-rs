@@ -32,8 +32,8 @@ pub struct Menu {
     receipt: Receipt<Message>,
     clear: button::State,
     print: bool,
-    cash: button::State,
     swish: button::State,
+    paypal: button::State,
 }
 
 #[derive(Debug, Clone)]
@@ -59,8 +59,8 @@ impl Screen for Menu {
                 receipt: Receipt::new(Payment::Swish),
                 clear: button::State::new(),
                 print: false,
-                cash: button::State::new(),
                 swish: button::State::new(),
+                paypal: button::State::new(),
             },
             future::ready(Message::Refresh.into()).into(),
         )
@@ -168,12 +168,12 @@ impl Screen for Menu {
                     .into(),
                 self.receipt.view(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
-                Button::new(&mut self.cash, Text::new("Kontant").size(BIG_TEXT))
-                    .on_press(Message::Sell(Payment::Cash))
+                Button::new(&mut self.paypal, Text::new(Payment::Paypal).size(BIG_TEXT))
+                    .on_press(Message::Sell(Payment::Paypal))
                     .padding(DEF_PADDING)
                     .width(Length::Fill)
                     .into(),
-                Button::new(&mut self.swish, Text::new("Swish").size(BIG_TEXT))
+                Button::new(&mut self.swish, Text::new(Payment::Swish).size(BIG_TEXT))
                     .on_press(Message::Sell(Payment::Swish))
                     .padding(DEF_PADDING)
                     .width(Length::Fill)

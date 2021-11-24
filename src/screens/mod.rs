@@ -1,5 +1,6 @@
 pub mod manager;
 pub mod menu;
+pub mod sales;
 pub mod transactions;
 
 use {
@@ -12,7 +13,7 @@ use {
         sync::{Arc, Mutex},
     },
 };
-pub use {manager::Manager, menu::Menu, transactions::Transactions};
+pub use {manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
 #[derive(Clone, Wrap)]
 pub enum Message {
@@ -28,6 +29,7 @@ pub enum Message {
     Menu(menu::Message),
     Transactions(transactions::Message),
     Manager(manager::Message),
+    Sales(sales::Message),
 }
 
 impl std::fmt::Debug for Message {
@@ -41,6 +43,7 @@ impl std::fmt::Debug for Message {
             Self::Menu(n) => write!(f, "Menu({:?})", n),
             Self::Transactions(n) => write!(f, "Transactions({:?})", n),
             Self::Manager(n) => write!(f, "Manager({:?})", n),
+            Self::Sales(n) => write!(f, "Sales({:?})", n),
         }
     }
 }
