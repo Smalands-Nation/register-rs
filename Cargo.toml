@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2018"
 
+[features]
+default = []
+update = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -14,6 +18,7 @@ serde = "1.0.117"
 serde_derive = "1.0.117"
 chrono = "0.4.19"
 dirs = "4.0.0"
+self_update = "0.27.0"
 
 [dependencies.iced]
 version = "0.3.0"

@@ -69,7 +69,13 @@ impl Application for App {
     type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = Vec::new();
+        let mut cmds = vec![Command::perform(
+            future::ready(|| ()),
+            |_| match config::update() {
+                Ok(_) => Self::Message::None,
+                Err(e) => Self::Message::Error(e),
+            },
+        )];
 
         let (menu, mcmd) = Menu::new();
         cmds.push(mcmd);
@@ -102,6 +108,7 @@ impl Application for App {
 
     fn update(&mut self, msg: Self::Message, _clip: &mut Clipboard) -> Command<Self::Message> {
         match msg {
+            Message::None => Command::none(),
             Message::SwapTab(n) => {
                 self.tab = n;
                 match n {

@@ -17,6 +17,8 @@ pub use {manager::Manager, menu::Menu, transactions::Transactions};
 #[derive(Clone, Wrap)]
 pub enum Message {
     #[noWrap]
+    None,
+    #[noWrap]
     SwapTab(usize),
     #[noWrap]
     DB(Arc<dyn Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync>),
@@ -31,6 +33,7 @@ pub enum Message {
 impl std::fmt::Debug for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::None => write!(f, "None"),
             Self::SwapTab(n) => write!(f, "SwapTab({:?})", n),
             Self::DB(_) => write!(f, "DB(_)"),
             Self::CloseModal => write!(f, "CloseModal"),

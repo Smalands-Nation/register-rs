@@ -5,16 +5,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Wrap, Debug, Clone)]
 pub enum Error {
-    #[noWrap]
+    #[wrapDepth(0)]
     Sqlite(Arc<rusqlite::Error>),
     IO(std::io::ErrorKind),
+    #[wrapDepth(0)]
+    SelfUpdate(Arc<self_update::errors::Error>),
     Other(String),
-}
-
-impl From<rusqlite::Error> for Error {
-    fn from(e: rusqlite::Error) -> Self {
-        Self::Sqlite(Arc::new(e))
-    }
 }
 
 impl From<&'static str> for Error {

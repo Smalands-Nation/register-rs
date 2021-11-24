@@ -1,4 +1,4 @@
-use {crate::error::Result, rusqlite::Connection};
+use {crate::error::Result, rusqlite::Connection, self_update::cargo_crate_version};
 
 pub fn init_db() -> Result<Connection> {
     match dirs::config_dir() {
@@ -18,4 +18,24 @@ pub fn init_db() -> Result<Connection> {
         }
         None => Err("No config dir".into()),
     }
+}
+
+#[cfg(feature = "update")]
+pub fn update() -> Result<()> {
+    let status = self_update::backends::github::Update::configure()
+        .repo_owner("Smalands-Nation")
+        .repo_name("register-rs")
+        .bin_name("register-rs")
+        .show_output(false)
+        .no_confirm(true)
+        .current_version(cargo_crate_version!())
+        .build()?
+        .update()?;
+    println!("Update status: `{}`!", status.version());
+    Ok(())
+}
+
+#[cfg(not(feature = "update"))]
+pub fn update() -> Result<()> {
+    Ok(())
 }
