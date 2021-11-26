@@ -34,6 +34,7 @@ pub struct Menu {
     print: bool,
     swish: button::State,
     paypal: button::State,
+    scroll: scrollable::State,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +62,7 @@ impl Screen for Menu {
                 print: false,
                 swish: button::State::new(),
                 paypal: button::State::new(),
+                scroll: scrollable::State::new(),
             },
             future::ready(Message::Refresh.into()).into(),
         )
@@ -146,15 +148,21 @@ impl Screen for Menu {
                 .height(Length::Fill)
                 .into(),
             Rule::vertical(DEF_PADDING).into(),
-            Grid::with_children(
-                self.menu.len() as u32 / 3,
-                3,
-                self.menu.iter_mut().map(|i| i.view()).collect(),
-            )
-            .width(Length::Fill)
-            .spacing(DEF_PADDING)
-            .padding(DEF_PADDING)
-            .into(),
+            Scrollable::new(&mut self.scroll)
+                .push(
+                    Grid::with_children(
+                        self.menu.len() as u32 / 3,
+                        3,
+                        self.menu.iter_mut().map(|i| i.view()).collect(),
+                    )
+                    .width(Length::Fill)
+                    .spacing(DEF_PADDING)
+                    .padding(DEF_PADDING),
+                )
+                .width(Length::Fill)
+                .spacing(DEF_PADDING)
+                .padding(DEF_PADDING)
+                .into(),
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
                 Row::new()

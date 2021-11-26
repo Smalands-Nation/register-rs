@@ -21,7 +21,7 @@ const fn pt_to_mm(pt: f64) -> Mm {
 const PAGE_WIDTH: f64 = 203.200_128; //pt_to_mm(8.0 * 72.0);
 const PAGE_HEIGHT: f64 = 279.400_176; //pt_to_mm(11.0 * 72.0);
 
-pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
+pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<String> {
     let font = fonts::FontData::new(
         if let iced::Font::External { bytes, .. } = crate::FONT {
             bytes.to_vec()
@@ -105,8 +105,41 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
     doc.push(Text::new(format!("{}", time.format("%F %T"))));
     doc.push(Break::new(1));
 
-    doc.render_to_file("genpdf.pdf")
+    let filename = format!("receipt_{}.pdf", time.format("%F_%T")).replace(":", "-");
+    doc.render_to_file(filename.clone())
         .expect("Failed to write PDF file");
 
-    Ok(())
+    Ok(filename)
+}
+
+#[cfg(target_os = "windows")]
+pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
+    let filename = create_pdf(receipt, time).await?;
+    if std::process::Command::new("print")
+        .args([filename])
+        .output()
+        .map_err(|e| e.kind())?
+        .status
+        .success()
+    {
+        Ok(())
+    } else {
+        Err("Print failed")?
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
+    let filename = create_pdf(receipt, time).await?;
+    if std::process::Command::new("/usr/bin/lp")
+        .args([filename])
+        .output()
+        .map_err(|e| e.kind())?
+        .status
+        .success()
+    {
+        Ok(())
+    } else {
+        Err("Print failed")?
+    }
 }

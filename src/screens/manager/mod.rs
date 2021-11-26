@@ -7,6 +7,7 @@ use {
     },
     iced::{
         button::{self, Button},
+        scrollable::{self, Scrollable},
         Align, Column, Command, Element, Length, Row, Rule, Space, Text,
     },
     indexmap::IndexMap,
@@ -30,6 +31,7 @@ pub struct Manager {
     price: NumberInput<u32>,
     cancel: button::State,
     save: button::State,
+    scroll: scrollable::State,
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +59,7 @@ impl Screen for Manager {
                 price: NumberInput::new(),
                 cancel: button::State::new(),
                 save: button::State::new(),
+                scroll: scrollable::State::new(),
             },
             future::ready(Message::Refresh.into()).into(),
         )
@@ -65,9 +68,9 @@ impl Screen for Manager {
     fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                self.mode = Mode::New;
-                return db(|con| {
-                    Ok(Message::LoadMenu(
+                return Command::batch([
+                    db(|con| {
+                        Ok(Message::LoadMenu(
                         con.lock()
                             .unwrap()
                             .prepare("SELECT name, price, available FROM menu WHERE special = 0 ORDER BY name DESC")?
@@ -82,7 +85,9 @@ impl Screen for Manager {
                             .collect(),
                     )
                     .into())
-                });
+                    }),
+                    Command::perform(future::ready(Message::Cancel), Self::ExMessage::from),
+                ]);
             }
             Message::ToggleItem(name, a) => match self.menu.get_mut(&name) {
                 Some(i) => {
@@ -91,7 +96,8 @@ impl Screen for Manager {
                     return db(move |con| {
                         con.lock().unwrap().execute(
                             "UPDATE menu SET available=?1 WHERE name=?2",
-                            params![clone.available, clone.name],
+                            //Non breaking space gang
+                            params![clone.available, clone.name.replace(" ", "\u{00A0}")],
                         )?;
                         Ok(Message::Refresh.into())
                     });
@@ -123,7 +129,8 @@ impl Screen for Manager {
                     Mode::New => db(move |con| {
                         con.lock().unwrap().execute(
                             "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
-                            params![name, price],
+                            //Non breaking space gang
+                            params![name.replace(" ", "\u{00A0}"), price],
                         )?;
                         Ok(Message::Refresh.into())
                     }),
@@ -132,7 +139,8 @@ impl Screen for Manager {
                         db(move |con| {
                             con.lock().unwrap().execute(
                                 "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
-                                params![name, price, old_name],
+                                //Non breaking space gang
+                                params![name.replace(" ", "\u{00A0}"), price, old_name],
                             )?;
                             Ok(Message::Refresh.into())
                         })
@@ -145,15 +153,21 @@ impl Screen for Manager {
 
     fn view(&mut self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Row::with_children(vec![
-            Grid::with_children(
-                self.menu.len() as u32 / 3,
-                3,
-                self.menu.iter_mut().map(|(_, i)| i.view()).collect(),
-            )
-            .width(Length::Fill)
-            .spacing(DEF_PADDING)
-            .padding(DEF_PADDING)
-            .into(),
+            Scrollable::new(&mut self.scroll)
+                .push(
+                    Grid::with_children(
+                        self.menu.len() as u32 / 3,
+                        3,
+                        self.menu.iter_mut().map(|(_, i)| i.view()).collect(),
+                    )
+                    .width(Length::Fill)
+                    .spacing(DEF_PADDING)
+                    .padding(DEF_PADDING),
+                )
+                .width(Length::Fill)
+                .spacing(DEF_PADDING)
+                .padding(DEF_PADDING)
+                .into(),
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
                 Row::new()

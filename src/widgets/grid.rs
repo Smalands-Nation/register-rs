@@ -95,9 +95,15 @@ impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
                 i = 0;
             }
         }
-        for _ in 0..(g.cols - i) {
-            r = r.push(Space::with_width(Length::FillPortion(1)));
+
+        if i != 0 {
+            for _ in 0..(g.cols - i) {
+                r = r.push(Space::with_width(Length::FillPortion(1)));
+            }
+            col.push(r)
+        } else {
+            col
         }
-        col.push(r).into()
+        .into()
     }
 }
