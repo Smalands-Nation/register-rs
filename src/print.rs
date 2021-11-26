@@ -2,24 +2,14 @@ use {
     crate::{
         error::Result,
         receipt::{Item, Receipt},
-        styles::DEF_TEXT,
     },
     chrono::{DateTime, Local},
     genpdf::{
         elements::{Break, Image, Paragraph, TableLayout, Text},
-        fonts, Alignment, Document, Mm, SimplePageDecorator,
+        fonts, Alignment, Document, SimplePageDecorator,
     },
     std::io::Cursor,
 };
-
-/*
-const fn pt_to_mm(pt: f64) -> Mm {
-    (pt * 0.352_778_f64).into()
-}
-*/
-
-const PAGE_WIDTH: f64 = 203.200_128; //pt_to_mm(8.0 * 72.0);
-const PAGE_HEIGHT: f64 = 279.400_176; //pt_to_mm(11.0 * 72.0);
 
 pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<String> {
     let font = fonts::FontData::new(
@@ -32,14 +22,13 @@ pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<Strin
     )
     .unwrap();
 
-    let mut doc = genpdf::Document::new(fonts::FontFamily {
+    let mut doc = Document::new(fonts::FontFamily {
         regular: font.clone(),
         bold: font.clone(),
         italic: font.clone(),
         bold_italic: font,
     });
-    doc.set_font_size(DEF_TEXT as u8);
-    doc.set_paper_size((PAGE_WIDTH, PAGE_HEIGHT));
+    doc.set_paper_size((72, 300));
     doc.set_page_decorator({
         let mut dec = SimplePageDecorator::new();
         dec.set_margins((10, 5));
@@ -115,7 +104,10 @@ pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<Strin
 #[cfg(target_os = "windows")]
 pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
     let filename = create_pdf(receipt, time).await?;
-    if std::process::Command::new("print")
+    let mut print_to_pdf = dirs::config_dir().ok_or("No config path")?;
+    print_to_pdf.push("smaland_register");
+    print_to_pdf.push("PDFtoPrinter.exe");
+    if std::process::Command::new(print_to_pdf)
         .args([filename])
         .output()
         .map_err(|e| e.kind())?
