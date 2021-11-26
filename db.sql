@@ -16,7 +16,7 @@ create table if not exists receipt_item (
 	item text not null,
 	amount integer default 1 not null,
 	foreign key(receipt) references Receipts(time),
-	foreign key(item) references menu(name),
+	foreign key(item) references menu(name) on update cascade,
 	primary key(receipt, item)
 );
 
