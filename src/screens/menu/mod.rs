@@ -1,4 +1,4 @@
-pub use {
+use {
     super::{db, Screen},
     crate::{
         error::{Error, Result},
@@ -14,6 +14,7 @@ pub use {
     chrono::Local,
     iced::{
         button::{self, Button},
+        image::{Handle, Image},
         scrollable::{self, Scrollable},
         window, Align, Application, Checkbox, Clipboard, Column, Command, Container, Element, Font,
         HorizontalAlignment, Length, Row, Rule, Settings, Space, Text,
@@ -180,16 +181,30 @@ impl Screen for Menu {
                     .into(),
                 self.receipt.view(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
-                Button::new(&mut self.paypal, Text::new(Payment::Paypal).size(BIG_TEXT))
-                    .on_press(Message::Sell(Payment::Paypal))
-                    .padding(DEF_PADDING)
-                    .width(Length::Fill)
-                    .into(),
-                Button::new(&mut self.swish, Text::new(Payment::Swish).size(BIG_TEXT))
+                Row::with_children(vec![
+                    Button::new(
+                        &mut self.swish,
+                        Image::new(Handle::from_memory(
+                            include_bytes!("../../../resources/swish.png").to_vec(),
+                        )),
+                    )
                     .on_press(Message::Sell(Payment::Swish))
                     .padding(DEF_PADDING)
                     .width(Length::Fill)
                     .into(),
+                    Button::new(
+                        &mut self.paypal,
+                        Image::new(Handle::from_memory(
+                            include_bytes!("../../../resources/paypal.png").to_vec(),
+                        )),
+                    )
+                    .on_press(Message::Sell(Payment::Paypal))
+                    .padding(DEF_PADDING)
+                    .width(Length::Fill)
+                    .into(),
+                ])
+                .spacing(DEF_PADDING)
+                .into(),
             ])
             .width(Length::Units(RECEIPT_WIDTH))
             .spacing(DEF_PADDING)
