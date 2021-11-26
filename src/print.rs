@@ -11,7 +11,7 @@ use {
     std::io::Cursor,
 };
 
-pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<String> {
+async fn create_pdf(receipt: &Receipt, time: DateTime<Local>) -> Result<String> {
     let font = fonts::FontData::new(
         if let iced::Font::External { bytes, .. } = crate::FONT {
             bytes.to_vec()
@@ -102,8 +102,8 @@ pub async fn create_pdf(receipt: Receipt, time: DateTime<Local>) -> Result<Strin
 }
 
 #[cfg(target_os = "windows")]
-pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
-    let filename = create_pdf(receipt, time).await?;
+pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
+    let filename = create_pdf(&receipt, time).await?;
     let mut print_to_pdf = dirs::config_dir().ok_or("No config path")?;
     print_to_pdf.push("smaland_register");
     print_to_pdf.push("PDFtoPrinter.exe");
@@ -114,15 +114,15 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
         .status
         .success()
     {
-        Ok(())
+        Ok(receipt)
     } else {
         Err("Print failed")?
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
-    let filename = create_pdf(receipt, time).await?;
+pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
+    let filename = create_pdf(&receipt, time).await?;
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()
@@ -130,7 +130,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<()> {
         .status
         .success()
     {
-        Ok(())
+        Ok(receipt)
     } else {
         Err("Print failed")?
     }

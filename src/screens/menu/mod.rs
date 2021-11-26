@@ -99,34 +99,38 @@ impl Screen for Menu {
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
                 let receipt = (*self.receipt).clone();
+                let should_print = self.print.clone();
                 if self.receipt.len() > 0 {
                     return Command::perform(
-                        print::print(receipt.clone(), Local::now()),
-                        move |r| {
-                            let receipt = receipt.clone();
-                            match r {
-                                Ok(_) => super::Message::DB(Arc::new(move |con| {
-                                    let time = Local::now();
+                        async move {
+                            if should_print {
+                                print::print(receipt, Local::now()).await
+                            } else {
+                                Ok(receipt)
+                            }
+                        },
+                        move |r| match r {
+                            Ok(receipt) => super::Message::DB(Arc::new(move |con| {
+                                let time = Local::now();
 
-                                    let con = con.lock().unwrap();
+                                let con = con.lock().unwrap();
 
-                                    con.execute(
-                                        "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
-                                        params![time, String::from(p)],
-                                    )?;
+                                con.execute(
+                                    "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+                                    params![time, String::from(p)],
+                                )?;
 
-                                    let mut stmt = con.prepare(
+                                let mut stmt = con.prepare(
                                         "INSERT INTO receipt_item (receipt, item, amount) VALUES (?1, ?2, ?3)",
                                     )?;
 
-                                    for item in receipt.items.values() {
-                                        stmt.execute(params![time, item.name(), item.num()])?;
-                                    }
+                                for item in receipt.items.values() {
+                                    stmt.execute(params![time, item.name(), item.num()])?;
+                                }
 
-                                    Ok(Message::ClearReceipt.into())
-                                })),
-                                Err(e) => super::Message::Error(e),
-                            }
+                                Ok(Message::ClearReceipt.into())
+                            })),
+                            Err(e) => super::Message::Error(e),
                         },
                     );
                 }
