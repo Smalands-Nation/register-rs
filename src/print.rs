@@ -8,10 +8,14 @@ use {
         elements::{Break, Image, Paragraph, TableLayout, Text},
         fonts, Alignment, Document, SimplePageDecorator,
     },
-    std::io::Cursor,
+    std::{io::Cursor, path::PathBuf},
 };
 
-async fn create_pdf(receipt: &Receipt, time: DateTime<Local>) -> Result<String> {
+async fn create_pdf(
+    path: impl Into<PathBuf>,
+    receipt: &Receipt,
+    time: DateTime<Local>,
+) -> Result<PathBuf> {
     let font = fonts::FontData::new(
         if let iced::Font::External { bytes, .. } = crate::FONT {
             bytes.to_vec()
@@ -94,20 +98,33 @@ async fn create_pdf(receipt: &Receipt, time: DateTime<Local>) -> Result<String> 
     doc.push(Text::new(format!("{}", time.format("%F %T"))));
     doc.push(Break::new(1));
 
-    let filename = format!("receipt_{}.pdf", time.format("%F_%T")).replace(":", "-");
-    doc.render_to_file(filename.clone())
+    let mut path = path.into();
+    path.push(format!("receipt_{}.pdf", time.format("%F_%T")).replace(":", "-"));
+    doc.render_to_file(path.clone())
         .expect("Failed to write PDF file");
 
-    Ok(filename)
+    Ok(path)
+}
+
+fn receipt_path() -> Result<PathBuf> {
+    let mut conf_path = dirs::config_dir().ok_or("No config path")?;
+    conf_path.push("smaland_register");
+    conf_path.push("receipts");
+    match std::fs::create_dir_all(&conf_path) {
+        Ok(_) => Ok(conf_path),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::AlreadyExists => Ok(conf_path),
+            ek => Err(ek.into()),
+        },
+    }
 }
 
 #[cfg(target_os = "windows")]
 pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
-    let filename = create_pdf(&receipt, time).await?;
-    let mut print_to_pdf = dirs::config_dir().ok_or("No config path")?;
-    print_to_pdf.push("smaland_register");
-    print_to_pdf.push("PDFtoPrinter.exe");
-    if std::process::Command::new(print_to_pdf)
+    let filename = create_pdf(receipt_path()?, &receipt, time).await?;
+    let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
+    pdf_to_printer.push("PDFtoPrinter.exe");
+    if std::process::Command::new(pdf_to_printer)
         .args([filename])
         .output()
         .map_err(|e| e.kind())?
@@ -122,7 +139,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
 
 #[cfg(not(target_os = "windows"))]
 pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
-    let filename = create_pdf(&receipt, time).await?;
+    let filename = create_pdf(receipt_path()?, &receipt, time).await?;
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()
