@@ -1,6 +1,6 @@
 [package]
 name = "smalands-rs"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2021"
 
@@ -22,7 +22,7 @@ self_update = "0.27.0"
 
 [dependencies.iced]
 version = "0.3.0"
-features = [ "image"]
+features = ["glow", "glow_canvas", "tokio"]
 
 [dependencies.rusqlite]
 version  = "0.26.1"

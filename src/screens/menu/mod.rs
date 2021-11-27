@@ -1,11 +1,10 @@
 use {
     super::{db, Screen},
     crate::{
-        error::{Error, Result},
         icons::Icon,
         payment::Payment,
         print,
-        styles::{BIG_TEXT, DEF_PADDING, DEF_TEXT, RECEIPT_WIDTH},
+        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
             Grid, Receipt, SquareButton,
@@ -14,12 +13,10 @@ use {
     chrono::Local,
     iced::{
         button::{self, Button},
-        image::{Handle, Image},
         scrollable::{self, Scrollable},
-        window, Align, Application, Checkbox, Clipboard, Column, Command, Container, Element, Font,
-        HorizontalAlignment, Length, Row, Rule, Settings, Space, Text,
+        Align, Canvas, Checkbox, Column, Command, Container, Element, Length, Row, Rule, Space,
+        Text,
     },
-    indexmap::IndexMap,
     rusqlite::params,
     std::{future, sync::Arc},
 };
@@ -182,26 +179,16 @@ impl Screen for Menu {
                 self.receipt.view(),
                 Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
                 Row::with_children(vec![
-                    Button::new(
-                        &mut self.swish,
-                        Image::new(Handle::from_memory(
-                            include_bytes!("../../../resources/swish.png").to_vec(),
-                        )),
-                    )
-                    .on_press(Message::Sell(Payment::Swish))
-                    .padding(DEF_PADDING)
-                    .width(Length::Fill)
-                    .into(),
-                    Button::new(
-                        &mut self.paypal,
-                        Image::new(Handle::from_memory(
-                            include_bytes!("../../../resources/paypal.png").to_vec(),
-                        )),
-                    )
-                    .on_press(Message::Sell(Payment::Paypal))
-                    .padding(DEF_PADDING)
-                    .width(Length::Fill)
-                    .into(),
+                    Button::new(&mut self.swish, Canvas::new(Payment::Swish))
+                        .on_press(Message::Sell(Payment::Swish))
+                        .padding(DEF_PADDING)
+                        .width(Length::Fill)
+                        .into(),
+                    Button::new(&mut self.paypal, Canvas::new(Payment::Paypal))
+                        .on_press(Message::Sell(Payment::Paypal))
+                        .padding(DEF_PADDING)
+                        .width(Length::Fill)
+                        .into(),
                 ])
                 .spacing(DEF_PADDING)
                 .into(),
