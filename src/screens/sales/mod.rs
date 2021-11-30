@@ -87,27 +87,35 @@ impl Screen for Sales {
     }
 
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(
-            self.receipts
-                .iter_mut()
-                .fold(Row::new(), |row, (payment, rec)| {
-                    row.push(
-                        Container::new(
-                            Column::new()
-                                .push(Text::new(*payment).size(BIG_TEXT))
-                                .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
-                                .push(rec.view())
-                                .width(Length::Units(RECEIPT_WIDTH))
-                                .padding(DEF_PADDING),
+        if self.receipts.len() > 0 {
+            Element::<Self::InMessage>::from(
+                self.receipts
+                    .iter_mut()
+                    .fold(Row::new(), |row, (payment, rec)| {
+                        row.push(
+                            Container::new(
+                                Column::new()
+                                    .push(Text::new(*payment).size(BIG_TEXT))
+                                    .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
+                                    .push(rec.view())
+                                    .width(Length::Units(RECEIPT_WIDTH))
+                                    .padding(DEF_PADDING),
+                            )
+                            .style(BORDERED),
                         )
-                        .style(BORDERED),
-                    )
-                })
+                    })
+                    .width(Length::Fill)
+                    .align_items(Align::Center)
+                    .padding(DEF_PADDING)
+                    .spacing(DEF_PADDING),
+            )
+        } else {
+            Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
                 .width(Length::Fill)
-                .align_items(Align::Center)
+                .center_x()
                 .padding(DEF_PADDING)
-                .spacing(DEF_PADDING),
-        )
+                .into()
+        }
         .map(Self::ExMessage::Sales)
     }
 }

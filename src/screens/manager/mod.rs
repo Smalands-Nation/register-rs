@@ -171,16 +171,18 @@ impl Screen for Manager {
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
                 Row::new()
-                    .push(Column::with_children(match &self.mode {
-                        Mode::New => {
-                            vec![Text::new("Ny").size(BIG_TEXT).into(), Text::new(" ").into()]
-                        }
-                        Mode::Update(v) => vec![
-                            Text::new("Ändrar").size(BIG_TEXT).into(),
-                            Text::new(v).into(),
-                        ],
-                    }))
-                    .push(Space::with_width(Length::Fill))
+                    .push(
+                        Column::with_children(match &self.mode {
+                            Mode::New => {
+                                vec![Text::new("Ny").size(BIG_TEXT).into(), Text::new(" ").into()]
+                            }
+                            Mode::Update(v) => vec![
+                                Text::new("Ändrar").size(BIG_TEXT).into(),
+                                Text::new(v).into(),
+                            ],
+                        })
+                        .width(Length::Fill),
+                    )
                     .push(
                         SquareButton::new(&mut self.cancel, Text::from(Icon::Cross))
                             .on_press(Message::Cancel),
