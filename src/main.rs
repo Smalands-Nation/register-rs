@@ -118,7 +118,7 @@ impl Application for App {
             Message::SwapTab(n) => {
                 self.tab = n;
                 match n {
-                    3 => self.manager.update(manager::Message::Refresh),
+                    3 => self.manager.update(manager::Message::Refresh(true)),
                     2 => self.sales.update(sales::Message::Refresh),
                     1 => self.transactions.update(transactions::Message::Refresh),
                     _ => self.menu.update(menu::Message::Refresh),

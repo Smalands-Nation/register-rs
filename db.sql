@@ -20,6 +20,11 @@ create table if not exists receipt_item (
 	primary key(receipt, item)
 );
 
+create table if not exists password (
+	password text not null,
+	primary key(password)
+);
+
 create view if not exists receipts_view as
 	select receipts.time, receipt_item.item, receipt_item.amount, menu.price, menu.special, receipts.method
 	from receipts
