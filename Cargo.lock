@@ -1640,11 +1640,13 @@ name = "iced_aw"
 version = "0.1.0"
 source = "git+https://github.com/iced-rs/iced_aw?branch=main#53e87f244766a056723fda9116cc3f662e1f9a68"
 dependencies = [
+ "chrono",
  "dodrio",
  "iced_graphics",
  "iced_native",
  "iced_style",
  "iced_web",
+ "lazy_static",
  "num-traits",
  "wasm-bindgen",
  "web-sys",
@@ -2925,9 +2927,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.26.1"
+version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a82b0b91fad72160c56bf8da7a549b25d7c31109f52cc1437eac4c0ad2550a7"
+checksum = "4ba4d3462c8b2e4d7f4fcfcf2b296dc6b65404fbbc7b63daa37fd485c149daf7"
 dependencies = [
  "bitflags",
  "chrono",
@@ -3194,7 +3196,7 @@ checksum = "6bf34684c5767b87de9119790e92e9a1d60056be2ceeaf16a8e6ef13082aeab1"
 
 [[package]]
 name = "smalands-rs"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "dirs 4.0.0",
