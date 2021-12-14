@@ -25,7 +25,7 @@ impl Item {
 
     pub fn num(&self) -> i32 {
         match self {
-            Self::Regular { num, .. } | Self::Special { price: num @ _, .. } => *num,
+            Self::Regular { num, .. } | Self::Special { price: num, .. } => *num,
         }
     }
 

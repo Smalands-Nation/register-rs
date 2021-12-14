@@ -29,13 +29,14 @@ impl TryFrom<String> for Payment {
             "cash" => Ok(Self::Cash),
             "swish" => Ok(Self::Swish),
             "paypal" => Ok(Self::Paypal),
-            _ => Err("Invalid Payment Method")?,
+            _ => Err("Invalid Payment Method".into()),
         }
     }
 }
 
 use iced::{widget::canvas::*, Color, Point, Rectangle, Vector};
 impl<M> Program<M> for Payment {
+    #[allow(clippy::excessive_precision)]
     fn draw(&self, bounds: Rectangle<f32>, _cursor: Cursor) -> Vec<Geometry> {
         match *self {
             Self::Swish => {

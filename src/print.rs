@@ -149,6 +149,6 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
     {
         Ok(receipt)
     } else {
-        Err("Print failed")?
+        Err("Print failed".into())
     }
 }

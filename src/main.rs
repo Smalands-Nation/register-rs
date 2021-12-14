@@ -31,9 +31,13 @@ pub mod icons;
 pub mod payment;
 pub mod print;
 pub mod receipt;
+#[allow(clippy::new_without_default)]
 pub mod screens;
 pub mod styles;
+#[allow(clippy::new_ret_no_self, clippy::new_without_default)]
 pub mod widgets;
+
+//TODO macro for command::now
 
 pub const FONT: Font = Font::External {
     name: "IBM Plex Mono",
@@ -137,7 +141,7 @@ impl Application for App {
                 Command::none()
             }
             Message::Error(e) => {
-                *self.err.inner_mut() = Some(e.into());
+                *self.err.inner_mut() = Some(e);
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),
@@ -148,7 +152,7 @@ impl Application for App {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        if let Some(_) = self.err.inner() {
+        if self.err.inner().is_some() {
             self.err.show(true);
         } else {
             self.err.show(false);

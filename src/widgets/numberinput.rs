@@ -19,7 +19,7 @@ where
         F: 'static + Fn(Option<N>) -> M,
         M: Clone,
     {
-        let clone = self.1.clone();
+        let clone = self.1;
         iced::TextInput::new(
             &mut self.0,
             "",
@@ -32,7 +32,7 @@ where
             .as_str(),
             move |s| match N::from_str(s.as_str()) {
                 Ok(n) if (min..=max).contains(&n) => msg(Some(n)),
-                Err(_) if s.len() == 0 => msg(None),
+                Err(_) if s.is_empty() => msg(None),
                 _ => msg(clone),
             },
         )

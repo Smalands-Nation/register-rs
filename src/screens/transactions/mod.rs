@@ -94,7 +94,7 @@ impl Screen for Transactions {
                                         None => {
                                             let mut receipt = Receipt::new(method);
                                             receipt.add(item);
-                                            hm.insert(time.clone(), receipt.on_press(Message::Select(time)));
+                                            hm.insert(time, receipt.on_press(Message::Select(time)));
                                             }
                                         }
                                     hm
@@ -106,7 +106,7 @@ impl Screen for Transactions {
             Message::Append(map) => self.receipts.extend(map),
             Message::ScrollLeft if self.offset > 0 => self.offset -= 1,
             Message::ScrollRight
-                if self.receipts.len() != 0 && self.offset < (self.receipts.len() - 1) / 3 =>
+                if !self.receipts.is_empty() && self.offset < (self.receipts.len() - 1) / 3 =>
             {
                 self.offset += 1
             }
@@ -114,13 +114,13 @@ impl Screen for Transactions {
                 self.selected = self
                     .receipts
                     .get_key_value(&time)
-                    .map(|(k, v)| (k.clone(), v.clone()));
+                    .map(|(k, v)| (*k, v.clone()));
             }
             Message::Deselect => self.selected = None,
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
                     return Command::perform(
-                        print::print((**receipt).clone(), time.clone()),
+                        print::print((**receipt).clone(), *time),
                         |r| match r {
                             Ok(_) => Message::Deselect.into(),
                             Err(e) => super::Message::Error(e),

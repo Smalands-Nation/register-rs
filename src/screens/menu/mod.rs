@@ -97,7 +97,7 @@ impl Screen for Menu {
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
                 let receipt = (*self.receipt).clone();
-                let should_print = self.print.clone();
+                let should_print = self.print;
                 if self.receipt.len() > 0 {
                     return Command::perform(
                         async move {
@@ -177,7 +177,7 @@ impl Screen for Menu {
                     .align_items(Align::Center)
                     .into(),
                 self.receipt.view(),
-                Checkbox::new(self.print, "Printa kvitto", |b| Message::TogglePrint(b)).into(),
+                Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
                 Row::with_children(vec![
                     Button::new(&mut self.swish, Canvas::new(Payment::Swish))
                         .on_press(Message::Sell(Payment::Swish))

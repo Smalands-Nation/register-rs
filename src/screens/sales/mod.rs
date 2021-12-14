@@ -6,7 +6,7 @@ use {
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{DatePicker, Receipt},
     },
-    chrono::{DateTime, Local, NaiveDate, TimeZone},
+    chrono::{Local, NaiveDate, TimeZone},
     iced::{
         button::{self, Button},
         Align, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
@@ -138,7 +138,7 @@ impl Screen for Sales {
 
     fn view(&mut self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Row::with_children(vec![
-            if self.receipts.len() > 0 {
+            if !self.receipts.is_empty() {
                 self.receipts
                     .iter_mut()
                     .fold(Row::new(), |row, (payment, rec)| {

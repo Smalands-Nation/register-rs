@@ -8,7 +8,7 @@ use {
     iced::{
         button::{self, Button},
         scrollable::{self, Scrollable},
-        Align, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
+        Align, Column, Command, Element, Length, Row, Rule, Space, Text,
     },
     iced_aw::{
         modal::{self, Modal},
@@ -106,8 +106,8 @@ impl Screen for Manager {
                     ].into_iter().take(if lock { 3 } else { 2 }),
                 );
             }
-            Message::ToggleItem(name, a) => match self.menu.get_mut(&name) {
-                Some(i) => {
+            Message::ToggleItem(name, a) => {
+                if let Some(i) = self.menu.get_mut(&name) {
                     i.available = a;
                     let clone = i.clone();
                     return db(move |con| {
@@ -119,8 +119,7 @@ impl Screen for Manager {
                         Ok(Message::Refresh(false).into())
                     });
                 }
-                None => (),
-            },
+            }
             Message::LoadMenu(m) => {
                 self.menu.clear();
                 for item in m {

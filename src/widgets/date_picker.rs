@@ -47,6 +47,6 @@ impl DatePicker {
     }
 
     pub fn value(&mut self) -> Date {
-        self.date.clone()
+        self.date
     }
 }
