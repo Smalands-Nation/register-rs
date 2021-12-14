@@ -19,10 +19,7 @@ use {
         Card, TabLabel, Tabs,
     },
     rusqlite::Connection,
-    std::{
-        future,
-        sync::{Arc, Mutex},
-    },
+    std::sync::{Arc, Mutex},
 };
 
 pub mod config;
@@ -37,7 +34,12 @@ pub mod styles;
 #[allow(clippy::new_ret_no_self, clippy::new_without_default)]
 pub mod widgets;
 
-//TODO macro for command::now
+#[macro_export]
+macro_rules! command_now {
+    ($msg:expr) => {
+        Command::perform(async { $msg }, |m| m)
+    };
+}
 
 pub const FONT: Font = Font::External {
     name: "IBM Plex Mono",
@@ -75,13 +77,10 @@ impl Application for App {
     type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = vec![Command::perform(
-            future::ready(|| ()),
-            |_| match config::update() {
-                Ok(_) => Self::Message::None,
-                Err(e) => Self::Message::Error(e),
-            },
-        )];
+        let mut cmds = vec![command_now!(match config::update() {
+            Ok(_) => Self::Message::None,
+            Err(e) => Self::Message::Error(e),
+        })];
 
         let (menu, mcmd) = Menu::new();
         cmds.push(mcmd);
@@ -133,7 +132,7 @@ impl Application for App {
                 Ok(Message::Transactions(m)) => self.transactions.update(m),
                 Ok(Message::Manager(m)) => self.manager.update(m),
                 Ok(Message::Sales(m)) => self.sales.update(m),
-                Err(e) => future::ready(Message::Error(e)).into(),
+                Err(e) => command_now!(Message::Error(e)),
                 _ => Command::none(),
             },
             Message::CloseModal => {

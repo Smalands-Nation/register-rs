@@ -1,6 +1,7 @@
 use {
     super::{db, Screen},
     crate::{
+        command_now,
         icons::Icon,
         payment::Payment,
         print,
@@ -11,7 +12,6 @@ use {
     iced::{button, Column, Command, Container, Element, Length, Row, Rule, Space, Text},
     indexmap::IndexMap,
     rusqlite::params,
-    std::future,
 };
 
 pub mod item;
@@ -54,7 +54,7 @@ impl Screen for Transactions {
                 selected: None,
                 offset: 0,
             },
-            future::ready(Message::Refresh.into()).into(),
+            command_now!(Message::Refresh.into()),
         )
     }
 

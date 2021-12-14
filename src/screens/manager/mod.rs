@@ -1,6 +1,7 @@
 use {
     super::{db, Screen},
     crate::{
+        command_now,
         icons::Icon,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton, TextInput},
@@ -16,7 +17,6 @@ use {
     },
     indexmap::IndexMap,
     rusqlite::params,
-    std::future,
 };
 
 pub mod item;
@@ -75,7 +75,7 @@ impl Screen for Manager {
                 save: button::State::new(),
                 scroll: scrollable::State::new(),
             },
-            future::ready(Message::Refresh(true).into()).into(),
+            command_now!(Message::Refresh(true).into()),
         )
     }
 
@@ -101,8 +101,8 @@ impl Screen for Manager {
                     )
                     .into())
                         }),
-                        Command::perform(future::ready(Message::Cancel), Self::ExMessage::from),
-                        Command::perform(future::ready(Message::Lock), Self::ExMessage::from),
+                        command_now!(Message::Cancel.into()),
+                        command_now!(Message::Lock.into()),
                     ].into_iter().take(if lock { 3 } else { 2 }),
                 );
             }
@@ -188,11 +188,11 @@ impl Screen for Manager {
             }
             Message::Lock => {
                 self.locked = true;
-                return Command::perform(future::ready(Message::CloseLogin), Self::ExMessage::from);
+                return command_now!(Message::CloseLogin.into());
             }
             Message::Unlock => {
                 self.locked = false;
-                return Command::perform(future::ready(Message::CloseLogin), Self::ExMessage::from);
+                return command_now!(Message::CloseLogin.into());
             }
         }
         Command::none()

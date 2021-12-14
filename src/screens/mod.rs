@@ -4,14 +4,14 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::error::{Error, Result},
+    crate::{
+        command_now,
+        error::{Error, Result},
+    },
     giftwrap::Wrap,
     iced::{Command, Element},
     rusqlite::Connection,
-    std::{
-        future,
-        sync::{Arc, Mutex},
-    },
+    std::sync::{Arc, Mutex},
 };
 pub use {manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
@@ -61,5 +61,5 @@ pub fn db<FN>(func: FN) -> Command<Message>
 where
     FN: Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync + 'static,
 {
-    future::ready(Message::DB(Arc::new(func))).into()
+    command_now!(Message::DB(Arc::new(func)))
 }

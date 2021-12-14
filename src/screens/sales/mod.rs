@@ -1,6 +1,7 @@
 use {
     super::{db, Screen},
     crate::{
+        command_now,
         payment::Payment,
         screens::transactions::Item,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
@@ -14,7 +15,6 @@ use {
     iced_aw::date_picker::Date,
     indexmap::IndexMap,
     rusqlite::params,
-    std::future,
 };
 
 #[derive(Debug, Clone)]
@@ -52,7 +52,7 @@ impl Screen for Sales {
                 save: button::State::new(),
                 receipts: IndexMap::new(),
             },
-            future::ready(Message::Refresh.into()).into(),
+            command_now!(Message::Refresh.into()),
         )
     }
 
@@ -121,7 +121,7 @@ impl Screen for Sales {
                 };
                 p.update(d);
                 p.state.show(false);
-                return Command::perform(async {}, |_| Message::Refresh.into());
+                return command_now!(Message::Refresh.into());
             }
             Message::CloseDate(p) => {
                 match p {
@@ -130,7 +130,7 @@ impl Screen for Sales {
                 }
                 .state
                 .show(false);
-                return Command::perform(async {}, |_| Message::Refresh.into());
+                return command_now!(Message::Refresh.into());
             }
         }
         Command::none()

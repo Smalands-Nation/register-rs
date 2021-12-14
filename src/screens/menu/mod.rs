@@ -1,6 +1,7 @@
 use {
     super::{db, Screen},
     crate::{
+        command_now,
         icons::Icon,
         payment::Payment,
         print,
@@ -18,7 +19,7 @@ use {
         Text,
     },
     rusqlite::params,
-    std::{future, sync::Arc},
+    std::sync::Arc,
 };
 
 pub mod item;
@@ -62,7 +63,7 @@ impl Screen for Menu {
                 paypal: button::State::new(),
                 scroll: scrollable::State::new(),
             },
-            future::ready(Message::Refresh.into()).into(),
+            command_now!(Message::Refresh.into()),
         )
     }
 
