@@ -1,8 +1,9 @@
 use {
-    super::{db, Screen},
+    super::Screen,
     crate::{
         command_now,
         payment::Payment,
+        query,
         screens::transactions::Item,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{DatePicker, Receipt},
@@ -65,44 +66,47 @@ impl Screen for Sales {
                 let to = Local
                     .from_local_datetime(&NaiveDate::from(self.to.value()).and_hms(23, 59, 59))
                     .unwrap();
-                return db(move |con| {
-                    Ok(Message::Load(
-                            con.lock()
-                                .unwrap()
-                                .prepare("SELECT item, amount, price, special, method FROM receipts_view WHERE time BETWEEN ?1 AND ?2")?
-                                .query_map(params![from, to], |row| {
-                                    Ok((
-                                        //God hates me so all of these are type annotated
-                                        //item
-                                        row.get::<usize, String>(0)?,
-                                        //amount
-                                        row.get::<usize, i32>(1)?,
-                                        //price
-                                        row.get::<usize, i32>(2)?,
-                                        //special
-                                        row.get::<usize, bool>(3)?,
-                                        //method
-                                        Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-                                    ))
-                                })?
-                                .map(|row| row.unwrap())
-                                .map(|(item, num, price, special, method)| ( match (item, special) {
-                                    (name, true) => Item::Special{name, price: num},
-                                    (name, false) => Item::Regular{name, price, num},
-                                }, method))
-                                .fold(IndexMap::new(), |mut hm, (item, method)| {
-                                    match hm.get_mut(&method) {
-                                        Some(summary) => summary.add(item),
-                                        None => {
-                                            let mut summary = Receipt::new(method);
-                                            summary.add(item);
-                                            hm.insert(method, summary);
+                return query!("SELECT item, amount, price, special, method FROM receipts_view \
+                    WHERE time BETWEEN ?1 AND ?2",
+                params![from, to],
+                row => (
+                    //God hates me so all of these are type annotated
+                    //item
+                    row.get::<usize, String>(0)?,
+                    //amount
+                    row.get::<usize, i32>(1)?,
+                    //price
+                    row.get::<usize, i32>(2)?,
+                    //special
+                    row.get::<usize, bool>(3)?,
+                    //method
+                    Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
+                ),
+                Message::Load;
+                iter.map(|res| res.map(
+                                    |(item, num, price, special, method)| {
+                                    (match (item, special) {
+                                        (name, true) => Item::Special{name, price: num},
+                                        (name, false) => Item::Regular{name, price, num},
+                                    }, method)
+                                },
+                            ))
+                            .fold(Ok(IndexMap::<_,Receipt<Message>,_>::new()), |hm, res| {
+                                hm.and_then(|mut hm| {
+                                    res.map(|( item, method)| {
+                                        match hm.get_mut(&method) {
+                                            Some(summary) => summary.add(item),
+                                            None => {
+                                                let mut summary = Receipt::new(method);
+                                                summary.add(item);
+                                                hm.insert(method, summary);
+                                                }
                                             }
-                                        }
-                                    hm
-                                }),
-                        ).into())
-                });
+                                        hm
+                                    })
+                                })
+                            })?
+                );
             }
             Message::Load(map) => self.receipts = map,
             Message::Save => (),

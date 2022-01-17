@@ -1,10 +1,10 @@
 use {
-    super::{db, Screen},
+    super::Screen,
     crate::{
         command_now,
         icons::Icon,
         payment::Payment,
-        print,
+        print, query,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
@@ -70,22 +70,16 @@ impl Screen for Menu {
     fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
         match message {
             Message::Refresh => {
-                return db(|con| {
-                    Ok(Message::LoadMenu(
-                            con.lock()
-                                .unwrap()
-                                .prepare("SELECT name, price, special FROM menu WHERE available=true ORDER BY special ASC, name DESC")?
-                                .query_map(params![], |row| {
-                                    Ok(Item::new(
-                                        row.get::<usize, String>(0)?.as_str(),
-                                        row.get(1)?,
-                                        row.get(2)?,
-                                    ))
-                                })?
-                                .map(|item| item.unwrap())
-                                .collect(),
-                        ).into())
-                })
+                return query!(
+                    "SELECe name, price, special FROM menu \
+                    WHERE available=true ORDER BY special ASC, name DESC",
+                    row => Item::new(
+                        row.get::<usize, String>(0)?.as_str(),
+                        row.get(1)?,
+                        row.get(2)?,
+                    ),
+                    Message::LoadMenu
+                );
             }
             Message::Calc(m) => self.calc.update(m),
             Message::ClearReceipt => {
@@ -120,8 +114,9 @@ impl Screen for Menu {
                                 )?;
 
                                 let mut stmt = con.prepare(
-                                        "INSERT INTO receipt_item (receipt, item, amount) VALUES (?1, ?2, ?3)",
-                                    )?;
+                                    "INSERT INTO receipt_item (receipt, item, amount) \
+                                    VALUES (?1, ?2, ?3)",
+                                )?;
 
                                 for item in receipt.items.values() {
                                     stmt.execute(params![time, item.name(), item.num()])?;

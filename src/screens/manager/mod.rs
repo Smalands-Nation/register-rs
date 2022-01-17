@@ -3,6 +3,7 @@ use {
     crate::{
         command_now,
         icons::Icon,
+        query,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton, TextInput},
     },
@@ -84,26 +85,21 @@ impl Screen for Manager {
             Message::Refresh(lock) => {
                 return Command::batch(
                     [
-                        db(|con| {
-                            Ok(Message::LoadMenu(
-                        con.lock()
-                            .unwrap()
-                            .prepare("SELECT name, price, available FROM menu WHERE special = 0 ORDER BY name DESC")?
-                            .query_map(params![], |row| {
-                                Ok(Item::new(
-                                    row.get::<usize, String>(0)?.as_str(),
-                                    row.get(1)?,
-                                    row.get(2)?,
-                                ))
-                            })?
-                            .map(|item| item.unwrap())
-                            .collect(),
-                    )
-                    .into())
-                        }),
+                        query!(
+                            "SELECT name, price, available FROM menu \
+                            WHERE special = 0 ORDER BY name DESC",
+                            row => Item::new(
+                                row.get::<usize, String>(0)?.as_str(),
+                                row.get(1)?,
+                                row.get(2)?,
+                            ),
+                            Message::LoadMenu
+                        ),
                         command_now!(Message::Cancel.into()),
                         command_now!(Message::Lock.into()),
-                    ].into_iter().take(if lock { 3 } else { 2 }),
+                    ]
+                    .into_iter()
+                    .take(if lock { 3 } else { 2 }),
                 );
             }
             Message::ToggleItem(name, a) => {

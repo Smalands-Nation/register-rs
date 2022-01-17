@@ -63,3 +63,34 @@ where
 {
     command_now!(Message::DB(Arc::new(func)))
 }
+
+#[macro_export]
+macro_rules! query {
+
+    ($query:expr, $row:ident => $item:expr, $msg:expr) => {
+        query!($query, params![], $row => $item, $msg)
+    };
+
+    ($query:expr, $params:expr, $row:ident => $item:expr, $msg:expr) => {
+        query!($query, $params, $row => $item, $msg; iter.collect::<Result<_, _>>()?)
+    };
+
+    ($query:expr, $row:ident => $item:expr, $msg:expr; iter$($iter:tt)*) => {
+        query!($query, params![], $row => $item, $msg; iter.$($iter)*)
+    };
+
+    ($query:expr, $params:expr, $row:ident => $item:expr, $msg:expr; iter$($iter:tt)*) => {
+        crate::screens::db(move |con| {
+            Ok($msg(
+                con.lock()
+                    .expect("Could not aquire lock on Connection Mutex")
+                    .prepare($query)?
+                    .query_map($params, |$row| {
+                        Ok($item)
+                    })?$($iter)*,
+            )
+            .into())
+        })
+    };
+
+}
