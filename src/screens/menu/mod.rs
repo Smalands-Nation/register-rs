@@ -71,7 +71,7 @@ impl Screen for Menu {
         match message {
             Message::Refresh => {
                 return query!(
-                    "SELECe name, price, special FROM menu \
+                    "SELECT name, price, special FROM menu \
                     WHERE available=true ORDER BY special ASC, name DESC",
                     row => Item::new(
                         row.get::<usize, String>(0)?.as_str(),
