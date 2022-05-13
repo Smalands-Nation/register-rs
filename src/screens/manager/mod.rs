@@ -3,13 +3,14 @@ use {
     crate::{
         command_now,
         icons::Icon,
+        item::Item,
         query,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton},
     },
     iced::{
         pure::{
-            widget::{Button, Column, Row, Rule, Scrollable, Text, TextInput},
+            widget::{Button, Checkbox, Column, Row, Rule, Scrollable, Text, TextInput},
             Pure, State,
         },
         Alignment, Command, Element, Length, Space,
@@ -18,12 +19,8 @@ use {
         modal::{self, Modal},
         Card,
     },
-    indexmap::IndexMap,
     rusqlite::params,
 };
-
-pub mod item;
-pub use item::Item;
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -35,20 +32,20 @@ pub struct Manager {
     locked: bool,
     login_modal: modal::State<(String, State)>,
     under_modal: State,
-    menu: IndexMap<String, Item>,
+    menu: Vec<Item>,
     mode: Mode,
     name: String,
-    price: NumberInput<u32>,
+    price: NumberInput<i32>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh(bool),
-    ToggleItem(String, bool),
+    ToggleItem(usize, bool),
     LoadMenu(Vec<Item>),
     EditItem(Item),
     UpdateName(String),
-    UpdatePrice(Option<u32>),
+    UpdatePrice(Option<i32>),
     Cancel,
     Save,
     OpenLogin,
@@ -73,7 +70,7 @@ where
                 locked: true,
                 login_modal: modal::State::new((String::new(), State::new())),
                 under_modal: State::new(),
-                menu: IndexMap::new(),
+                menu: Vec::new(),
                 mode: Mode::New,
                 name: String::new(),
                 price: NumberInput::new(),
@@ -90,11 +87,13 @@ where
                         query!(
                             "SELECT name, price, available FROM menu \
                             WHERE special = 0 ORDER BY name DESC",
-                            row => Item::new(
-                                row.get::<usize, String>(0)?.as_str(),
-                                row.get(1)?,
-                                row.get(2)?,
-                            ),
+                            row => Item{
+                                name: row.get::<usize, String>(0)?,
+                                price: row.get(1)?,
+                                //None => unavailable
+                                //Some(0) => available
+                                num: row.get::<usize, bool>(2)?.then(|| 0),
+                            },
                             Message::LoadMenu
                         ),
                         command_now!(Message::Cancel.into()),
@@ -104,15 +103,15 @@ where
                     .take(if lock { 3 } else { 2 }),
                 );
             }
-            Message::ToggleItem(name, a) => {
-                if let Some(i) = self.menu.get_mut(&name) {
-                    i.available = a;
+            Message::ToggleItem(i, a) => {
+                if let Some(i) = self.menu.get_mut(i) {
+                    i.num = a.then(|| 0);
                     let clone = i.clone();
                     return db(move |con| {
                         con.lock().unwrap().execute(
                             "UPDATE menu SET available=?1 WHERE name=?2",
                             //Non breaking space gang
-                            params![clone.available, clone.name],
+                            params![clone.num.is_some(), clone.name.replace(" ", "\u{00A0}")],
                         )?;
                         Ok(Message::Refresh(false).into())
                     });
@@ -121,7 +120,7 @@ where
             Message::LoadMenu(m) => {
                 self.menu.clear();
                 for item in m {
-                    self.menu.insert(item.clone().name, item);
+                    self.menu.push(item);
                 }
             }
             Message::EditItem(i) => {
@@ -209,7 +208,20 @@ where
                         Grid::with_children(
                             self.menu.len() as u32 / 3,
                             3,
-                            self.menu.iter_mut().map(|(_, i)| i.view()).collect(),
+                            self.menu
+                                .iter_mut()
+                                .enumerate()
+                                .map(|(i, item)| {
+                                    let available = item.num.is_some();
+
+                                    item.as_widget()
+                                        .on_press(Message::EditItem)
+                                        .extra(Checkbox::new(available, "I Lager", move |b| {
+                                            Message::ToggleItem(i, b)
+                                        }))
+                                        .into()
+                                })
+                                .collect(),
                         )
                         .width(Length::Fill)
                         .spacing(DEF_PADDING)

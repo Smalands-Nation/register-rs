@@ -3,12 +3,14 @@ use {
     crate::{
         command_now,
         icons::Icon,
+        item::Item,
         payment::Payment,
         print, query,
+        receipt::Receipt,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
-            Grid, Receipt, SquareButton,
+            Grid, SquareButton,
         },
     },
     chrono::Local,
@@ -23,14 +25,11 @@ use {
     std::sync::Arc,
 };
 
-pub mod item;
-pub use item::Item;
-
 pub struct Menu {
     pure_state: State,
     calc: Calc,
     menu: Vec<Item>,
-    receipt: Receipt<Message>,
+    receipt: Receipt,
     print: bool,
 }
 
@@ -68,11 +67,11 @@ impl Screen for Menu {
                 return query!(
                     "SELECT name, price, special FROM menu \
                     WHERE available=true ORDER BY special ASC, name DESC",
-                    row => Item::new(
-                        row.get::<usize, String>(0)?.as_str(),
-                        row.get(1)?,
-                        row.get(2)?,
-                    ),
+                    row => Item{
+                        name: row.get::<usize, String>(0)?,
+                        price: row.get(1)?,
+                        num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                    },
                     Message::LoadMenu
                 );
             }
@@ -80,15 +79,16 @@ impl Screen for Menu {
             Message::ClearReceipt => {
                 self.receipt = Receipt::new(Payment::Swish);
             }
-            Message::SellItem(i) => {
-                self.receipt.add(i.sell(self.calc.0 as i32));
+            Message::SellItem(mut i) => {
+                i.num = i.num.map(|_| self.calc.0 as i32);
+                self.receipt.add(i);
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let receipt = (*self.receipt).clone();
+                let receipt = self.receipt.clone();
                 let should_print = self.print;
-                if self.receipt.len() > 0 {
+                if !self.receipt.is_empty() {
                     return Command::perform(
                         async move {
                             if should_print {
@@ -114,7 +114,11 @@ impl Screen for Menu {
                                 )?;
 
                                 for item in receipt.items.values() {
-                                    stmt.execute(params![time, item.name(), item.num()])?;
+                                    stmt.execute(params![
+                                        time,
+                                        item.name,
+                                        item.num.unwrap_or(item.price)
+                                    ])?;
                                 }
 
                                 Ok(Message::ClearReceipt.into())
@@ -147,7 +151,10 @@ impl Screen for Menu {
                     Grid::with_children(
                         self.menu.len() as u32 / 3,
                         3,
-                        self.menu.iter_mut().map(|i| i.view()).collect(),
+                        self.menu
+                            .iter_mut()
+                            .map(|i| i.as_widget().on_press(Message::SellItem).into())
+                            .collect(),
                     )
                     .width(Length::Fill)
                     .spacing(DEF_PADDING)
@@ -168,7 +175,7 @@ impl Screen for Menu {
                         )
                         .align_items(Alignment::Center)
                         .into(),
-                    self.receipt.view(),
+                    self.receipt.as_widget().into(),
                     Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
                     Row::with_children(vec![
                         Button::new(Payment::Swish)

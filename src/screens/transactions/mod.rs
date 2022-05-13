@@ -3,10 +3,12 @@ use {
     crate::{
         command_now,
         icons::Icon,
+        item::Item,
         payment::Payment,
         print,
+        receipt::Receipt,
         styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{Clickable, Receipt, SquareButton},
+        widgets::{Clickable, SquareButton},
     },
     chrono::{DateTime, Local},
     iced::{
@@ -20,14 +22,11 @@ use {
     rusqlite::params,
 };
 
-pub mod item;
-pub use item::Item;
-
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(IndexMap<DateTime<Local>, Receipt<Message>>),
-    Append(IndexMap<DateTime<Local>, Receipt<Message>>),
+    Init(IndexMap<DateTime<Local>, Receipt>),
+    Append(IndexMap<DateTime<Local>, Receipt>),
     ScrollLeft,
     ScrollRight,
     Select(DateTime<Local>),
@@ -37,8 +36,8 @@ pub enum Message {
 
 pub struct Transactions {
     pure_state: State,
-    receipts: IndexMap<DateTime<Local>, Receipt<Message>>,
-    selected: Option<(DateTime<Local>, Receipt<Message>)>,
+    receipts: IndexMap<DateTime<Local>, Receipt>,
+    selected: Option<(DateTime<Local>, Receipt)>,
     offset: usize,
 }
 
@@ -88,18 +87,19 @@ impl Screen for Transactions {
                                 ))
                             })?
                             .map(|res| {
-                                res.map(|(time, item, num, price, special, method)| {
+                                res.map(|(time, name, num, price, special, method)| {
                                     (
                                         time,
-                                        match (item, special) {
-                                            (name, true) => Item::Special { name, price: num },
-                                            (name, false) => Item::Regular { name, price, num },
+                                        Item {
+                                            name,
+                                            price,
+                                            num: (!special).then(|| num),
                                         },
                                         method,
                                     )
                                 })
                             })
-                            .fold(Ok(IndexMap::<_, Receipt<Message>, _>::new()), |hm, res| {
+                            .fold(Ok(IndexMap::<_, Receipt, _>::new()), |hm, res| {
                                 hm.and_then(|mut hm| {
                                     res.map(|(time, item, method)| {
                                         match hm.get_mut(&time) {
@@ -107,10 +107,7 @@ impl Screen for Transactions {
                                             None => {
                                                 let mut receipt = Receipt::new(method);
                                                 receipt.add(item);
-                                                hm.insert(
-                                                    time,
-                                                    receipt.on_press(Message::Select(time)),
-                                                );
+                                                hm.insert(time, receipt);
                                             }
                                         }
                                         hm
@@ -139,7 +136,7 @@ impl Screen for Transactions {
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
                     return Command::perform(
-                        print::print((**receipt).clone(), *time),
+                        print::print((*receipt).clone(), *time),
                         |r| match r {
                             Ok(_) => Message::Deselect.into(),
                             Err(e) => super::Message::Error(e),
@@ -159,7 +156,7 @@ impl Screen for Transactions {
                 .push(
                     Container::new(
                         self.receipts
-                            .values_mut()
+                            .iter_mut()
                             .skip(self.offset * 3)
                             .take(3)
                             .fold(
@@ -175,11 +172,13 @@ impl Screen for Transactions {
                                     .height(Length::Fill)
                                     .on_press(Message::ScrollLeft),
                                 ),
-                                |row, rec| {
+                                |row, (t, rec)| {
                                     row.push(
-                                        Container::new(rec.view())
-                                            .padding(DEF_PADDING)
-                                            .style(BORDERED),
+                                        Container::new(
+                                            rec.as_widget().on_press(Message::Select(*t)),
+                                        )
+                                        .padding(DEF_PADDING)
+                                        .style(BORDERED),
                                     )
                                 },
                             )
@@ -204,7 +203,7 @@ impl Screen for Transactions {
                 .push(Rule::vertical(DEF_PADDING))
                 .push(
                     match &mut self.selected {
-                        Some((_, rec)) => Column::new().push(rec.view()),
+                        Some((_, rec)) => Column::new().push(rec.as_widget()),
                         None => Column::new()
                             .push(Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill)),
                     }
