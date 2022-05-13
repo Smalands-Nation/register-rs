@@ -111,7 +111,7 @@ where
                             Text::new(format!("{} kr", i.inner.price))
                                 .size(SMALL_TEXT)
                                 .width(Length::Fill)
-                                .horizontal_alignment(Horizontal::Right),
+                                .horizontal_alignment(Horizontal::Left),
                         ),
                         Some(n) => Row::new()
                             .push(Text::new(format!("{}x{} kr", n, i.inner.price)).size(SMALL_TEXT))
