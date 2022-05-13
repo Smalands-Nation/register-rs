@@ -1,6 +1,6 @@
 [package]
 name = "smalands-rs"
-version = "0.4.1"
+version = "0.5.2"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2021"
 
@@ -18,11 +18,22 @@ serde = "1.0.117"
 serde_derive = "1.0.117"
 chrono = "0.4.19"
 dirs = "4.0.0"
-self_update = "0.27.0"
+iced_native = "0.5.0"
+iced_pure = "0.2.0"
+
+[dependencies.self_update]
+version = "0.27.0"
+features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]
 
 [dependencies.iced]
-version = "0.3.0"
-features = ["glow", "glow_canvas", "tokio"]
+version = "0.4.2"
+features = [
+    # "glow", 
+    "canvas", 
+    "tokio", 
+    "pure", 
+    "image"
+]
 
 [dependencies.rusqlite]
 version  = "0.26.3"
@@ -30,7 +41,8 @@ features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
 git = "https://github.com/iced-rs/iced_aw"
-branch = "main"
+# tag = "v0.1.0"
+rev = "045e16d"
 default-features = false
 features = ["tab_bar", "tabs", "modal", "card", "number_input", "date_picker"]
 
@@ -41,3 +53,8 @@ features = ["images"]
 [dependencies.indexmap]
 version = "1.7.0"
 features = ["serde-1"]
+
+# Metadata
+
+[workspace.metadata.workspaces]
+no_individual_tags = true

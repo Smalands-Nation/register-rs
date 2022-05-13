@@ -1,14 +1,14 @@
-use iced::{button, Element};
+use iced::pure::{widget::button, Element};
 
 pub struct Clickable;
 
 impl Clickable {
-    pub fn new<'a, M, E>(state: &'a mut button::State, e: E) -> button::Button<'a, M>
+    pub fn new<'a, M, E>(e: E) -> button::Button<'a, M>
     where
         M: Clone,
         E: Into<Element<'a, M>>,
     {
-        button::Button::new(state, e).style(Self)
+        button::Button::new(e).style(Self)
     }
 }
 

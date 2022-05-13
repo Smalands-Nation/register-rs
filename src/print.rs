@@ -121,13 +121,19 @@ fn receipt_path() -> Result<PathBuf> {
 
 #[cfg(target_os = "windows")]
 pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
-    let filename = create_pdf(receipt_path()?, &receipt, time).await?;
+    let filename = create_pdf(
+        receipt_path().map_err(|e| format!("receipt_path: {e:#?}"))?,
+        &receipt,
+        time,
+    )
+    .await
+    .map_err(|e| format!("create_pdf: {e:#?}"))?;
     let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
     pdf_to_printer.push("PDFtoPrinter.exe");
     if std::process::Command::new(pdf_to_printer)
         .args([filename])
         .output()
-        .map_err(|e| e.kind())?
+        .map_err(|e| format!("PDFtoPrinter: {:#?}", e.kind()))?
         .status
         .success()
     {

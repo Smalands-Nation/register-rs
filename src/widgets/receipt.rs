@@ -8,17 +8,17 @@ use {
     },
     core::ops::{Deref, DerefMut},
     iced::{
-        button,
-        scrollable::{self, Scrollable},
-        Column, Element, Length, Text,
+        pure::{
+            widget::{Column, Scrollable, Text},
+            Element,
+        },
+        Length,
     },
     indexmap::IndexMap,
 };
 
 #[derive(Debug, Clone)]
 pub struct Receipt<M> {
-    scroll: scrollable::State,
-    click: button::State,
     message: Option<M>,
     inner: receipt::Receipt,
 }
@@ -33,8 +33,6 @@ where
 
     pub fn new_from(items: IndexMap<String, Item>, sum: i32, payment: Payment) -> Self {
         Self {
-            scroll: scrollable::State::new(),
-            click: button::State::new(),
             message: None,
             inner: receipt::Receipt::new_from(items, sum, payment),
         }
@@ -47,19 +45,18 @@ where
 
     pub fn view(&mut self) -> Element<M> {
         let body = Clickable::new(
-            &mut self.click,
             Column::new()
                 .push(
-                    self.inner
-                        .items
-                        .values_mut()
-                        .fold(
-                            Scrollable::new(&mut self.scroll)
-                                .spacing(DEF_PADDING)
-                                .scrollbar_width(10),
-                            |col, item| col.push(item.view()),
-                        )
-                        .height(Length::Fill),
+                    Scrollable::new(
+                        self.inner
+                            .items
+                            .values_mut()
+                            .fold(Column::new().spacing(DEF_PADDING), |col, item| {
+                                col.push(item.view())
+                            }),
+                    )
+                    .scrollbar_width(10)
+                    .height(Length::Fill),
                 )
                 .push(Text::new(format!("Total: {}kr", self.inner.sum)))
                 .width(Length::Units(RECEIPT_WIDTH))

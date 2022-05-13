@@ -1,4 +1,7 @@
-use iced::{Align, Column, Element, Length, Row, Space};
+use iced::{
+    pure::{column, row, Element},
+    Alignment, Length, Space,
+};
 //TODO rewrite like row or column pr into iced_native
 
 pub struct Grid<'a, Message> {
@@ -73,26 +76,24 @@ impl<'a, Message> Grid<'a, Message> {
 
 impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
     fn from(g: Grid<'a, Message>) -> Self {
-        let mut col = Column::new()
-            .align_items(Align::Center)
+        let mut col = column()
+            .align_items(Alignment::Center)
             .width(g.width)
             .height(g.height)
             .padding(g.padding)
             .spacing(g.spacing)
-            .max_height(g.max_height)
+            //TODO .max_height(g.max_height)
             .max_width(g.max_width);
-        let mut r = Row::new()
-            .spacing(g.spacing)
-            .max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
+        let mut r = row().spacing(g.spacing);
+        //.max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
         let mut i = 0;
         for child in g.children {
             r = r.push(child);
             i += 1;
             if i == g.cols {
                 col = col.push(r);
-                r = Row::new()
-                    .spacing(g.spacing)
-                    .max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
+                r = row().spacing(g.spacing);
+                //.max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
                 i = 0;
             }
         }

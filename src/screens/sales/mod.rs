@@ -11,7 +11,14 @@ use {
     chrono::{Local, NaiveDate, TimeZone},
     iced::{
         button::{self, Button},
-        Align, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
+        pure::{
+            widget::{
+                Column as PColumn, Container as PContainer, Row as PRow, Space as PSpace,
+                Text as PText,
+            },
+            Pure, State,
+        },
+        Alignment, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
     },
     iced_aw::date_picker::Date,
     indexmap::IndexMap,
@@ -35,6 +42,7 @@ pub enum Message {
 }
 
 pub struct Sales {
+    pure_state: State,
     from: DatePicker,
     to: DatePicker,
     save: button::State,
@@ -48,6 +56,7 @@ impl Screen for Sales {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
+                pure_state: State::new(),
                 from: DatePicker::new(),
                 to: DatePicker::new(),
                 save: button::State::new(),
@@ -143,26 +152,29 @@ impl Screen for Sales {
     fn view(&mut self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Row::with_children(vec![
             if !self.receipts.is_empty() {
-                self.receipts
-                    .iter_mut()
-                    .fold(Row::new(), |row, (payment, rec)| {
-                        row.push(
-                            Container::new(
-                                Column::new()
-                                    .push(Text::new(*payment).size(BIG_TEXT))
-                                    .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
-                                    .push(rec.view())
-                                    .width(Length::Units(RECEIPT_WIDTH))
-                                    .padding(DEF_PADDING),
+                Pure::new(
+                    &mut self.pure_state,
+                    self.receipts
+                        .iter_mut()
+                        .fold(PRow::new(), |row, (payment, rec)| {
+                            row.push(
+                                PContainer::new(
+                                    PColumn::new()
+                                        .push(PText::new(*payment).size(BIG_TEXT))
+                                        .push(PSpace::new(Length::Fill, Length::Units(SMALL_TEXT)))
+                                        .push(rec.view())
+                                        .width(Length::Units(RECEIPT_WIDTH))
+                                        .padding(DEF_PADDING),
+                                )
+                                .style(BORDERED),
                             )
-                            .style(BORDERED),
-                        )
-                    })
-                    .width(Length::Fill)
-                    .align_items(Align::Center)
-                    .padding(DEF_PADDING)
-                    .spacing(DEF_PADDING)
-                    .into()
+                        })
+                        .width(Length::Fill)
+                        .align_items(Alignment::Center)
+                        .padding(DEF_PADDING)
+                        .spacing(DEF_PADDING),
+                )
+                .into()
             } else {
                 Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
                     .width(Length::Fill)

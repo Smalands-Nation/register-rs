@@ -13,10 +13,11 @@ use {
     },
     chrono::Local,
     iced::{
-        button::{self, Button},
-        scrollable::{self, Scrollable},
-        Align, Canvas, Checkbox, Column, Command, Container, Element, Length, Row, Rule, Space,
-        Text,
+        pure::{
+            widget::{Button, Checkbox, Column, Container, Row, Rule, Scrollable, Space, Text},
+            Pure, State,
+        },
+        Alignment, Command, Element, Length,
     },
     rusqlite::params,
     std::sync::Arc,
@@ -26,14 +27,11 @@ pub mod item;
 pub use item::Item;
 
 pub struct Menu {
+    pure_state: State,
     calc: Calc,
     menu: Vec<Item>,
     receipt: Receipt<Message>,
-    clear: button::State,
     print: bool,
-    swish: button::State,
-    paypal: button::State,
-    scroll: scrollable::State,
 }
 
 #[derive(Debug, Clone)]
@@ -54,14 +52,11 @@ impl Screen for Menu {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
+                pure_state: State::new(),
                 calc: Calc::new(),
                 menu: vec![],
                 receipt: Receipt::new(Payment::Swish),
-                clear: button::State::new(),
                 print: false,
-                swish: button::State::new(),
-                paypal: button::State::new(),
-                scroll: scrollable::State::new(),
             },
             command_now!(Message::Refresh.into()),
         )
@@ -137,17 +132,18 @@ impl Screen for Menu {
     }
 
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(Row::with_children(vec![
-            Container::new(self.calc.view().map(Message::Calc))
-                .padding(DEF_PADDING)
-                .center_x()
-                .center_y()
-                .width(Length::Units(RECEIPT_WIDTH))
-                .height(Length::Fill)
-                .into(),
-            Rule::vertical(DEF_PADDING).into(),
-            Scrollable::new(&mut self.scroll)
-                .push(
+        Into::<Element<Self::InMessage>>::into(Pure::new(
+            &mut self.pure_state,
+            Row::with_children(vec![
+                Container::new(self.calc.view().map(Message::Calc))
+                    .padding(DEF_PADDING)
+                    .center_x()
+                    .center_y()
+                    .width(Length::Units(RECEIPT_WIDTH))
+                    .height(Length::Fill)
+                    .into(),
+                Rule::vertical(DEF_PADDING).into(),
+                Scrollable::new(
                     Grid::with_children(
                         self.menu.len() as u32 / 3,
                         3,
@@ -157,43 +153,44 @@ impl Screen for Menu {
                     .spacing(DEF_PADDING)
                     .padding(DEF_PADDING),
                 )
-                .width(Length::Fill)
+                //NOTE not available on pure .width(Length::Fill)
+                //NOTE --||-- .spacing(DEF_PADDING)
+                //NOTE --||-- .padding(DEF_PADDING)
+                .into(),
+                Rule::vertical(DEF_PADDING).into(),
+                Column::with_children(vec![
+                    Row::new()
+                        .push(Text::new("Kvitto").size(BIG_TEXT))
+                        .push(Space::with_width(Length::Fill))
+                        .push(
+                            SquareButton::new(Text::from(Icon::Trash))
+                                .on_press(Message::ClearReceipt),
+                        )
+                        .align_items(Alignment::Center)
+                        .into(),
+                    self.receipt.view(),
+                    Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
+                    Row::with_children(vec![
+                        Button::new(Payment::Swish)
+                            .on_press(Message::Sell(Payment::Swish))
+                            .padding(DEF_PADDING)
+                            .width(Length::Fill)
+                            .into(),
+                        Button::new(Payment::Paypal)
+                            .on_press(Message::Sell(Payment::Paypal))
+                            .padding(DEF_PADDING)
+                            .width(Length::Fill)
+                            .into(),
+                    ])
+                    .spacing(DEF_PADDING)
+                    .into(),
+                ])
+                .width(Length::Units(RECEIPT_WIDTH))
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING)
                 .into(),
-            Rule::vertical(DEF_PADDING).into(),
-            Column::with_children(vec![
-                Row::new()
-                    .push(Text::new("Kvitto").size(BIG_TEXT))
-                    .push(Space::with_width(Length::Fill))
-                    .push(
-                        SquareButton::new(&mut self.clear, Text::from(Icon::Trash))
-                            .on_press(Message::ClearReceipt),
-                    )
-                    .align_items(Align::Center)
-                    .into(),
-                self.receipt.view(),
-                Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
-                Row::with_children(vec![
-                    Button::new(&mut self.swish, Canvas::new(Payment::Swish))
-                        .on_press(Message::Sell(Payment::Swish))
-                        .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
-                    Button::new(&mut self.paypal, Canvas::new(Payment::Paypal))
-                        .on_press(Message::Sell(Payment::Paypal))
-                        .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
-                ])
-                .spacing(DEF_PADDING)
-                .into(),
-            ])
-            .width(Length::Units(RECEIPT_WIDTH))
-            .spacing(DEF_PADDING)
-            .padding(DEF_PADDING)
-            .into(),
-        ]))
+            ]),
+        ))
         .map(Self::ExMessage::Menu)
     }
 }

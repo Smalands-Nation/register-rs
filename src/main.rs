@@ -11,9 +11,7 @@ use {
         },
         styles::{DEF_PADDING, DEF_TEXT, SMALL_TEXT},
     },
-    iced::{
-        window, Application, Clipboard, Column, Command, Element, Font, Length, Settings, Text,
-    },
+    iced::{window, Application, Column, Command, Element, Font, Length, Settings, Text},
     iced_aw::{
         modal::{self, Modal},
         Card, TabLabel, Tabs,
@@ -37,7 +35,7 @@ pub mod widgets;
 #[macro_export]
 macro_rules! command_now {
     ($msg:expr) => {
-        Command::perform(async { $msg }, |m| m)
+        Command::perform(async move { $msg }, |m| m)
     };
 }
 
@@ -115,7 +113,7 @@ impl Application for App {
         String::from("Kassa")
     }
 
-    fn update(&mut self, msg: Self::Message, _clip: &mut Clipboard) -> Command<Self::Message> {
+    fn update(&mut self, msg: Self::Message) -> Command<Self::Message> {
         match msg {
             Message::None => Command::none(),
             Message::SwapTab(n) => {

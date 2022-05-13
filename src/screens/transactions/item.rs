@@ -1,6 +1,13 @@
 use {
     crate::styles::{BORDERED, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
-    iced::{Column, Container, Element, HorizontalAlignment, Length, Row, Text},
+    iced::{
+        alignment::Horizontal,
+        pure::{
+            widget::{Column, Container, Row, Text},
+            Element,
+        },
+        Length,
+    },
     serde_derive::{Deserialize, Serialize},
 };
 
@@ -51,13 +58,13 @@ impl Item {
                             Text::new(format!("{} kr", *num * *price))
                                 .size(SMALL_TEXT)
                                 .width(Length::Fill)
-                                .horizontal_alignment(HorizontalAlignment::Right),
+                                .horizontal_alignment(Horizontal::Right),
                         ),
                     Self::Special { price, .. } => Row::new().push(
                         Text::new(format!("{} kr", price))
                             .size(SMALL_TEXT)
                             .width(Length::Fill)
-                            .horizontal_alignment(HorizontalAlignment::Right),
+                            .horizontal_alignment(Horizontal::Right),
                     ),
                 }),
         )

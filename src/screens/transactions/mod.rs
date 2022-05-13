@@ -9,7 +9,13 @@ use {
         widgets::{Clickable, Receipt, SquareButton},
     },
     chrono::{DateTime, Local},
-    iced::{button, Column, Command, Container, Element, Length, Row, Rule, Space, Text},
+    iced::{
+        pure::{
+            widget::{Column, Container, Row, Rule, Space, Text},
+            Pure, State,
+        },
+        Command, Element, Length,
+    },
     indexmap::IndexMap,
     rusqlite::params,
 };
@@ -30,10 +36,7 @@ pub enum Message {
 }
 
 pub struct Transactions {
-    left: button::State,
-    right: button::State,
-    deselect: button::State,
-    print: button::State,
+    pure_state: State,
     receipts: IndexMap<DateTime<Local>, Receipt<Message>>,
     selected: Option<(DateTime<Local>, Receipt<Message>)>,
     offset: usize,
@@ -46,10 +49,7 @@ impl Screen for Transactions {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                left: button::State::new(),
-                right: button::State::new(),
-                deselect: button::State::new(),
-                print: button::State::new(),
+                pure_state: State::new(),
                 receipts: IndexMap::new(),
                 selected: None,
                 offset: 0,
@@ -153,7 +153,8 @@ impl Screen for Transactions {
     }
 
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(
+        Into::<Element<Self::InMessage>>::into(Pure::new(
+            &mut self.pure_state,
             Row::new()
                 .push(
                     Container::new(
@@ -164,7 +165,6 @@ impl Screen for Transactions {
                             .fold(
                                 Row::new().push(
                                     Clickable::new(
-                                        &mut self.left,
                                         Container::new(Text::from(Icon::Left))
                                             .width(Length::Fill)
                                             .height(Length::Fill)
@@ -185,7 +185,6 @@ impl Screen for Transactions {
                             )
                             .push(
                                 Clickable::new(
-                                    &mut self.right,
                                     Container::new(Text::from(Icon::Right))
                                         .width(Length::Fill)
                                         .height(Length::Fill)
@@ -212,13 +211,12 @@ impl Screen for Transactions {
                     .push(
                         Row::new()
                             .push(
-                                SquareButton::new(&mut self.deselect, Text::from(Icon::Cross))
+                                SquareButton::new(Text::from(Icon::Cross))
                                     .on_press(Message::Deselect),
                             )
                             .push(Space::with_width(Length::Fill))
                             .push(
-                                SquareButton::new(&mut self.print, Text::from(Icon::Print))
-                                    .on_press(Message::Print),
+                                SquareButton::new(Text::from(Icon::Print)).on_press(Message::Print),
                             )
                             .padding(DEF_PADDING)
                             .spacing(DEF_PADDING),
@@ -226,7 +224,7 @@ impl Screen for Transactions {
                     .padding(DEF_PADDING)
                     .width(Length::Units(RECEIPT_WIDTH)),
                 ),
-        )
+        ))
         .map(Self::ExMessage::Transactions)
     }
 }

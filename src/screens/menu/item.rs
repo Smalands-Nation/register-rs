@@ -5,12 +5,17 @@ use {
         styles::{BORDERED, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
         widgets::Clickable,
     },
-    iced::{button, Column, Container, Element, Length, Text},
+    iced::{
+        pure::{
+            widget::{Column, Container, Text},
+            Element,
+        },
+        Length,
+    },
 };
 
 #[derive(Debug, Clone)]
 pub struct Item {
-    state: button::State,
     pub name: String,
     pub price: i32,
     pub special: bool,
@@ -19,7 +24,6 @@ pub struct Item {
 impl Item {
     pub fn new(name: &str, price: i32, special: bool) -> Self {
         Self {
-            state: button::State::new(),
             name: String::from(name),
             price,
             special,
@@ -44,7 +48,6 @@ impl Item {
     pub fn view(&mut self) -> Element<Message> {
         let clone = self.clone();
         Clickable::new(
-            &mut self.state,
             Container::new(
                 Column::new()
                     .spacing(SMALL_PADDING)
