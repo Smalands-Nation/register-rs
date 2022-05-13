@@ -1,6 +1,6 @@
 [package]
 name = "smalands-rs"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2021"
 
