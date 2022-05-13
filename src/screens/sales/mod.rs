@@ -4,9 +4,10 @@ use {
         command_now,
         payment::Payment,
         query,
+        receipt::Receipt,
         screens::transactions::Item,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
-        widgets::{DatePicker, Receipt},
+        widgets::DatePicker,
     },
     chrono::{Local, NaiveDate, TimeZone},
     iced::{
@@ -34,7 +35,7 @@ pub enum Picker {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Load(IndexMap<Payment, Receipt<Message>>),
+    Load(IndexMap<Payment, Receipt>),
     Save,
     OpenDate(Picker),
     UpdateDate(Picker, Date),
@@ -46,7 +47,7 @@ pub struct Sales {
     from: DatePicker,
     to: DatePicker,
     save: button::State,
-    receipts: IndexMap<Payment, Receipt<Message>>,
+    receipts: IndexMap<Payment, Receipt>,
 }
 
 impl Screen for Sales {
@@ -100,7 +101,7 @@ impl Screen for Sales {
                                     }, method)
                                 },
                             ))
-                            .fold(Ok(IndexMap::<_,Receipt<Message>,_>::new()), |hm, res| {
+                            .fold(Ok(IndexMap::<_,Receipt,_>::new()), |hm, res| {
                                 hm.and_then(|mut hm| {
                                     res.map(|( item, method)| {
                                         match hm.get_mut(&method) {
@@ -162,7 +163,7 @@ impl Screen for Sales {
                                     PColumn::new()
                                         .push(PText::new(*payment).size(BIG_TEXT))
                                         .push(PSpace::new(Length::Fill, Length::Units(SMALL_TEXT)))
-                                        .push(rec.view())
+                                        .push(rec.as_widget())
                                         .width(Length::Units(RECEIPT_WIDTH))
                                         .padding(DEF_PADDING),
                                 )

@@ -5,10 +5,11 @@ use {
         icons::Icon,
         payment::Payment,
         print, query,
+        receipt::Receipt,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
-            Grid, Receipt, SquareButton,
+            Grid, SquareButton,
         },
     },
     chrono::Local,
@@ -30,7 +31,7 @@ pub struct Menu {
     pure_state: State,
     calc: Calc,
     menu: Vec<Item>,
-    receipt: Receipt<Message>,
+    receipt: Receipt,
     print: bool,
 }
 
@@ -86,9 +87,9 @@ impl Screen for Menu {
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let receipt = (*self.receipt).clone();
+                let receipt = self.receipt.clone();
                 let should_print = self.print;
-                if self.receipt.len() > 0 {
+                if !self.receipt.is_empty() {
                     return Command::perform(
                         async move {
                             if should_print {
@@ -168,7 +169,7 @@ impl Screen for Menu {
                         )
                         .align_items(Alignment::Center)
                         .into(),
-                    self.receipt.view(),
+                    self.receipt.as_widget().into(),
                     Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
                     Row::with_children(vec![
                         Button::new(Payment::Swish)

@@ -1,5 +1,19 @@
 pub use crate::screens::transactions::Item;
-use {crate::payment::Payment, indexmap::IndexMap};
+use {
+    crate::{
+        payment::Payment,
+        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        widgets::Clickable,
+    },
+    iced::{
+        pure::{
+            widget::{Column, Scrollable, Text},
+            Element,
+        },
+        Length,
+    },
+    indexmap::IndexMap,
+};
 
 #[derive(Debug, Clone)]
 pub struct Receipt {
@@ -55,5 +69,61 @@ impl Receipt {
 
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
+    }
+
+    pub fn as_widget<M>(&mut self) -> ReceiptWidget<M> {
+        ReceiptWidget {
+            message: None,
+            inner: self,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ReceiptWidget<'a, M> {
+    message: Option<M>,
+    inner: &'a mut Receipt,
+}
+
+impl<'a, M> ReceiptWidget<'a, M>
+where
+    M: Clone + 'a,
+{
+    pub fn on_press(mut self, msg: M) -> Self {
+        self.message = Some(msg);
+        self
+    }
+}
+
+impl<'a, M> From<ReceiptWidget<'a, M>> for Element<'a, M>
+where
+    M: Clone + 'a,
+{
+    fn from(r: ReceiptWidget<'a, M>) -> Self {
+        let body = Clickable::new(
+            Column::new()
+                .push(
+                    Scrollable::new(
+                        r.inner
+                            .items
+                            .values_mut()
+                            .fold(Column::new().spacing(DEF_PADDING), |col, item| {
+                                col.push(item.view())
+                            }),
+                    )
+                    .scrollbar_width(10)
+                    .height(Length::Fill),
+                )
+                .push(Text::new(format!("Total: {}kr", r.inner.sum)))
+                .width(Length::Units(RECEIPT_WIDTH))
+                .spacing(DEF_PADDING),
+        )
+        .padding(0)
+        .height(Length::Fill);
+        match &r.message {
+            Some(msg) => body.on_press(msg.clone()),
+            None => body,
+        }
+        .into()
     }
 }
