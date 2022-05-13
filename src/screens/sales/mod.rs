@@ -2,10 +2,10 @@ use {
     super::Screen,
     crate::{
         command_now,
+        item::Item,
         payment::Payment,
         query,
         receipt::Receipt,
-        screens::transactions::Item,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::DatePicker,
     },
@@ -94,11 +94,12 @@ impl Screen for Sales {
                 ),
                 Message::Load;
                 iter.map(|res| res.map(
-                                    |(item, num, price, special, method)| {
-                                    (match (item, special) {
-                                        (name, true) => Item::Special{name, price: num},
-                                        (name, false) => Item::Regular{name, price, num},
-                                    }, method)
+                                    |(name, num, price, special, method)| {
+                                    (Item {
+                                         name,
+                                            price,
+                                            num: (!special).then(|| num),
+                                        }, method)
                                 },
                             ))
                             .fold(Ok(IndexMap::<_,Receipt,_>::new()), |hm, res| {

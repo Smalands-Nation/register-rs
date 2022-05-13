@@ -23,6 +23,7 @@ use {
 pub mod config;
 pub mod error;
 pub mod icons;
+pub mod item;
 pub mod payment;
 pub mod print;
 pub mod receipt;

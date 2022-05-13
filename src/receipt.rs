@@ -1,6 +1,6 @@
-pub use crate::screens::transactions::Item;
 use {
     crate::{
+        item::Item,
         payment::Payment,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::Clickable,
@@ -37,30 +37,20 @@ impl Receipt {
 
     pub fn add(&mut self, item: Item) {
         self.sum += item.price_total();
-        match self.items.get_mut(&item.name()) {
+        match self.items.get_mut(&item.name) {
             Some(it) => {
-                *it = match it.clone() {
-                    Item::Regular { name, price, num } => Item::Regular {
-                        name,
-                        price,
-                        num: num + item.num(),
-                    },
-                    Item::Special { name, price } => Item::Special {
-                        name,
-                        price: price + item.num(),
-                    },
-                };
+                *it += item;
             }
             None => {
-                self.items.insert(item.name(), item);
+                self.items.insert(item.name.clone(), item);
             }
         }
-        self.items.sort_by(|_, v1, _, v2| match (v1, v2) {
-            (Item::Regular { .. }, Item::Regular { .. })
-            | (Item::Special { .. }, Item::Special { .. }) => std::cmp::Ordering::Equal,
-            (Item::Regular { .. }, Item::Special { .. }) => std::cmp::Ordering::Less,
-            (Item::Special { .. }, Item::Regular { .. }) => std::cmp::Ordering::Greater,
-        });
+        self.items
+            .sort_by(|_, v1, _, v2| match (v1.special(), v2.special()) {
+                (false, false) | (true, true) => std::cmp::Ordering::Equal,
+                (false, true) => std::cmp::Ordering::Less,
+                (true, false) => std::cmp::Ordering::Greater,
+            });
     }
 
     pub fn len(&self) -> usize {
@@ -108,7 +98,7 @@ where
                             .items
                             .values_mut()
                             .fold(Column::new().spacing(DEF_PADDING), |col, item| {
-                                col.push(item.view())
+                                col.push(item.as_widget())
                             }),
                     )
                     .scrollbar_width(10)

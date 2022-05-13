@@ -3,6 +3,7 @@ use {
     crate::{
         command_now,
         icons::Icon,
+        item::Item,
         payment::Payment,
         print,
         receipt::Receipt,
@@ -20,9 +21,6 @@ use {
     indexmap::IndexMap,
     rusqlite::params,
 };
-
-pub mod item;
-pub use item::Item;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -89,12 +87,13 @@ impl Screen for Transactions {
                                 ))
                             })?
                             .map(|res| {
-                                res.map(|(time, item, num, price, special, method)| {
+                                res.map(|(time, name, num, price, special, method)| {
                                     (
                                         time,
-                                        match (item, special) {
-                                            (name, true) => Item::Special { name, price: num },
-                                            (name, false) => Item::Regular { name, price, num },
+                                        Item {
+                                            name,
+                                            price,
+                                            num: (!special).then(|| num),
                                         },
                                         method,
                                     )
