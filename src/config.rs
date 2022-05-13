@@ -20,15 +20,15 @@ pub fn init_db() -> Result<Connection> {
     }
 }
 
-#[cfg(feature = "update")]
+#[cfg(not(debug_assertions))]
 use self_update::{backends::github, cargo_crate_version};
 
-#[cfg(feature = "update")]
+#[cfg(not(debug_assertions))]
 pub fn update() -> Result<()> {
     let status = github::Update::configure()
         .repo_owner("Smalands-Nation")
         .repo_name("register-rs")
-        .bin_name("register-rs")
+        .bin_name("smalands-rs")
         .show_output(false)
         .no_confirm(true)
         .current_version(cargo_crate_version!())
@@ -38,7 +38,7 @@ pub fn update() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(feature = "update"))]
+#[cfg(debug_assertions)]
 pub fn update() -> Result<()> {
     Ok(())
 }

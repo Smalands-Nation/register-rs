@@ -18,7 +18,10 @@ serde = "1.0.117"
 serde_derive = "1.0.117"
 chrono = "0.4.19"
 dirs = "4.0.0"
-self_update = "0.27.0"
+
+[dependencies.self_update]
+version = "0.27.0"
+features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]
 
 [dependencies.iced]
 version = "0.3.0"
@@ -30,7 +33,7 @@ features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
 git = "https://github.com/iced-rs/iced_aw"
-branch = "main"
+tag = "v0.1.0"
 default-features = false
 features = ["tab_bar", "tabs", "modal", "card", "number_input", "date_picker"]
 
@@ -41,3 +44,8 @@ features = ["images"]
 [dependencies.indexmap]
 version = "1.7.0"
 features = ["serde-1"]
+
+# Metadata
+
+[workspace.metadata.workspaces]
+no_individual_tags = true
