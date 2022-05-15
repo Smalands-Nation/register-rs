@@ -1,6 +1,9 @@
 use {
     super::{Grid, SquareButton},
-    crate::styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+    crate::{
+        icons::Icon,
+        styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+    },
     iced::{
         alignment::{Alignment, Horizontal},
         pure::{
@@ -79,7 +82,7 @@ impl Calc {
                                 10 => {
                                     SquareButton::new(Text::new("0")).on_press(Message::Update(0))
                                 }
-                                _ => SquareButton::new(Text::new("x")).on_press(Message::Save),
+                                _ => SquareButton::new(Icon::Cross).on_press(Message::Save),
                             }
                             .into()
                         })

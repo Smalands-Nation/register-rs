@@ -162,7 +162,7 @@ impl Screen for Transactions {
                             .fold(
                                 Row::new().push(
                                     Clickable::new(
-                                        Container::new(Text::from(Icon::Left))
+                                        Container::new(Icon::Left)
                                             .width(Length::Fill)
                                             .height(Length::Fill)
                                             .center_x()
@@ -184,7 +184,7 @@ impl Screen for Transactions {
                             )
                             .push(
                                 Clickable::new(
-                                    Container::new(Text::from(Icon::Right))
+                                    Container::new(Icon::Right)
                                         .width(Length::Fill)
                                         .height(Length::Fill)
                                         .center_x()
@@ -209,14 +209,9 @@ impl Screen for Transactions {
                     }
                     .push(
                         Row::new()
-                            .push(
-                                SquareButton::new(Text::from(Icon::Cross))
-                                    .on_press(Message::Deselect),
-                            )
+                            .push(SquareButton::new(Icon::Cross).on_press(Message::Deselect))
                             .push(Space::with_width(Length::Fill))
-                            .push(
-                                SquareButton::new(Text::from(Icon::Print)).on_press(Message::Print),
-                            )
+                            .push(SquareButton::new(Icon::Print).on_press(Message::Print))
                             .padding(DEF_PADDING)
                             .spacing(DEF_PADDING),
                     )
