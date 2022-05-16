@@ -9,9 +9,11 @@ use {
             transactions::{self, Transactions},
             Message, Screen,
         },
-        styles::{DEF_PADDING, DEF_TEXT, SMALL_TEXT},
+        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, SMALL_TEXT, TABS},
     },
-    iced::{window, Application, Column, Command, Element, Font, Length, Settings, Text},
+    iced::{
+        window, Application, Column, Command, Container, Element, Font, Length, Settings, Text,
+    },
     iced_aw::{
         modal::{self, Modal},
         Card, TabLabel, Tabs,
@@ -19,6 +21,9 @@ use {
     rusqlite::Connection,
     std::sync::{Arc, Mutex},
 };
+
+//TODO use iced_aw::pure and remove uses of pure
+//TODO use iced_aw::Grid (needs pure)
 
 pub mod config;
 pub mod error;
@@ -159,25 +164,30 @@ impl Application for App {
         Modal::new(
             &mut self.err,
             Column::new().push(
-                Tabs::new(self.tab, Message::SwapTab)
-                    .icon_font(icons::ICON_FONT)
-                    .height(Length::Shrink)
-                    .push(
-                        TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
-                        self.menu.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                        self.transactions.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                        self.sales.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                        self.manager.view(),
-                    ),
+                Container::new(
+                    Tabs::new(self.tab, Message::SwapTab)
+                        .icon_font(icons::ICON_FONT)
+                        .height(Length::Shrink)
+                        .tab_bar_style(TABS)
+                        .push(
+                            TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
+                            self.menu.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
+                            self.transactions.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                            self.sales.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                            self.manager.view(),
+                        ),
+                )
+                .style(TABS)
+                .padding(BORDER_WIDTH as u16),
             ),
             |state| {
                 Card::new(
