@@ -47,21 +47,16 @@ impl std::ops::Add<Item> for Item {
     type Output = Self;
     fn add(self, rhs: Item) -> Self::Output {
         if self.name != rhs.name {
-            unreachable!("Tried to add different items");
+            unreachable!("Tried to add different items:\n'{:#?}'\n'{:#?}'", self, rhs);
         }
         Self {
-            /*
-            name: self.name,
+            name: self.name.clone(),
             price: if self.special() {
                 self.price + rhs.price
             } else {
                 self.price
             },
             num: (|| -> Option<i32> { Some(self.num? + rhs.num?) })(),
-            */
-            name: String::new(),
-            price: 0,
-            num: None,
         }
     }
 }
