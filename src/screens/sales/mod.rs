@@ -1,7 +1,7 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         item::Item,
         payment::Payment,
         receipt::Receipt,
@@ -63,7 +63,7 @@ impl Screen for Sales {
                 save: button::State::new(),
                 receipts: IndexMap::new(),
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -130,7 +130,7 @@ impl Screen for Sales {
                 };
                 p.update(d);
                 p.state.show(false);
-                return command_now!(Message::Refresh.into());
+                return command!(Message::Refresh);
             }
             Message::CloseDate(p) => {
                 match p {
@@ -139,7 +139,7 @@ impl Screen for Sales {
                 }
                 .state
                 .show(false);
-                return command_now!(Message::Refresh.into());
+                return command!(Message::Refresh);
             }
         }
         Command::none()

@@ -64,28 +64,22 @@ pub trait Screen: Sized {
 #[macro_export]
 macro_rules! sql {
     ($sql:literal, $params:expr, $msg:expr) => {
-        Command::perform(
-            async move {
-                crate::DB.lock().await.execute($sql, $params)?;
-                Ok($msg)
-            },
-            crate::screens::Message::from,
-        )
+        crate::command!({
+            crate::DB.lock().await.execute($sql, $params)?;
+            Ok($msg)
+        })
     };
 
     ($sql:literal, $params:expr, $map_row:expr, $collect:ty, $msg:expr) => {
-        Command::perform(
-            async move {
-                Ok($msg(
-                    crate::DB
-                        .lock()
-                        .await
-                        .prepare($sql)?
-                        .query_map($params, $map_row)?
-                        .collect::<std::result::Result<$collect, rusqlite::Error>>()?,
-                ))
-            },
-            crate::screens::Message::from,
-        )
+        crate::command!({
+            Ok($msg(
+                crate::DB
+                    .lock()
+                    .await
+                    .prepare($sql)?
+                    .query_map($params, $map_row)?
+                    .collect::<std::result::Result<$collect, rusqlite::Error>>()?,
+            ))
+        })
     };
 }

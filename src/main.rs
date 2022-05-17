@@ -27,8 +27,6 @@ use {
 //TODO use iced_aw::pure and remove uses of pure
 //TODO use iced_aw::Grid (needs pure)
 
-//TODO use command_now more consistently
-
 pub mod config;
 pub mod error;
 pub mod icons;
@@ -43,9 +41,9 @@ pub mod styles;
 pub mod widgets;
 
 #[macro_export]
-macro_rules! command_now {
+macro_rules! command {
     ($msg:expr) => {
-        Command::perform(async move { $msg }, |m| m)
+        Command::perform(async move { $msg }, crate::screens::Message::from)
     };
 }
 
@@ -89,10 +87,7 @@ impl Application for App {
     type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = vec![command_now!(match config::update() {
-            Ok(_) => Self::Message::None,
-            Err(e) => Self::Message::Error(e),
-        })];
+        let mut cmds = vec![command!(config::update().map(|_| Self::Message::None))];
 
         let (menu, mcmd) = Menu::new();
         cmds.push(mcmd);
@@ -141,8 +136,8 @@ impl Application for App {
                 Command::none()
             }
             Message::Error(e) => {
+                println!("Message::Error({:#?})", e);
                 *self.err.inner_mut() = Some(e);
-                //TODO add logging here
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),

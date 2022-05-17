@@ -1,7 +1,7 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
         item::Item,
         sql,
@@ -75,7 +75,7 @@ where
                 name: String::new(),
                 price: NumberInput::new(),
             },
-            command_now!(Message::Refresh(true).into()),
+            command!(Message::Refresh(true)),
         )
     }
 
@@ -100,8 +100,8 @@ where
                             Vec<_>,
                             Message::LoadMenu
                         ),
-                        command_now!(Message::Cancel.into()),
-                        command_now!(Message::Lock.into()),
+                        command!(Message::Cancel),
+                        command!(Message::Lock),
                     ]
                     .into_iter()
                     .take(if lock { 3 } else { 2 }),
@@ -171,7 +171,7 @@ where
             //No password in debug mode
             #[cfg(debug_assertions)]
             Message::Login => {
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::CloseLogin);
             }
             //Use env for password
             #[cfg(not(debug_assertions))]
@@ -181,16 +181,15 @@ where
                     Message::Unlock
                 } else {
                     Message::Lock
-                }
-                .into());
+                });
             }
             Message::Lock => {
                 self.locked = true;
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::CloseLogin);
             }
             Message::Unlock => {
                 self.locked = false;
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::CloseLogin);
             }
         }
         Command::none()
@@ -225,9 +224,6 @@ where
                         .spacing(DEF_PADDING)
                         .padding(DEF_PADDING),
                     )
-                    //.scroller_width(Length::Fill) //NOTE not sure if correct field
-                    //.spacing(DEF_PADDING)
-                    //.padding(DEF_PADDING)
                     .into(),
                     Rule::vertical(DEF_PADDING).into(),
                     Column::with_children(vec![
@@ -296,6 +292,7 @@ where
                             TextInput::new("", password, Message::UpdatePassword)
                                 .password()
                                 .padding(DEF_PADDING)
+                                .on_submit(Message::Login)
                                 .into(),
                             Button::new(Text::new("Logga In"))
                                 .on_press(Message::Login)

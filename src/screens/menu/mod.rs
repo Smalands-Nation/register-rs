@@ -1,7 +1,7 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
         item::Item,
         payment::Payment,
@@ -57,7 +57,7 @@ impl Screen for Menu {
                 receipt: Receipt::new(Payment::Swish),
                 print: false,
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -95,46 +95,40 @@ impl Screen for Menu {
                 let should_print = self.print;
                 if !self.receipt.is_empty() {
                     return Command::batch([
-                        Command::perform(
-                            async move {
-                                if should_print {
-                                    print::print(receipt1, Local::now())
-                                        .await
-                                        .map(|_| Message::Refresh)
-                                } else {
-                                    Ok(Message::Refresh)
-                                }
-                            },
-                            Self::ExMessage::from,
-                        ),
-                        Command::perform(
-                            async move {
-                                let time = Local::now();
+                        command!({
+                            if should_print {
+                                print::print(receipt1, Local::now())
+                                    .await
+                                    .map(|_| Message::Refresh)
+                            } else {
+                                Ok(Message::Refresh)
+                            }
+                        }),
+                        command!({
+                            let time = Local::now();
 
-                                let con = crate::DB.lock().await;
+                            let con = crate::DB.lock().await;
 
-                                con.execute(
-                                    "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
-                                    params![time, String::from(p)],
-                                )?;
+                            con.execute(
+                                "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+                                params![time, String::from(p)],
+                            )?;
 
-                                let mut stmt = con.prepare(
-                                    "INSERT INTO receipt_item (receipt, item, amount) \
+                            let mut stmt = con.prepare(
+                                "INSERT INTO receipt_item (receipt, item, amount) \
                                             VALUES (?1, ?2, ?3)",
-                                )?;
+                            )?;
 
-                                for item in receipt2.items.values() {
-                                    stmt.execute(params![
-                                        time,
-                                        item.name,
-                                        item.num.unwrap_or(item.price)
-                                    ])?;
-                                }
+                            for item in receipt2.items.values() {
+                                stmt.execute(params![
+                                    time,
+                                    item.name,
+                                    item.num.unwrap_or(item.price)
+                                ])?;
+                            }
 
-                                Ok(Message::ClearReceipt)
-                            },
-                            Self::ExMessage::from,
-                        ),
+                            Ok(Message::ClearReceipt)
+                        }),
                     ]);
                 }
             }
@@ -170,9 +164,6 @@ impl Screen for Menu {
                     .spacing(DEF_PADDING)
                     .padding(DEF_PADDING),
                 )
-                //NOTE not available on pure .width(Length::Fill)
-                //NOTE --||-- .spacing(DEF_PADDING)
-                //NOTE --||-- .padding(DEF_PADDING)
                 .into(),
                 Rule::vertical(DEF_PADDING).into(),
                 Column::with_children(vec![

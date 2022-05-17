@@ -1,7 +1,7 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
         item::Item,
         payment::Payment,
@@ -54,7 +54,7 @@ impl Screen for Transactions {
                 selected: None,
                 offset: 0,
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -114,13 +114,9 @@ impl Screen for Transactions {
             Message::Deselect => self.selected = None,
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
-                    return Command::perform(
-                        print::print((*receipt).clone(), *time),
-                        |r| match r {
-                            Ok(_) => Message::Deselect.into(),
-                            Err(e) => super::Message::Error(e),
-                        },
-                    );
+                    return Command::perform(print::print(receipt.clone(), *time), |r| {
+                        r.map(|_| Message::Deselect).into()
+                    });
                 }
             }
             _ => (),
