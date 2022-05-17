@@ -1,5 +1,5 @@
 use {
-    super::{db, Screen},
+    super::Screen,
     crate::{
         command_now,
         icons::Icon,
@@ -7,13 +7,14 @@ use {
         payment::Payment,
         print,
         receipt::Receipt,
+        sql,
         styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Clickable, SquareButton},
     },
     chrono::{DateTime, Local},
     iced::{
         pure::{
-            widget::{Column, Container, Row, Rule, Space, Text},
+            widget::{Column, Container, Row, Rule, Space},
             Pure, State,
         },
         Command, Element, Length,
@@ -25,7 +26,7 @@ use {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(IndexMap<DateTime<Local>, Receipt>),
+    Init(Vec<(DateTime<Local>, Item, Payment)>),
     Append(IndexMap<DateTime<Local>, Receipt>),
     ScrollLeft,
     ScrollRight,
@@ -60,65 +61,43 @@ impl Screen for Transactions {
     fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                return db(|con| {
-                    Ok(Message::Init(
-                        con.lock()
-                            .unwrap()
-                            .prepare(
-                                "SELECT * FROM receipts_view \
-                                    WHERE time > date('now','-1 day') ORDER BY time DESC",
-                            )? //All receipts from last 24h, potentially bad for performance
-                            .query_map(params![], |row| {
-                                Ok((
-                                    //God hates me so all of these are type annotated
-                                    //time
-                                    row.get::<usize, DateTime<Local>>(0)?,
-                                    //item
-                                    row.get::<usize, String>(1)?,
-                                    //amount
-                                    row.get::<usize, i32>(2)?,
-                                    //price
-                                    row.get::<usize, i32>(3)?,
-                                    //special
-                                    row.get::<usize, bool>(4)?,
-                                    //method
-                                    Payment::try_from(row.get::<usize, String>(5)?)
-                                        .unwrap_or_default(),
-                                ))
-                            })?
-                            .map(|res| {
-                                res.map(|(time, name, num, price, special, method)| {
-                                    (
-                                        time,
-                                        Item {
-                                            name,
-                                            price,
-                                            num: (!special).then(|| num),
-                                        },
-                                        method,
-                                    )
-                                })
-                            })
-                            .fold(Ok(IndexMap::<_, Receipt, _>::new()), |hm, res| {
-                                hm.and_then(|mut hm| {
-                                    res.map(|(time, item, method)| {
-                                        match hm.get_mut(&time) {
-                                            Some(receipt) => (*receipt).add(item),
-                                            None => {
-                                                let mut receipt = Receipt::new(method);
-                                                receipt.add(item);
-                                                hm.insert(time, receipt);
-                                            }
-                                        }
-                                        hm
-                                    })
-                                })
-                            })?,
-                    )
-                    .into())
-                });
+                return sql!(
+                    "SELECT * FROM receipts_view \
+                    WHERE time > date('now','-1 day') ORDER BY time DESC",
+                    params![],
+                    |row| {
+                        //God hates me so all of these are type annotated
+                        let num = row.get::<_, i32>("amount")?;
+                        Ok((
+                            row.get::<_, DateTime<Local>>("time")?,
+                            Item {
+                                name: row.get("item")?,
+                                price: row.get("price")?,
+                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                            },
+                            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
+                        ))
+                    },
+                    Vec<_>,
+                    Message::Init
+                );
             }
-            Message::Init(map) => self.receipts = map,
+            Message::Init(map) => {
+                self.receipts = map.into_iter().fold(
+                    IndexMap::<_, Receipt, _>::new(),
+                    |mut hm, (time, item, method)| {
+                        match hm.get_mut(&time) {
+                            Some(receipt) => (*receipt).add(item),
+                            None => {
+                                let mut receipt = Receipt::new(method);
+                                receipt.add(item);
+                                hm.insert(time, receipt);
+                            }
+                        }
+                        hm
+                    },
+                );
+            }
             Message::Append(map) => self.receipts.extend(map),
             Message::ScrollLeft if self.offset > 0 => self.offset -= 1,
             Message::ScrollRight

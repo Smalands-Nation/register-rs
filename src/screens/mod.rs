@@ -4,14 +4,9 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::{
-        command_now,
-        error::{Error, Result},
-    },
+    crate::error::{Error, Result},
     giftwrap::Wrap,
     iced::{Command, Element},
-    rusqlite::Connection,
-    std::sync::{Arc, Mutex},
 };
 pub use {manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
@@ -21,8 +16,6 @@ pub enum Message {
     None,
     #[noWrap]
     SwapTab(usize),
-    #[noWrap]
-    DB(Arc<dyn Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync>),
     #[noWrap]
     CloseModal,
     Error(Error),
@@ -37,13 +30,24 @@ impl std::fmt::Debug for Message {
         match self {
             Self::None => write!(f, "None"),
             Self::SwapTab(n) => write!(f, "SwapTab({:?})", n),
-            Self::DB(_) => write!(f, "DB(_)"),
             Self::CloseModal => write!(f, "CloseModal"),
             Self::Error(n) => write!(f, "Error({:?})", n),
             Self::Menu(n) => write!(f, "Menu({:?})", n),
             Self::Transactions(n) => write!(f, "Transactions({:?})", n),
             Self::Manager(n) => write!(f, "Manager({:?})", n),
             Self::Sales(n) => write!(f, "Sales({:?})", n),
+        }
+    }
+}
+
+impl<T> From<Result<T>> for Message
+where
+    T: Into<Message>,
+{
+    fn from(r: Result<T>) -> Self {
+        match r {
+            Ok(t) => t.into(),
+            Err(e) => e.into(),
         }
     }
 }
@@ -57,40 +61,31 @@ pub trait Screen: Sized {
     fn view(&mut self) -> Element<Self::ExMessage>;
 }
 
-pub fn db<FN>(func: FN) -> Command<Message>
-where
-    FN: Fn(Arc<Mutex<Connection>>) -> Result<Message> + Send + Sync + 'static,
-{
-    command_now!(Message::DB(Arc::new(func)))
-}
-
 #[macro_export]
-macro_rules! query {
-
-    ($query:expr, $row:ident => $item:expr, $msg:expr) => {
-        query!($query, params![], $row => $item, $msg)
+macro_rules! sql {
+    ($sql:literal, $params:expr, $msg:expr) => {
+        Command::perform(
+            async move {
+                crate::DB.lock().await.execute($sql, $params)?;
+                Ok($msg)
+            },
+            crate::screens::Message::from,
+        )
     };
 
-    ($query:expr, $params:expr, $row:ident => $item:expr, $msg:expr) => {
-        query!($query, $params, $row => $item, $msg; iter.collect::<Result<_, _>>()?)
+    ($sql:literal, $params:expr, $map_row:expr, $collect:ty, $msg:expr) => {
+        Command::perform(
+            async move {
+                Ok($msg(
+                    crate::DB
+                        .lock()
+                        .await
+                        .prepare($sql)?
+                        .query_map($params, $map_row)?
+                        .collect::<std::result::Result<$collect, rusqlite::Error>>()?,
+                ))
+            },
+            crate::screens::Message::from,
+        )
     };
-
-    ($query:expr, $row:ident => $item:expr, $msg:expr; iter$($iter:tt)*) => {
-        query!($query, params![], $row => $item, $msg; iter.$($iter)*)
-    };
-
-    ($query:expr, $params:expr, $row:ident => $item:expr, $msg:expr; iter$($iter:tt)*) => {
-        crate::screens::db(move |con| {
-            Ok($msg(
-                con.lock()
-                    .expect("Could not aquire lock on Connection Mutex")
-                    .prepare($query)?
-                    .query_map($params, |$row| {
-                        Ok($item)
-                    })?$($iter)*,
-            )
-            .into())
-        })
-    };
-
 }

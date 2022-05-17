@@ -5,8 +5,9 @@ use {
         icons::Icon,
         item::Item,
         payment::Payment,
-        print, query,
+        print,
         receipt::Receipt,
+        sql,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
@@ -22,7 +23,6 @@ use {
         Alignment, Command, Element, Length,
     },
     rusqlite::params,
-    std::sync::Arc,
 };
 
 pub struct Menu {
@@ -64,14 +64,18 @@ impl Screen for Menu {
     fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
         match message {
             Message::Refresh => {
-                return query!(
+                return sql!(
                     "SELECT name, price, special FROM menu \
                     WHERE available=true ORDER BY special ASC, name DESC",
-                    row => Item{
-                        name: row.get::<usize, String>(0)?,
-                        price: row.get(1)?,
-                        num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                    params![],
+                    |row| {
+                        Ok(Item {
+                            name: row.get::<usize, String>(0)?,
+                            price: row.get(1)?,
+                            num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                        })
                     },
+                    Vec<_>,
                     Message::LoadMenu
                 );
             }
@@ -86,22 +90,26 @@ impl Screen for Menu {
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
-                let receipt = self.receipt.clone();
+                let receipt1 = self.receipt.clone();
+                let receipt2 = self.receipt.clone();
                 let should_print = self.print;
                 if !self.receipt.is_empty() {
-                    return Command::perform(
-                        async move {
-                            if should_print {
-                                print::print(receipt, Local::now()).await
-                            } else {
-                                Ok(receipt)
-                            }
-                        },
-                        move |r| match r {
-                            Ok(receipt) => super::Message::DB(Arc::new(move |con| {
+                    return Command::batch([
+                        Command::perform(
+                            async move {
+                                if should_print {
+                                    print::print(receipt1, Local::now()).await
+                                } else {
+                                    Ok(receipt1)
+                                }
+                            },
+                            |_| Message::Refresh.into(),
+                        ),
+                        Command::perform(
+                            async move {
                                 let time = Local::now();
 
-                                let con = con.lock().unwrap();
+                                let con = crate::DB.lock().await;
 
                                 con.execute(
                                     "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
@@ -110,10 +118,10 @@ impl Screen for Menu {
 
                                 let mut stmt = con.prepare(
                                     "INSERT INTO receipt_item (receipt, item, amount) \
-                                    VALUES (?1, ?2, ?3)",
+                                            VALUES (?1, ?2, ?3)",
                                 )?;
 
-                                for item in receipt.items.values() {
+                                for item in receipt2.items.values() {
                                     stmt.execute(params![
                                         time,
                                         item.name,
@@ -121,11 +129,11 @@ impl Screen for Menu {
                                     ])?;
                                 }
 
-                                Ok(Message::ClearReceipt.into())
-                            })),
-                            Err(e) => super::Message::Error(e),
-                        },
-                    );
+                                Ok(Message::ClearReceipt)
+                            },
+                            Self::ExMessage::from,
+                        ),
+                    ]);
                 }
             }
             Message::LoadMenu(menu) => {

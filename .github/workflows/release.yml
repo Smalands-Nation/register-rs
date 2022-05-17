@@ -49,3 +49,4 @@ jobs:
         env:
           # (required)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}

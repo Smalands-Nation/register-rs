@@ -20,6 +20,7 @@ chrono = "0.4.19"
 dirs = "4.0.0"
 iced_native = "0.5.0"
 iced_pure = "0.2.0"
+lazy_static = "1.4.0"
 
 [dependencies.self_update]
 version = "0.27.0"
@@ -51,8 +52,12 @@ version = "0.2.0"
 features = ["images"]
 
 [dependencies.indexmap]
-version = "1.7.0"
+version = "1.8.1"
 features = ["serde-1"]
+
+[dependencies.tokio]
+version = "1.18.2"
+features  = ["sync"]
 
 # Metadata
 

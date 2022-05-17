@@ -1,10 +1,10 @@
 use {
-    super::{db, Screen},
+    super::Screen,
     crate::{
         command_now,
         icons::Icon,
         item::Item,
-        query,
+        sql,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton},
     },
@@ -84,16 +84,20 @@ where
             Message::Refresh(lock) => {
                 return Command::batch(
                     [
-                        query!(
+                        sql!(
                             "SELECT name, price, available FROM menu \
                             WHERE special = 0 ORDER BY name DESC",
-                            row => Item{
-                                name: row.get::<usize, String>(0)?,
-                                price: row.get(1)?,
-                                //None => unavailable
-                                //Some(0) => available
-                                num: row.get::<usize, bool>(2)?.then(|| 0),
+                            params![],
+                            |row| {
+                                Ok(Item {
+                                    name: row.get::<usize, String>(0)?,
+                                    price: row.get(1)?,
+                                    //None => unavailable
+                                    //Some(0) => available
+                                    num: row.get::<usize, bool>(2)?.then(|| 0),
+                                })
                             },
+                            Vec<_>,
                             Message::LoadMenu
                         ),
                         command_now!(Message::Cancel.into()),
@@ -107,14 +111,12 @@ where
                 if let Some(i) = self.menu.get_mut(i) {
                     i.num = a.then(|| 0);
                     let clone = i.clone();
-                    return db(move |con| {
-                        con.lock().unwrap().execute(
-                            "UPDATE menu SET available=?1 WHERE name=?2",
-                            //Non breaking space gang
-                            params![clone.num.is_some(), clone.name.replace(" ", "\u{00A0}")],
-                        )?;
-                        Ok(Message::Refresh(false).into())
-                    });
+                    return sql!(
+                        "UPDATE menu SET available=?1 WHERE name=?2",
+                        //Non breaking space gang
+                        params![clone.num.is_some(), clone.name.replace(" ", "\u{00A0}")],
+                        Message::Refresh(false)
+                    );
                 }
             }
             Message::LoadMenu(m) => {
@@ -140,24 +142,20 @@ where
                 let price = self.price.value().unwrap_or(0);
                 if !name.is_empty() {
                     return match &self.mode {
-                        Mode::New => db(move |con| {
-                            con.lock().unwrap().execute(
-                                "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
-                                //Non breaking space gang
-                                params![name.replace(" ", "\u{00A0}"), price],
-                            )?;
-                            Ok(Message::Refresh(false).into())
-                        }),
+                        Mode::New => sql!(
+                            "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
+                            //Non breaking space gang
+                            params![name.replace(" ", "\u{00A0}"), price],
+                            Message::Refresh(false)
+                        ),
                         Mode::Update(old_name) => {
                             let old_name = old_name.clone();
-                            db(move |con| {
-                                con.lock().unwrap().execute(
-                                    "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
-                                    //Non breaking space gang
-                                    params![name.replace(" ", "\u{00A0}"), price, old_name],
-                                )?;
-                                Ok(Message::Refresh(false).into())
-                            })
+                            sql!(
+                                "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
+                                //Non breaking space gang
+                                params![name.replace(" ", "\u{00A0}"), price, old_name],
+                                Message::Refresh(false)
+                            )
                         }
                     };
                 }
