@@ -4,8 +4,8 @@ use {
         command_now,
         item::Item,
         payment::Payment,
-        query,
         receipt::Receipt,
+        sql,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::DatePicker,
     },
@@ -35,7 +35,7 @@ pub enum Picker {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Load(IndexMap<Payment, Receipt>),
+    Load(Vec<(Item, Payment)>),
     Save,
     OpenDate(Picker),
     UpdateDate(Picker, Date),
@@ -76,50 +76,44 @@ impl Screen for Sales {
                 let to = Local
                     .from_local_datetime(&NaiveDate::from(self.to.value()).and_hms(23, 59, 59))
                     .unwrap();
-                return query!("SELECT item, amount, price, special, method FROM receipts_view \
+                return sql!(
+                    "SELECT item, amount, price, special, method FROM receipts_view \
                     WHERE time BETWEEN ?1 AND ?2",
-                params![from, to],
-                row => (
-                    //God hates me so all of these are type annotated
-                    //item
-                    row.get::<usize, String>(0)?,
-                    //amount
-                    row.get::<usize, i32>(1)?,
-                    //price
-                    row.get::<usize, i32>(2)?,
-                    //special
-                    row.get::<usize, bool>(3)?,
-                    //method
-                    Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-                ),
-                Message::Load;
-                iter.map(|res| res.map(
-                                    |(name, num, price, special, method)| {
-                                    (Item {
-                                         name,
-                                            price,
-                                            num: (!special).then(|| num),
-                                        }, method)
-                                },
-                            ))
-                            .fold(Ok(IndexMap::<_,Receipt,_>::new()), |hm, res| {
-                                hm.and_then(|mut hm| {
-                                    res.map(|( item, method)| {
-                                        match hm.get_mut(&method) {
-                                            Some(summary) => summary.add(item),
-                                            None => {
-                                                let mut summary = Receipt::new(method);
-                                                summary.add(item);
-                                                hm.insert(method, summary);
-                                                }
-                                            }
-                                        hm
-                                    })
-                                })
-                            })?
+                    params![from, to],
+                    |row| {
+                        //God hates me so all of these are type annotated
+                        let num = row.get::<_, i32>("amount")?;
+                        Ok((
+                            Item {
+                                name: row.get("item")?,
+                                price: row.get("price")?,
+                                //special
+                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                            },
+                            //method
+                            Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
+                        ))
+                    },
+                    Vec<(Item, Payment)>,
+                    Message::Load
                 );
             }
-            Message::Load(map) => self.receipts = map,
+            Message::Load(map) => {
+                self.receipts = map.into_iter().fold(
+                    IndexMap::<_, Receipt, _>::new(),
+                    |mut hm, (item, method)| {
+                        match hm.get_mut(&method) {
+                            Some(summary) => summary.add(item),
+                            None => {
+                                let mut summary = Receipt::new(method);
+                                summary.add(item);
+                                hm.insert(method, summary);
+                            }
+                        }
+                        hm
+                    },
+                );
+            }
             Message::Save => (),
             Message::OpenDate(p) => {
                 let p = match p {

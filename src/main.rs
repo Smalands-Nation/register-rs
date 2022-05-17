@@ -18,12 +18,16 @@ use {
         modal::{self, Modal},
         Card, TabLabel, Tabs,
     },
+    lazy_static::lazy_static,
     rusqlite::Connection,
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
+    tokio::sync::Mutex,
 };
 
 //TODO use iced_aw::pure and remove uses of pure
 //TODO use iced_aw::Grid (needs pure)
+
+//TODO use command_now more consistently
 
 pub mod config;
 pub mod error;
@@ -50,6 +54,11 @@ pub const FONT: Font = Font::External {
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
 
+lazy_static! {
+    pub static ref DB: Arc<Mutex<Connection>> =
+        Arc::new(Mutex::new(config::init_db().expect("Fatal db error")));
+}
+
 pub fn main() -> iced::Result {
     App::run(Settings {
         window: window::Settings {
@@ -66,7 +75,6 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    con: Arc<Mutex<Connection>>,
     err: modal::State<Option<Error>>,
     tab: usize,
     menu: Menu,
@@ -100,10 +108,6 @@ impl Application for App {
 
         (
             Self {
-                con: match config::init_db() {
-                    Ok(con) => Arc::new(Mutex::new(con)),
-                    Err(e) => panic!("{:#?}", e),
-                },
                 err: modal::State::new(None),
                 tab: 0,
                 menu,
@@ -131,14 +135,7 @@ impl Application for App {
                     _ => self.menu.update(menu::Message::Refresh),
                 }
             }
-            Message::DB(f) => match f(self.con.clone()) {
-                Ok(Message::Menu(m)) => self.menu.update(m),
-                Ok(Message::Transactions(m)) => self.transactions.update(m),
-                Ok(Message::Manager(m)) => self.manager.update(m),
-                Ok(Message::Sales(m)) => self.sales.update(m),
-                Err(e) => command_now!(Message::Error(e)),
-                _ => Command::none(),
-            },
+            //Message::DB(f) => f(self.con.clone()),
             Message::CloseModal => {
                 *self.err.inner_mut() = None;
                 Command::none()

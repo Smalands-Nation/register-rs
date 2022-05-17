@@ -2644,12 +2644,14 @@ dependencies = [
  "iced_native",
  "iced_pure",
  "indexmap",
+ "lazy_static",
  "num-traits",
  "rusqlite",
  "self_update",
  "serde",
  "serde_derive",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
