@@ -1,8 +1,5 @@
 use {
-    crate::{
-        error::Result,
-        receipt::{Item, Receipt},
-    },
+    crate::{error::Result, receipt::Receipt},
     chrono::{DateTime, Local},
     genpdf::{
         elements::{Break, Image, Paragraph, TableLayout, Text},
@@ -52,26 +49,22 @@ async fn create_pdf(
     doc.push(Paragraph::new("–".repeat(24)).aligned(Alignment::Center));
 
     for item in receipt.items.values() {
-        match item {
-            Item::Regular { name, price, num } => {
-                doc.push(Text::new(name));
-                doc.push({
-                    let mut tbl = TableLayout::new(vec![1, 1]);
-                    tbl.row()
-                        .element(Text::new(format!(" {}x{}kr", num, price)))
-                        .element(
-                            Paragraph::new(format!("{}kr", item.price_total()))
-                                .aligned(Alignment::Right),
-                        )
-                        .push()
-                        .expect("Couldn't Table Price");
-                    tbl
-                });
-            }
-            Item::Special { name, price } => {
-                doc.push(Text::new(name));
-                doc.push(Paragraph::new(format!("{}kr", price)).aligned(Alignment::Right));
-            }
+        doc.push(Text::new(item.name.clone()));
+        if let Some(n) = item.num {
+            doc.push({
+                let mut tbl = TableLayout::new(vec![1, 1]);
+                tbl.row()
+                    .element(Text::new(format!("{}x{}kr", n, item.price)))
+                    .element(
+                        Paragraph::new(format!("{}kr", item.price_total()))
+                            .aligned(Alignment::Right),
+                    )
+                    .push()
+                    .expect("Couldn't Table Price");
+                tbl
+            });
+        } else {
+            doc.push(Paragraph::new(format!("{}kr", item.price)).aligned(Alignment::Right));
         }
     }
 
@@ -129,6 +122,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
     .await
     .map_err(|e| format!("create_pdf: {e:#?}"))?;
     let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
+    pdf_to_printer.push("smaland_register");
     pdf_to_printer.push("PDFtoPrinter.exe");
     if std::process::Command::new(pdf_to_printer)
         .args([filename])

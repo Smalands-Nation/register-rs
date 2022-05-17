@@ -9,22 +9,30 @@ use {
             transactions::{self, Transactions},
             Message, Screen,
         },
-        styles::{DEF_PADDING, DEF_TEXT, SMALL_TEXT},
+        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, SMALL_TEXT, TABS},
     },
     iced::{
-        window, Application, Clipboard, Column, Command, Element, Font, Length, Settings, Text,
+        window, Application, Column, Command, Container, Element, Font, Length, Settings, Text,
     },
     iced_aw::{
         modal::{self, Modal},
         Card, TabLabel, Tabs,
     },
+    lazy_static::lazy_static,
     rusqlite::Connection,
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
+    tokio::sync::Mutex,
 };
+
+//TODO use iced_aw::pure and remove uses of pure
+//TODO use iced_aw::Grid (needs pure)
+
+//TODO use command_now more consistently
 
 pub mod config;
 pub mod error;
 pub mod icons;
+pub mod item;
 pub mod payment;
 pub mod print;
 pub mod receipt;
@@ -37,7 +45,7 @@ pub mod widgets;
 #[macro_export]
 macro_rules! command_now {
     ($msg:expr) => {
-        Command::perform(async { $msg }, |m| m)
+        Command::perform(async move { $msg }, |m| m)
     };
 }
 
@@ -45,6 +53,11 @@ pub const FONT: Font = Font::External {
     name: "IBM Plex Mono",
     bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
 };
+
+lazy_static! {
+    pub static ref DB: Arc<Mutex<Connection>> =
+        Arc::new(Mutex::new(config::init_db().expect("Fatal db error")));
+}
 
 pub fn main() -> iced::Result {
     App::run(Settings {
@@ -62,7 +75,6 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    con: Arc<Mutex<Connection>>,
     err: modal::State<Option<Error>>,
     tab: usize,
     menu: Menu,
@@ -96,10 +108,6 @@ impl Application for App {
 
         (
             Self {
-                con: match config::init_db() {
-                    Ok(con) => Arc::new(Mutex::new(con)),
-                    Err(e) => panic!("{:#?}", e),
-                },
                 err: modal::State::new(None),
                 tab: 0,
                 menu,
@@ -115,7 +123,7 @@ impl Application for App {
         String::from("Kassa")
     }
 
-    fn update(&mut self, msg: Self::Message, _clip: &mut Clipboard) -> Command<Self::Message> {
+    fn update(&mut self, msg: Self::Message) -> Command<Self::Message> {
         match msg {
             Message::None => Command::none(),
             Message::SwapTab(n) => {
@@ -127,20 +135,14 @@ impl Application for App {
                     _ => self.menu.update(menu::Message::Refresh),
                 }
             }
-            Message::DB(f) => match f(self.con.clone()) {
-                Ok(Message::Menu(m)) => self.menu.update(m),
-                Ok(Message::Transactions(m)) => self.transactions.update(m),
-                Ok(Message::Manager(m)) => self.manager.update(m),
-                Ok(Message::Sales(m)) => self.sales.update(m),
-                Err(e) => command_now!(Message::Error(e)),
-                _ => Command::none(),
-            },
+            //Message::DB(f) => f(self.con.clone()),
             Message::CloseModal => {
                 *self.err.inner_mut() = None;
                 Command::none()
             }
             Message::Error(e) => {
                 *self.err.inner_mut() = Some(e);
+                //TODO add logging here
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),
@@ -160,25 +162,30 @@ impl Application for App {
         Modal::new(
             &mut self.err,
             Column::new().push(
-                Tabs::new(self.tab, Message::SwapTab)
-                    .icon_font(icons::ICON_FONT)
-                    .height(Length::Shrink)
-                    .push(
-                        TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
-                        self.menu.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                        self.transactions.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                        self.sales.view(),
-                    )
-                    .push(
-                        TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                        self.manager.view(),
-                    ),
+                Container::new(
+                    Tabs::new(self.tab, Message::SwapTab)
+                        .icon_font(icons::ICON_FONT)
+                        .height(Length::Shrink)
+                        .tab_bar_style(TABS)
+                        .push(
+                            TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
+                            self.menu.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
+                            self.transactions.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                            self.sales.view(),
+                        )
+                        .push(
+                            TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                            self.manager.view(),
+                        ),
+                )
+                .style(TABS)
+                .padding(BORDER_WIDTH as u16),
             ),
             |state| {
                 Card::new(

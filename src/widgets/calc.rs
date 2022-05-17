@@ -1,10 +1,20 @@
 use {
     super::{Grid, SquareButton},
-    crate::styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
-    iced::{button, Align, Column, Element, HorizontalAlignment, Length, Row, Rule, Space, Text},
+    crate::{
+        icons::Icon,
+        styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+    },
+    iced::{
+        alignment::{Alignment, Horizontal},
+        pure::{
+            widget::{Column, Row, Rule, Space, Text},
+            Element,
+        },
+        Length,
+    },
 };
 
-pub struct Calc(pub u32, u32, [button::State; 12]);
+pub struct Calc(pub u32, u32);
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -15,7 +25,7 @@ pub enum Message {
 
 impl Calc {
     pub fn new() -> Self {
-        Self(1, 0, [button::State::new(); 12])
+        Self(1, 0)
     }
 
     pub fn update(&mut self, message: Message) {
@@ -39,12 +49,11 @@ impl Calc {
 
     pub fn view(&mut self) -> Element<Message> {
         Column::new()
-            .align_items(Align::Center)
+            .align_items(Alignment::Center)
             .push(
                 Row::new()
                     .push(
-                        Text::new(format!("{:>3}x", self.0))
-                            .horizontal_alignment(HorizontalAlignment::Left),
+                        Text::new(format!("{:>3}x", self.0)).horizontal_alignment(Horizontal::Left),
                     )
                     .push(Rule::vertical(DEF_PADDING))
                     .push(
@@ -54,27 +63,26 @@ impl Calc {
                             String::new()
                         })
                         .width(Length::Fill)
-                        .horizontal_alignment(HorizontalAlignment::Right),
+                        .horizontal_alignment(Horizontal::Right),
                     )
-                    .max_height(DEF_TEXT.into())
-                    .max_width((SQUARE_BUTTON * 3 + DEF_PADDING * 2) as u32),
+                    .height(Length::Units(DEF_TEXT))
+                    .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
             )
             .push(Space::with_height(Length::Units(DEF_PADDING)))
             .push(
                 Grid::with_children(
                     4,
                     3,
-                    self.2
-                        .iter_mut()
-                        .enumerate()
-                        .map(move |(i, st)| {
+                    (0..12)
+                        .map(|i| {
                             match i {
-                                0..=8 => SquareButton::new(st, Text::new(format!("{}", i + 1)))
+                                0..=8 => SquareButton::new(Text::new(format!("{}", i + 1)))
                                     .on_press(Message::Update(i as u32 + 1)),
-                                9 => SquareButton::new(st, Text::new("c")).on_press(Message::Clear),
-                                10 => SquareButton::new(st, Text::new("0"))
-                                    .on_press(Message::Update(0)),
-                                _ => SquareButton::new(st, Text::new("x")).on_press(Message::Save),
+                                9 => SquareButton::new(Text::new("c")).on_press(Message::Clear),
+                                10 => {
+                                    SquareButton::new(Text::new("0")).on_press(Message::Update(0))
+                                }
+                                _ => SquareButton::new(Icon::Cross).on_press(Message::Save),
                             }
                             .into()
                         })

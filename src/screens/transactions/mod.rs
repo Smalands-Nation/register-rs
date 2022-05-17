@@ -1,27 +1,33 @@
 use {
-    super::{db, Screen},
+    super::Screen,
     crate::{
         command_now,
         icons::Icon,
+        item::Item,
         payment::Payment,
         print,
+        receipt::Receipt,
+        sql,
         styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{Clickable, Receipt, SquareButton},
+        widgets::{Clickable, SquareButton},
     },
     chrono::{DateTime, Local},
-    iced::{button, Column, Command, Container, Element, Length, Row, Rule, Space, Text},
+    iced::{
+        pure::{
+            widget::{Column, Container, Row, Rule, Space},
+            Pure, State,
+        },
+        Command, Element, Length,
+    },
     indexmap::IndexMap,
     rusqlite::params,
 };
 
-pub mod item;
-pub use item::Item;
-
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(IndexMap<DateTime<Local>, Receipt<Message>>),
-    Append(IndexMap<DateTime<Local>, Receipt<Message>>),
+    Init(Vec<(DateTime<Local>, Item, Payment)>),
+    Append(IndexMap<DateTime<Local>, Receipt>),
     ScrollLeft,
     ScrollRight,
     Select(DateTime<Local>),
@@ -30,12 +36,9 @@ pub enum Message {
 }
 
 pub struct Transactions {
-    left: button::State,
-    right: button::State,
-    deselect: button::State,
-    print: button::State,
-    receipts: IndexMap<DateTime<Local>, Receipt<Message>>,
-    selected: Option<(DateTime<Local>, Receipt<Message>)>,
+    pure_state: State,
+    receipts: IndexMap<DateTime<Local>, Receipt>,
+    selected: Option<(DateTime<Local>, Receipt)>,
     offset: usize,
 }
 
@@ -46,10 +49,7 @@ impl Screen for Transactions {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                left: button::State::new(),
-                right: button::State::new(),
-                deselect: button::State::new(),
-                print: button::State::new(),
+                pure_state: State::new(),
                 receipts: IndexMap::new(),
                 selected: None,
                 offset: 0,
@@ -61,67 +61,43 @@ impl Screen for Transactions {
     fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                return db(|con| {
-                    Ok(Message::Init(
-                        con.lock()
-                            .unwrap()
-                            .prepare(
-                                "SELECT * FROM receipts_view \
-                                    WHERE time > date('now','-1 day') ORDER BY time DESC",
-                            )? //All receipts from last 24h, potentially bad for performance
-                            .query_map(params![], |row| {
-                                Ok((
-                                    //God hates me so all of these are type annotated
-                                    //time
-                                    row.get::<usize, DateTime<Local>>(0)?,
-                                    //item
-                                    row.get::<usize, String>(1)?,
-                                    //amount
-                                    row.get::<usize, i32>(2)?,
-                                    //price
-                                    row.get::<usize, i32>(3)?,
-                                    //special
-                                    row.get::<usize, bool>(4)?,
-                                    //method
-                                    Payment::try_from(row.get::<usize, String>(5)?)
-                                        .unwrap_or_default(),
-                                ))
-                            })?
-                            .map(|res| {
-                                res.map(|(time, item, num, price, special, method)| {
-                                    (
-                                        time,
-                                        match (item, special) {
-                                            (name, true) => Item::Special { name, price: num },
-                                            (name, false) => Item::Regular { name, price, num },
-                                        },
-                                        method,
-                                    )
-                                })
-                            })
-                            .fold(Ok(IndexMap::<_, Receipt<Message>, _>::new()), |hm, res| {
-                                hm.and_then(|mut hm| {
-                                    res.map(|(time, item, method)| {
-                                        match hm.get_mut(&time) {
-                                            Some(receipt) => (*receipt).add(item),
-                                            None => {
-                                                let mut receipt = Receipt::new(method);
-                                                receipt.add(item);
-                                                hm.insert(
-                                                    time,
-                                                    receipt.on_press(Message::Select(time)),
-                                                );
-                                            }
-                                        }
-                                        hm
-                                    })
-                                })
-                            })?,
-                    )
-                    .into())
-                });
+                return sql!(
+                    "SELECT * FROM receipts_view \
+                    WHERE time > date('now','-1 day') ORDER BY time DESC",
+                    params![],
+                    |row| {
+                        //God hates me so all of these are type annotated
+                        let num = row.get::<_, i32>("amount")?;
+                        Ok((
+                            row.get::<_, DateTime<Local>>("time")?,
+                            Item {
+                                name: row.get("item")?,
+                                price: row.get("price")?,
+                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                            },
+                            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
+                        ))
+                    },
+                    Vec<_>,
+                    Message::Init
+                );
             }
-            Message::Init(map) => self.receipts = map,
+            Message::Init(map) => {
+                self.receipts = map.into_iter().fold(
+                    IndexMap::<_, Receipt, _>::new(),
+                    |mut hm, (time, item, method)| {
+                        match hm.get_mut(&time) {
+                            Some(receipt) => (*receipt).add(item),
+                            None => {
+                                let mut receipt = Receipt::new(method);
+                                receipt.add(item);
+                                hm.insert(time, receipt);
+                            }
+                        }
+                        hm
+                    },
+                );
+            }
             Message::Append(map) => self.receipts.extend(map),
             Message::ScrollLeft if self.offset > 0 => self.offset -= 1,
             Message::ScrollRight
@@ -139,7 +115,7 @@ impl Screen for Transactions {
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
                     return Command::perform(
-                        print::print((**receipt).clone(), *time),
+                        print::print((*receipt).clone(), *time),
                         |r| match r {
                             Ok(_) => Message::Deselect.into(),
                             Err(e) => super::Message::Error(e),
@@ -153,19 +129,19 @@ impl Screen for Transactions {
     }
 
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(
+        Into::<Element<Self::InMessage>>::into(Pure::new(
+            &mut self.pure_state,
             Row::new()
                 .push(
                     Container::new(
                         self.receipts
-                            .values_mut()
+                            .iter_mut()
                             .skip(self.offset * 3)
                             .take(3)
                             .fold(
                                 Row::new().push(
                                     Clickable::new(
-                                        &mut self.left,
-                                        Container::new(Text::from(Icon::Left))
+                                        Container::new(Icon::Left)
                                             .width(Length::Fill)
                                             .height(Length::Fill)
                                             .center_x()
@@ -175,18 +151,19 @@ impl Screen for Transactions {
                                     .height(Length::Fill)
                                     .on_press(Message::ScrollLeft),
                                 ),
-                                |row, rec| {
+                                |row, (t, rec)| {
                                     row.push(
-                                        Container::new(rec.view())
-                                            .padding(DEF_PADDING)
-                                            .style(BORDERED),
+                                        Container::new(
+                                            rec.as_widget().on_press(Message::Select(*t)),
+                                        )
+                                        .padding(DEF_PADDING)
+                                        .style(BORDERED),
                                     )
                                 },
                             )
                             .push(
                                 Clickable::new(
-                                    &mut self.right,
-                                    Container::new(Text::from(Icon::Right))
+                                    Container::new(Icon::Right)
                                         .width(Length::Fill)
                                         .height(Length::Fill)
                                         .center_x()
@@ -205,28 +182,22 @@ impl Screen for Transactions {
                 .push(Rule::vertical(DEF_PADDING))
                 .push(
                     match &mut self.selected {
-                        Some((_, rec)) => Column::new().push(rec.view()),
+                        Some((_, rec)) => Column::new().push(rec.as_widget()),
                         None => Column::new()
                             .push(Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill)),
                     }
                     .push(
                         Row::new()
-                            .push(
-                                SquareButton::new(&mut self.deselect, Text::from(Icon::Cross))
-                                    .on_press(Message::Deselect),
-                            )
+                            .push(SquareButton::new(Icon::Cross).on_press(Message::Deselect))
                             .push(Space::with_width(Length::Fill))
-                            .push(
-                                SquareButton::new(&mut self.print, Text::from(Icon::Print))
-                                    .on_press(Message::Print),
-                            )
+                            .push(SquareButton::new(Icon::Print).on_press(Message::Print))
                             .padding(DEF_PADDING)
                             .spacing(DEF_PADDING),
                     )
                     .padding(DEF_PADDING)
                     .width(Length::Units(RECEIPT_WIDTH)),
                 ),
-        )
+        ))
         .map(Self::ExMessage::Transactions)
     }
 }

@@ -1,29 +1,28 @@
 use {
-    iced::text_input,
+    iced::pure::widget::TextInput,
     std::{fmt, str},
 };
 
-pub struct NumberInput<N>(text_input::State, Option<N>);
+pub struct NumberInput<N>(Option<N>);
 
 impl<N> NumberInput<N>
 where
     N: num_traits::Num + Copy + fmt::Display + str::FromStr + PartialOrd,
 {
     pub fn new() -> Self {
-        Self(text_input::State::new(), None)
+        Self(None)
     }
 
-    pub fn build<F, M>(&mut self, min: N, max: N, msg: F) -> iced::TextInput<M>
+    pub fn build<F, M>(&mut self, min: N, max: N, msg: F) -> TextInput<M>
     where
         N: 'static,
         F: 'static + Fn(Option<N>) -> M,
         M: Clone,
     {
-        let clone = self.1;
-        iced::TextInput::new(
-            &mut self.0,
+        let clone = self.0;
+        TextInput::new(
             "",
-            match self.1 {
+            match self.0 {
                 Some(n) => {
                     format!("{}", n)
                 }
@@ -39,10 +38,10 @@ where
     }
 
     pub fn update(&mut self, v: Option<N>) {
-        self.1 = v;
+        self.0 = v;
     }
 
     pub fn value(&mut self) -> Option<N> {
-        self.1
+        self.0
     }
 }

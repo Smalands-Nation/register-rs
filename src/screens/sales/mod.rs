@@ -2,16 +2,24 @@ use {
     super::Screen,
     crate::{
         command_now,
+        item::Item,
         payment::Payment,
-        query,
-        screens::transactions::Item,
+        receipt::Receipt,
+        sql,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
-        widgets::{DatePicker, Receipt},
+        widgets::DatePicker,
     },
     chrono::{Local, NaiveDate, TimeZone},
     iced::{
         button::{self, Button},
-        Align, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
+        pure::{
+            widget::{
+                Column as PColumn, Container as PContainer, Row as PRow, Space as PSpace,
+                Text as PText,
+            },
+            Pure, State,
+        },
+        Alignment, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
     },
     iced_aw::date_picker::Date,
     indexmap::IndexMap,
@@ -27,7 +35,7 @@ pub enum Picker {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Load(IndexMap<Payment, Receipt<Message>>),
+    Load(Vec<(Item, Payment)>),
     Save,
     OpenDate(Picker),
     UpdateDate(Picker, Date),
@@ -35,10 +43,11 @@ pub enum Message {
 }
 
 pub struct Sales {
+    pure_state: State,
     from: DatePicker,
     to: DatePicker,
     save: button::State,
-    receipts: IndexMap<Payment, Receipt<Message>>,
+    receipts: IndexMap<Payment, Receipt>,
 }
 
 impl Screen for Sales {
@@ -48,6 +57,7 @@ impl Screen for Sales {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
+                pure_state: State::new(),
                 from: DatePicker::new(),
                 to: DatePicker::new(),
                 save: button::State::new(),
@@ -66,49 +76,44 @@ impl Screen for Sales {
                 let to = Local
                     .from_local_datetime(&NaiveDate::from(self.to.value()).and_hms(23, 59, 59))
                     .unwrap();
-                return query!("SELECT item, amount, price, special, method FROM receipts_view \
+                return sql!(
+                    "SELECT item, amount, price, special, method FROM receipts_view \
                     WHERE time BETWEEN ?1 AND ?2",
-                params![from, to],
-                row => (
-                    //God hates me so all of these are type annotated
-                    //item
-                    row.get::<usize, String>(0)?,
-                    //amount
-                    row.get::<usize, i32>(1)?,
-                    //price
-                    row.get::<usize, i32>(2)?,
-                    //special
-                    row.get::<usize, bool>(3)?,
-                    //method
-                    Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-                ),
-                Message::Load;
-                iter.map(|res| res.map(
-                                    |(item, num, price, special, method)| {
-                                    (match (item, special) {
-                                        (name, true) => Item::Special{name, price: num},
-                                        (name, false) => Item::Regular{name, price, num},
-                                    }, method)
-                                },
-                            ))
-                            .fold(Ok(IndexMap::<_,Receipt<Message>,_>::new()), |hm, res| {
-                                hm.and_then(|mut hm| {
-                                    res.map(|( item, method)| {
-                                        match hm.get_mut(&method) {
-                                            Some(summary) => summary.add(item),
-                                            None => {
-                                                let mut summary = Receipt::new(method);
-                                                summary.add(item);
-                                                hm.insert(method, summary);
-                                                }
-                                            }
-                                        hm
-                                    })
-                                })
-                            })?
+                    params![from, to],
+                    |row| {
+                        //God hates me so all of these are type annotated
+                        let num = row.get::<_, i32>("amount")?;
+                        Ok((
+                            Item {
+                                name: row.get("item")?,
+                                price: row.get("price")?,
+                                //special
+                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                            },
+                            //method
+                            Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
+                        ))
+                    },
+                    Vec<(Item, Payment)>,
+                    Message::Load
                 );
             }
-            Message::Load(map) => self.receipts = map,
+            Message::Load(map) => {
+                self.receipts = map.into_iter().fold(
+                    IndexMap::<_, Receipt, _>::new(),
+                    |mut hm, (item, method)| {
+                        match hm.get_mut(&method) {
+                            Some(summary) => summary.add(item),
+                            None => {
+                                let mut summary = Receipt::new(method);
+                                summary.add(item);
+                                hm.insert(method, summary);
+                            }
+                        }
+                        hm
+                    },
+                );
+            }
             Message::Save => (),
             Message::OpenDate(p) => {
                 let p = match p {
@@ -143,26 +148,29 @@ impl Screen for Sales {
     fn view(&mut self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Row::with_children(vec![
             if !self.receipts.is_empty() {
-                self.receipts
-                    .iter_mut()
-                    .fold(Row::new(), |row, (payment, rec)| {
-                        row.push(
-                            Container::new(
-                                Column::new()
-                                    .push(Text::new(*payment).size(BIG_TEXT))
-                                    .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
-                                    .push(rec.view())
-                                    .width(Length::Units(RECEIPT_WIDTH))
-                                    .padding(DEF_PADDING),
+                Pure::new(
+                    &mut self.pure_state,
+                    self.receipts
+                        .iter_mut()
+                        .fold(PRow::new(), |row, (payment, rec)| {
+                            row.push(
+                                PContainer::new(
+                                    PColumn::new()
+                                        .push(PText::new(*payment).size(BIG_TEXT))
+                                        .push(PSpace::new(Length::Fill, Length::Units(SMALL_TEXT)))
+                                        .push(rec.as_widget())
+                                        .width(Length::Units(RECEIPT_WIDTH))
+                                        .padding(DEF_PADDING),
+                                )
+                                .style(BORDERED),
                             )
-                            .style(BORDERED),
-                        )
-                    })
-                    .width(Length::Fill)
-                    .align_items(Align::Center)
-                    .padding(DEF_PADDING)
-                    .spacing(DEF_PADDING)
-                    .into()
+                        })
+                        .width(Length::Fill)
+                        .align_items(Alignment::Center)
+                        .padding(DEF_PADDING)
+                        .spacing(DEF_PADDING),
+                )
+                .into()
             } else {
                 Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
                     .width(Length::Fill)
