@@ -142,6 +142,7 @@ impl Application for App {
             }
             Message::Error(e) => {
                 *self.err.inner_mut() = Some(e);
+                //TODO add logging here
                 Command::none()
             }
             Message::Menu(msg) => self.menu.update(msg),

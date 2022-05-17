@@ -98,12 +98,14 @@ impl Screen for Menu {
                         Command::perform(
                             async move {
                                 if should_print {
-                                    print::print(receipt1, Local::now()).await
+                                    print::print(receipt1, Local::now())
+                                        .await
+                                        .map(|_| Message::Refresh)
                                 } else {
-                                    Ok(receipt1)
+                                    Ok(Message::Refresh)
                                 }
                             },
-                            |_| Message::Refresh.into(),
+                            Self::ExMessage::from,
                         ),
                         Command::perform(
                             async move {

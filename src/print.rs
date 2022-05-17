@@ -122,6 +122,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
     .await
     .map_err(|e| format!("create_pdf: {e:#?}"))?;
     let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
+    pdf_to_printer.push("smaland_register");
     pdf_to_printer.push("PDFtoPrinter.exe");
     if std::process::Command::new(pdf_to_printer)
         .args([filename])
