@@ -171,7 +171,7 @@ where
             //No password in debug mode
             #[cfg(debug_assertions)]
             Message::Login => {
-                return command!(Message::CloseLogin);
+                return command!(Message::Unlock);
             }
             //Use env for password
             #[cfg(not(debug_assertions))]
