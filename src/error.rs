@@ -7,14 +7,16 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[wrapDepth(0)]
     Sqlite(Arc<rusqlite::Error>),
+    #[wrapDepth(0)]
+    SqliteMigration(Arc<rusqlite_migration::Error>),
     IO(std::io::ErrorKind),
     #[wrapDepth(0)]
     SelfUpdate(Arc<self_update::errors::Error>),
     Other(String),
 }
 
-impl From<&'static str> for Error {
-    fn from(s: &'static str) -> Self {
+impl<'a> From<&'a str> for Error {
+    fn from(s: &'a str) -> Self {
         Self::Other(s.into())
     }
 }
