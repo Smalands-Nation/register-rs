@@ -14,7 +14,7 @@ use {
     serde_derive::{Deserialize, Serialize},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq)]
 pub struct Item {
     pub name: String,
     pub price: i32,
@@ -33,12 +33,28 @@ impl Item {
         }
     }
 
-    pub fn as_widget<M>(&mut self) -> ItemWidget<M> {
+    pub fn as_widget<M>(&self) -> ItemWidget<M> {
         ItemWidget {
             msg: None,
             extra: None,
-            inner: self,
+            inner: self.clone(),
         }
+    }
+}
+
+impl std::cmp::PartialEq for Item {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name && self.price == rhs.price
+    }
+}
+
+impl std::hash::Hash for Item {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        self.name.hash(state);
+        self.price.hash(state);
     }
 }
 
@@ -46,7 +62,7 @@ impl Item {
 impl std::ops::Add<Item> for Item {
     type Output = Self;
     fn add(self, rhs: Item) -> Self::Output {
-        if self.name != rhs.name {
+        if self != rhs {
             unreachable!("Tried to add different items:\n'{:#?}'\n'{:#?}'", self, rhs);
         }
         Self {
@@ -70,7 +86,7 @@ impl std::ops::AddAssign<Item> for Item {
 pub struct ItemWidget<'a, M> {
     msg: Option<M>,
     extra: Option<Element<'a, M>>,
-    inner: &'a mut Item,
+    inner: Item,
 }
 
 impl<'a, M> ItemWidget<'a, M>

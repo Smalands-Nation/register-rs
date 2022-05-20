@@ -40,6 +40,12 @@ impl std::fmt::Debug for Message {
     }
 }
 
+impl From<()> for Message {
+    fn from(_: ()) -> Self {
+        Self::None
+    }
+}
+
 impl<T> From<Result<T>> for Message
 where
     T: Into<Message>,

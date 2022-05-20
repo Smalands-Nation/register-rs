@@ -8,7 +8,7 @@ use {
     std::{io::Cursor, path::PathBuf},
 };
 
-async fn create_pdf(
+fn create_pdf(
     path: impl Into<PathBuf>,
     receipt: &Receipt,
     time: DateTime<Local>,
@@ -48,7 +48,7 @@ async fn create_pdf(
     doc.push(Paragraph::new("302 49 Halmstad").aligned(Alignment::Center));
     doc.push(Paragraph::new("–".repeat(24)).aligned(Alignment::Center));
 
-    for item in receipt.items.values() {
+    for item in receipt.items.iter() {
         doc.push(Text::new(item.name.clone()));
         if let Some(n) = item.num {
             doc.push({
@@ -119,7 +119,6 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
         &receipt,
         time,
     )
-    .await
     .map_err(|e| format!("create_pdf: {e:#?}"))?;
     let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
     pdf_to_printer.push("smaland_register");
@@ -139,7 +138,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
 
 #[cfg(not(target_os = "windows"))]
 pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
-    let filename = create_pdf(receipt_path()?, &receipt, time).await?;
+    let filename = create_pdf(receipt_path()?, &receipt, time)?;
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()

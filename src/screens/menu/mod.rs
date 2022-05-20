@@ -115,15 +115,16 @@ impl Screen for Menu {
                             )?;
 
                             let mut stmt = con.prepare(
-                                "INSERT INTO receipt_item (receipt, item, amount) \
-                                            VALUES (?1, ?2, ?3)",
+                                "INSERT INTO receipt_item (receipt, item, amount, price) \
+                                            VALUES (?1, ?2, ?3, ?4)",
                             )?;
 
-                            for item in receipt2.items.values() {
+                            for item in receipt2.items.iter() {
                                 stmt.execute(params![
                                     time,
                                     item.name,
-                                    item.num.unwrap_or(item.price)
+                                    item.num.unwrap_or(0), //Special item has no ammount
+                                    item.price,
                                 ])?;
                             }
 

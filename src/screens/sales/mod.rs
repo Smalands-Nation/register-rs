@@ -2,6 +2,7 @@ use {
     super::Screen,
     crate::{
         command,
+        error::Error,
         item::Item,
         payment::Payment,
         receipt::Receipt,
@@ -25,6 +26,8 @@ use {
     indexmap::IndexMap,
     rusqlite::params,
 };
+
+mod save;
 
 #[derive(Debug, Clone)]
 pub enum Picker {
@@ -114,7 +117,28 @@ impl Screen for Sales {
                     },
                 );
             }
-            Message::Save => (),
+            Message::Save => {
+                let from = Local
+                    .from_local_date(&NaiveDate::from(self.from.value()))
+                    .unwrap();
+                let to = Local
+                    .from_local_date(&NaiveDate::from(self.to.value()))
+                    .unwrap();
+
+                let stats = self.receipts.clone();
+                //Always return error to give info via modal
+                return command!(if !stats.is_empty() {
+                    match save::save(stats, (from, to)).await {
+                        Ok(e) => Result::<(), Error>::Err(Error::Other(format!(
+                            "Sparad till {}",
+                            e.to_string_lossy()
+                        ))),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    Err(Error::Other("Ingen försäljning att spara".into()))
+                });
+            }
             Message::OpenDate(p) => {
                 let p = match p {
                     Picker::From => &mut self.from,
