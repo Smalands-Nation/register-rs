@@ -177,7 +177,7 @@ where
             #[cfg(not(debug_assertions))]
             Message::Login => {
                 let password_ok = self.login_modal.inner().0.as_str() == env!("SMALANDS_PASSWORD");
-                return command_now!(if password_ok {
+                return command!(if password_ok {
                     Message::Unlock
                 } else {
                     Message::Lock
