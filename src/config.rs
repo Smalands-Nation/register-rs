@@ -8,6 +8,7 @@ use {
 lazy_static! {
     static ref MIGRATIONS: Migrations<'static> = Migrations::new(vec![
         M::up(include_str!("../db.sql")),
+        M::up("DROP TABLE password"),
         M::up(
             r#"
                 ALTER TABLE receipt_item ADD COLUMN price INTEGER DEFAULT 1 NOT NULL;
