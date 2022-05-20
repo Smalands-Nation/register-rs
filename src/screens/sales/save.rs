@@ -1,6 +1,6 @@
 use {
     crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
-    chrono::{Date, Datelike, Local},
+    chrono::{Date, Local},
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
         fonts,
@@ -203,6 +203,8 @@ fn make_stats(data: IndexMap<Payment, Receipt>) -> IndexSet<(Payment, Item)> {
     })
 }
 
+#[cfg(not(debug_assertions))]
+use chrono::Datelike;
 #[cfg(not(debug_assertions))]
 pub async fn save(
     data: IndexMap<Payment, Receipt>,

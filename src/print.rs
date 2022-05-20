@@ -92,7 +92,7 @@ fn create_pdf(
     doc.push(Break::new(1));
 
     let mut path = path.into();
-    path.push(format!("receipt_{}.pdf", time.format("%F_%T")).replace(":", "-"));
+    path.push(format!("receipt_{}.pdf", time.format("%F_%T")).replace(':', "-"));
     doc.render_to_file(path.clone())
         .expect("Failed to write PDF file");
 

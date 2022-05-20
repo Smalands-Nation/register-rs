@@ -114,7 +114,7 @@ where
                     return sql!(
                         "UPDATE menu SET available=?1 WHERE name=?2",
                         //Non breaking space gang
-                        params![clone.num.is_some(), clone.name.replace(" ", "\u{00A0}")],
+                        params![clone.num.is_some(), clone.name.replace(' ', "\u{00A0}")],
                         Message::Refresh(false)
                     );
                 }
@@ -145,7 +145,7 @@ where
                         Mode::New => sql!(
                             "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
                             //Non breaking space gang
-                            params![name.replace(" ", "\u{00A0}"), price],
+                            params![name.replace(' ', "\u{00A0}"), price],
                             Message::Refresh(false)
                         ),
                         Mode::Update(old_name) => {
@@ -153,7 +153,7 @@ where
                             sql!(
                                 "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
                                 //Non breaking space gang
-                                params![name.replace(" ", "\u{00A0}"), price, old_name],
+                                params![name.replace(' ', "\u{00A0}"), price, old_name],
                                 Message::Refresh(false)
                             )
                         }
