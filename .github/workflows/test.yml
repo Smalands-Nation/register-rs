@@ -2,7 +2,8 @@ on:
   push:
     branches:
       - '**'
-      - '!master'
+    tags-ignore:
+      - v[0-9]+.*
 
 jobs:
   cargo-test:
@@ -22,8 +23,8 @@ jobs:
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.target }}
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
-              #- run: cargo test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
+      - run: cargo test
       - run: cargo test --release
