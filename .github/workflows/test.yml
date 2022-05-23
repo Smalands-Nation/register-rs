@@ -19,6 +19,7 @@ jobs:
       - name: Install rustup
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           target: ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
