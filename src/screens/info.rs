@@ -5,7 +5,7 @@ use {
         icons::Icon,
         item::Item,
         sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
+        styles::{DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{Grid, NumberInput, SquareButton},
     },
     iced::{
@@ -13,7 +13,6 @@ use {
         Alignment, Command, Element, Length, Space,
     },
     iced_aw::{style::badge, Badge, Card},
-    rusqlite::params,
 };
 
 #[cfg(not(debug_assertions))]
@@ -42,8 +41,8 @@ impl Screen for Info {
         )
     }
 
+    #[cfg(not(debug_assertions))]
     fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage> {
-        #[cfg(not(debug_assertions))]
         match msg {
             Message::Updated(ver) => self.new_version = Some(ver),
             _ => (),
@@ -51,8 +50,13 @@ impl Screen for Info {
         Command::none()
     }
 
+    #[cfg(debug_assertions)]
+    fn update(&mut self, _: Self::InMessage) -> Command<Self::ExMessage> {
+        Command::none()
+    }
+
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Row::new()
+        Column::new()
             .push(
                 Container::new(
                     Column::with_children(vec![
@@ -91,6 +95,15 @@ impl Screen for Info {
                 .width(Length::Fill)
                 .height(Length::Fill),
             )
+            .push(
+                Text::new("Programmerad av Axel Paulander (Styrelse 20/21 & 21/22)")
+                    .size(SMALL_TEXT),
+            )
+            .push(
+                Text::new("All kod är tillänglig på github.com/Smalands-Nation/register-rs")
+                    .size(SMALL_TEXT),
+            )
+            .align_items(Alignment::Center)
             .into()
     }
 }
