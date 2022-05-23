@@ -24,8 +24,7 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
       - run: cargo check --target=${{ matrix.target }}
       - run: cargo check --target=${{ matrix.target }} --release 
+        env:
+          SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
