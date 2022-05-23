@@ -1,6 +1,6 @@
 on:
   push:
-    branch:
+    branches:
       - '**'
     tags-ignore:
       - v[0-9]+.*
