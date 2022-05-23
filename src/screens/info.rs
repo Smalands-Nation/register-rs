@@ -9,16 +9,10 @@ use {
         widgets::{Grid, NumberInput, SquareButton},
     },
     iced::{
-        pure::{
-            widget::{Button, Checkbox, Column, Row, Rule, Scrollable, Text, TextInput},
-            Pure, State,
-        },
+        widget::{Column, Container, Row, Rule, Scrollable, Text, TextInput},
         Alignment, Command, Element, Length, Space,
     },
-    iced_aw::{
-        modal::{self, Modal},
-        Card,
-    },
+    iced_aw::{style::badge, Badge, Card},
     rusqlite::params,
 };
 
@@ -58,6 +52,45 @@ impl Screen for Info {
     }
 
     fn view(&mut self) -> Element<Self::ExMessage> {
-        Text::new(self.current).into()
+        Row::new()
+            .push(
+                Container::new(
+                    Column::with_children(vec![
+                        Row::new()
+                            .push(Text::new("Smålands_register version"))
+                            .push(
+                                Badge::new(Text::new(self.current))
+                                    .style(badge::Info)
+                                    .padding(DEF_PADDING),
+                            )
+                            .spacing(DEF_PADDING)
+                            .align_items(Alignment::Center)
+                            .into(),
+                        match &self.new_version {
+                            Some(ver) => Row::new()
+                                .push(Text::new("Ny version"))
+                                .push(
+                                    Badge::new(Text::new(ver))
+                                        .style(badge::Warning)
+                                        .padding(DEF_PADDING),
+                                )
+                                .push(Text::new("installeras vid omstart."))
+                                .spacing(DEF_PADDING)
+                                .align_items(Alignment::Center)
+                                .into(),
+                            None => Badge::new(Text::new("Detta är senaste versionen."))
+                                .padding(DEF_PADDING)
+                                .style(badge::Success)
+                                .into(),
+                        },
+                    ])
+                    .spacing(DEF_PADDING),
+                )
+                .center_x()
+                .center_y()
+                .width(Length::Fill)
+                .height(Length::Fill),
+            )
+            .into()
     }
 }

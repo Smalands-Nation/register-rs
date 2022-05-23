@@ -46,7 +46,16 @@ git = "https://github.com/iced-rs/iced_aw"
 # tag = "v0.1.0"
 rev = "045e16d"
 default-features = false
-features = ["tab_bar", "tabs", "modal", "card", "number_input", "date_picker"]
+features = [
+    "tab_bar", 
+    "tabs", 
+    "modal", 
+    "card", 
+    "number_input", 
+    "date_picker",
+    "badge",
+    "colors"
+]
 
 [dependencies.genpdf]
 version = "0.2.0"
