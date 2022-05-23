@@ -2,17 +2,13 @@ use {
     super::Screen,
     crate::{
         command,
-        icons::Icon,
-        item::Item,
-        sql,
-        styles::{DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
-        widgets::{Grid, NumberInput, SquareButton},
+        styles::{DEF_PADDING, SMALL_TEXT},
     },
     iced::{
-        widget::{Column, Container, Row, Rule, Scrollable, Text, TextInput},
-        Alignment, Command, Element, Length, Space,
+        widget::{Column, Container, Row, Text},
+        Alignment, Command, Element, Length,
     },
-    iced_aw::{style::badge, Badge, Card},
+    iced_aw::{style::badge, Badge},
 };
 
 #[cfg(not(debug_assertions))]
