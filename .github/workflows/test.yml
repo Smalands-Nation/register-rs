@@ -26,4 +26,5 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
+      - run: cargo test
       - run: cargo test --release
