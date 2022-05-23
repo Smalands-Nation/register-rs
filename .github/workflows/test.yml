@@ -14,18 +14,14 @@ jobs:
           - x86_64-unknown-linux-gnu
           - x86_64-apple-darwin
           - x86_64-pc-windows-gnu
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Install Rust
-        run: rustup update stable
-      - name: Install cross-compilation tools
-        uses: taiki-e/setup-cross-toolchain-action@v1
+      - name: Install rustup
+        uses: actions-rs/toolchain@v1
         with:
           target: ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
-      - run: cargo test
-      - run: cargo test --release
+      - run: cargo check --target=${{ matrix.target }}
+      - run: cargo check --target=${{ matrix.target }} --release 
