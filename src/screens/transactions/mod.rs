@@ -3,10 +3,9 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
         payment::Payment,
         print,
-        receipt::Receipt,
+        receipt::{Item, Receipt, ReceiptItem::*},
         sql,
         styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Clickable, SquareButton},
@@ -67,13 +66,20 @@ impl Screen for Transactions {
                     params![],
                     |row| {
                         //God hates me so all of these are type annotated
-                        let num = row.get::<_, i32>("amount")?;
+                        //let num = row.get::<_, i32>("amount")?;
                         Ok((
                             row.get::<_, DateTime<Local>>("time")?,
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
-                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                                //num: (!row.get::<_, bool>("special")?).then(|| num),
+                                state: if row.get("special")? {
+                                    Special
+                                } else {
+                                    Regular {
+                                        num: row.get("amount")?,
+                                    }
+                                },
                             },
                             Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
                         ))

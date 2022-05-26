@@ -3,12 +3,12 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
+        item,
         payment::Payment,
         print,
-        receipt::Receipt,
+        receipt::{Receipt, ReceiptItem},
         sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
+        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{
             calc::{self, Calc},
             Grid, SquareButton,
@@ -16,14 +16,33 @@ use {
     },
     chrono::Local,
     iced::{
+        alignment::Horizontal,
         pure::{
             widget::{Button, Checkbox, Column, Container, Row, Rule, Scrollable, Space, Text},
-            Pure, State,
+            Element as PElement, Pure, State,
         },
         Alignment, Command, Element, Length,
     },
     rusqlite::params,
 };
+
+#[derive(Debug, Clone)]
+pub enum MenuItem {
+    Regular,
+    Special,
+}
+use MenuItem::*;
+impl item::State for MenuItem {}
+type Item = item::Item<MenuItem>;
+impl<'a, M: 'a> From<Item> for PElement<'a, M> {
+    fn from(item: Item) -> PElement<'a, M> {
+        Text::new(format!("{} kr", item.price))
+            .size(SMALL_TEXT)
+            .width(Length::Fill)
+            .horizontal_alignment(Horizontal::Right)
+            .into()
+    }
+}
 
 pub struct Menu {
     pure_state: State,
@@ -72,7 +91,12 @@ impl Screen for Menu {
                         Ok(Item {
                             name: row.get::<usize, String>(0)?,
                             price: row.get(1)?,
-                            num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                            //num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                            state: if row.get("special")? {
+                                Special
+                            } else {
+                                Regular
+                            },
                         })
                     },
                     Vec<_>,
@@ -83,9 +107,13 @@ impl Screen for Menu {
             Message::ClearReceipt => {
                 self.receipt = Receipt::new(Payment::Swish);
             }
-            Message::SellItem(mut i) => {
-                i.num = i.num.map(|_| self.calc.0 as i32);
-                self.receipt.add(i);
+            Message::SellItem(i) => {
+                self.receipt.add(i.map(|s| match s {
+                    Regular => ReceiptItem::Regular {
+                        num: self.calc.0 as i32,
+                    },
+                    Special => ReceiptItem::Special,
+                }));
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
@@ -123,7 +151,10 @@ impl Screen for Menu {
                                 stmt.execute(params![
                                     time,
                                     item.name,
-                                    item.num.unwrap_or(0), //Special item has no ammount
+                                    match item.state {
+                                        ReceiptItem::Regular { num } => num,
+                                        ReceiptItem::Special => 0,
+                                    },
                                     item.price,
                                 ])?;
                             }

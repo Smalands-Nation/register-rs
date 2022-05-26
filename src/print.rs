@@ -1,5 +1,8 @@
 use {
-    crate::{error::Result, receipt::Receipt},
+    crate::{
+        error::Result,
+        receipt::{Receipt, ReceiptItem::Regular},
+    },
     chrono::{DateTime, Local},
     genpdf::{
         elements::{Break, Image, Paragraph, TableLayout, Text},
@@ -50,11 +53,11 @@ fn create_pdf(
 
     for item in receipt.items.iter() {
         doc.push(Text::new(item.name.clone()));
-        if let Some(n) = item.num {
+        if let Regular { num } = item.state {
             doc.push({
                 let mut tbl = TableLayout::new(vec![1, 1]);
                 tbl.row()
-                    .element(Text::new(format!("{}x{}kr", n, item.price)))
+                    .element(Text::new(format!("{}x{}kr", num, item.price)))
                     .element(
                         Paragraph::new(format!("{}kr", item.price_total()))
                             .aligned(Alignment::Right),

@@ -3,9 +3,8 @@ use {
     crate::{
         command,
         error::Error,
-        item::Item,
         payment::Payment,
-        receipt::Receipt,
+        receipt::{Item, Receipt, ReceiptItem::*},
         sql,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::DatePicker,
@@ -85,13 +84,20 @@ impl Screen for Sales {
                     params![from, to],
                     |row| {
                         //God hates me so all of these are type annotated
-                        let num = row.get::<_, i32>("amount")?;
+                        //let num = row.get::<_, i32>("amount")?;
                         Ok((
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
                                 //special
-                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                                //num: (!row.get::<_, bool>("special")?).then(|| num),
+                                state: if row.get("special")? {
+                                    Special
+                                } else {
+                                    Regular {
+                                        num: row.get("amount")?,
+                                    }
+                                },
                             },
                             //method
                             Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),

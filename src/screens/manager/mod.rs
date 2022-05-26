@@ -3,15 +3,15 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
-        sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
+        item, sql,
+        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{Grid, NumberInput, SquareButton},
     },
     iced::{
+        alignment::Horizontal,
         pure::{
             widget::{Button, Checkbox, Column, Row, Rule, Scrollable, Text, TextInput},
-            Pure, State,
+            Element as PElement, Pure, State,
         },
         Alignment, Command, Element, Length, Space,
     },
@@ -19,8 +19,28 @@ use {
         modal::{self, Modal},
         Card,
     },
+    indexmap::IndexMap,
     rusqlite::params,
 };
+
+impl item::State for bool {}
+type Item = item::Item<bool>;
+impl<'a> From<Item> for PElement<'a, Message> {
+    fn from(item: Item) -> PElement<'a, Message> {
+        let name = item.name;
+        Column::new()
+            .push(
+                Text::new(format!("{} kr", item.price))
+                    .size(SMALL_TEXT)
+                    .width(Length::Fill)
+                    .horizontal_alignment(Horizontal::Left),
+            )
+            .push(Checkbox::new(item.state, "I Lager", move |b| {
+                Message::ToggleItem(name.clone(), b)
+            }))
+            .into()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -32,7 +52,7 @@ pub struct Manager {
     locked: bool,
     login_modal: modal::State<(String, State)>,
     under_modal: State,
-    menu: Vec<Item>,
+    menu: IndexMap<String, Item>,
     mode: Mode,
     name: String,
     price: NumberInput<i32>,
@@ -41,7 +61,7 @@ pub struct Manager {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh(bool),
-    ToggleItem(usize, bool),
+    ToggleItem(String, bool),
     LoadMenu(Vec<Item>),
     EditItem(Item),
     UpdateName(String),
@@ -70,7 +90,7 @@ where
                 locked: true,
                 login_modal: modal::State::new((String::new(), State::new())),
                 under_modal: State::new(),
-                menu: Vec::new(),
+                menu: IndexMap::new(),
                 mode: Mode::New,
                 name: String::new(),
                 price: NumberInput::new(),
@@ -90,11 +110,9 @@ where
                             params![],
                             |row| {
                                 Ok(Item {
-                                    name: row.get::<usize, String>(0)?,
-                                    price: row.get(1)?,
-                                    //None => unavailable
-                                    //Some(0) => available
-                                    num: row.get::<usize, bool>(2)?.then(|| 0),
+                                    name: row.get("name")?,
+                                    price: row.get("price")?,
+                                    state: row.get("available")?,
                                 })
                             },
                             Vec<_>,
@@ -108,13 +126,13 @@ where
                 );
             }
             Message::ToggleItem(i, a) => {
-                if let Some(i) = self.menu.get_mut(i) {
-                    i.num = a.then(|| 0);
+                if let Some(i) = self.menu.get_mut(&i) {
+                    i.state = a;
                     let clone = i.clone();
                     return sql!(
                         "UPDATE menu SET available=?1 WHERE name=?2",
                         //Non breaking space gang
-                        params![clone.num.is_some(), clone.name.replace(' ', "\u{00A0}")],
+                        params![clone.state, clone.name.replace(' ', "\u{00A0}")],
                         Message::Refresh(false)
                     );
                 }
@@ -122,7 +140,7 @@ where
             Message::LoadMenu(m) => {
                 self.menu.clear();
                 for item in m {
-                    self.menu.push(item);
+                    self.menu.insert(item.clone().name, item);
                 }
             }
             Message::EditItem(i) => {
@@ -206,18 +224,8 @@ where
                             self.menu.len() as u32 / 3,
                             3,
                             self.menu
-                                .iter_mut()
-                                .enumerate()
-                                .map(|(i, item)| {
-                                    let available = item.num.is_some();
-
-                                    item.as_widget()
-                                        .on_press(Message::EditItem)
-                                        .extra(Checkbox::new(available, "I Lager", move |b| {
-                                            Message::ToggleItem(i, b)
-                                        }))
-                                        .into()
-                                })
+                                .values_mut()
+                                .map(|item| item.as_widget().on_press(Message::EditItem).into())
                                 .collect(),
                         )
                         .width(Length::Fill)

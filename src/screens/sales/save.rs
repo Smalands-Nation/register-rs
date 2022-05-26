@@ -1,5 +1,9 @@
 use {
-    crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
+    crate::{
+        error::Result,
+        payment::Payment,
+        receipt::{Item, Receipt, ReceiptItem::*},
+    },
     chrono::{Date, Local},
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
@@ -78,16 +82,16 @@ fn create_pdf(
     doc.push(Break::new(2));
 
     let (payments, mut items): (IndexSet<_>, IndexSet<_>) = stats.clone().into_iter().unzip();
-    items.sort_by(|v1, v2| match (v1.special(), v2.special()) {
-        (false, false) | (true, true) => {
+    items.sort_by(|v1, v2| match (v1.state, v2.state) {
+        (Regular { .. }, Regular { .. }) | (Special, Special) => {
             if v1.name == v2.name {
                 v1.price.cmp(&v2.price)
             } else {
                 v1.name.cmp(&v2.name)
             }
         }
-        (false, true) => std::cmp::Ordering::Less,
-        (true, false) => std::cmp::Ordering::Greater,
+        (Regular { .. }, Special) => std::cmp::Ordering::Less,
+        (Special, Regular { .. }) => std::cmp::Ordering::Greater,
     });
 
     let mut table = TableLayout::new(vec![1; payments.len() + 3]);
@@ -108,10 +112,10 @@ fn create_pdf(
 
         row.push_element(Text::new(item.name.clone()).padded(3).framed());
         row.push_element(
-            Paragraph::new(if item.special() {
-                String::new()
+            Paragraph::new(if let Regular { num } = item.state {
+                format!("{}kr", num)
             } else {
-                format!("{}kr", item.price)
+                String::new()
             })
             .aligned(Alignment::Right)
             .padded(3)
@@ -134,15 +138,12 @@ fn create_pdf(
                         }
                         tot += price;
 
-                        Paragraph::new(format!(
-                            "{}st",
-                            match item.num {
-                                Some(n) => n,
-                                None => item.price_total(),
-                            }
-                        ))
+                        Paragraph::new(match item.state {
+                            Regular { num } => format!("{}st", num),
+                            Special => format!("{}kr", item.price_total()),
+                        })
                     }
-                    None => Paragraph::new("0st"),
+                    None => Paragraph::new("0"),
                 }
                 .aligned(Alignment::Right)
                 .padded(3)

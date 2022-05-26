@@ -1,12 +1,11 @@
 use {
     crate::{
-        styles::{BORDERED, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
+        styles::{BORDERED, DEF_PADDING, SMALL_PADDING},
         widgets::Clickable,
     },
     iced::{
-        alignment::Horizontal,
         pure::{
-            widget::{Column, Container, Row, Space, Text},
+            widget::{Column, Container, Text},
             Element,
         },
         Length,
@@ -14,129 +13,74 @@ use {
     serde_derive::{Deserialize, Serialize},
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq)]
-pub struct Item {
-    pub name: String,
-    pub price: i32,
-    pub num: Option<i32>, //None for special items
+pub trait State: std::fmt::Debug + Clone {
+    //fn view<'a, M: 'a>(item: Item<Self>) -> Element<'a, M>;
 }
 
-impl Item {
-    pub fn special(&self) -> bool {
-        self.num.is_none()
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Item<S: State> {
+    pub name: String,
+    pub price: i32,
+    //pub num: Option<i32>, //None for special items
+    pub state: S,
+}
 
-    pub fn price_total(&self) -> i32 {
-        match self.num {
-            Some(n) => n * self.price,
-            None => self.price,
+impl<S: State> Item<S> {
+    pub fn map<T, F>(self, map: F) -> Item<T>
+    where
+        T: State,
+        F: FnOnce(S) -> T,
+    {
+        Item {
+            name: self.name,
+            price: self.price,
+            state: map(self.state),
         }
     }
 
-    pub fn as_widget<M>(&self) -> ItemWidget<M> {
+    pub fn as_widget<'a, M>(&self) -> ItemWidget<M, S>
+    where
+        Item<S>: Into<Element<'a, M>>,
+    {
         ItemWidget {
             msg: None,
-            extra: None,
             inner: self.clone(),
         }
     }
 }
 
-impl std::cmp::PartialEq for Item {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.price == rhs.price
-    }
-}
-
-impl std::hash::Hash for Item {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        self.name.hash(state);
-        self.price.hash(state);
-    }
-}
-
-///Adds two of the same item into one with their combined amounts
-impl std::ops::Add<Item> for Item {
-    type Output = Self;
-    fn add(self, rhs: Item) -> Self::Output {
-        if self != rhs {
-            unreachable!("Tried to add different items:\n'{:#?}'\n'{:#?}'", self, rhs);
-        }
-        Self {
-            name: self.name.clone(),
-            price: if self.special() {
-                self.price + rhs.price
-            } else {
-                self.price
-            },
-            num: (|| -> Option<i32> { Some(self.num? + rhs.num?) })(),
-        }
-    }
-}
-
-impl std::ops::AddAssign<Item> for Item {
-    fn add_assign(&mut self, rhs: Item) {
-        *self = self.clone() + rhs
-    }
-}
-
-pub struct ItemWidget<'a, M> {
+pub struct ItemWidget<M, S: State> {
     msg: Option<M>,
-    extra: Option<Element<'a, M>>,
-    inner: Item,
+    inner: Item<S>,
 }
 
-impl<'a, M> ItemWidget<'a, M>
+impl<'a, M, S> ItemWidget<M, S>
 where
     M: Clone + 'a,
+    S: State,
 {
     pub fn on_press<F>(mut self, msg: F) -> Self
     where
-        F: Fn(Item) -> M,
+        F: Fn(Item<S>) -> M,
     {
         self.msg = Some(msg(self.inner.clone()));
         self
     }
-
-    pub fn extra(mut self, extra: impl Into<Element<'a, M>>) -> Self {
-        self.extra = Some(extra.into());
-        self
-    }
 }
 
-impl<'a, M> From<ItemWidget<'a, M>> for Element<'a, M>
+impl<'a, M, S> From<ItemWidget<M, S>> for Element<'a, M>
 where
     M: Clone + 'a,
+    S: State,
+    Item<S>: Into<Element<'a, M>>,
 {
-    fn from(i: ItemWidget<'a, M>) -> Self {
+    fn from(i: ItemWidget<M, S>) -> Self {
         let body = Clickable::new(
             Container::new(
                 Column::new()
                     .spacing(SMALL_PADDING)
                     .push(Text::new(i.inner.name.as_str()))
-                    .push(match i.inner.num {
-                        None | Some(0) => Row::new().push(
-                            Text::new(format!("{} kr", i.inner.price))
-                                .size(SMALL_TEXT)
-                                .width(Length::Fill)
-                                .horizontal_alignment(Horizontal::Left),
-                        ),
-                        Some(n) => Row::new()
-                            .push(Text::new(format!("{}x{} kr", n, i.inner.price)).size(SMALL_TEXT))
-                            .push(
-                                Text::new(format!("{} kr", i.inner.price_total()))
-                                    .size(SMALL_TEXT)
-                                    .width(Length::Fill)
-                                    .horizontal_alignment(Horizontal::Right),
-                            ),
-                    })
-                    .push(
-                        i.extra
-                            .unwrap_or_else(|| Space::with_height(Length::Shrink).into()),
-                    ),
+                    .push(i.inner.into()),
             )
             .padding(DEF_PADDING)
             .width(Length::Fill)
