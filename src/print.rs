@@ -50,7 +50,7 @@ fn create_pdf(
 
     for item in receipt.items.iter() {
         doc.push(Text::new(item.name.clone()));
-        if let Some(n) = item.num {
+        if let Some(n) = item.has_amount() {
             doc.push({
                 let mut tbl = TableLayout::new(vec![1, 1]);
                 tbl.row()

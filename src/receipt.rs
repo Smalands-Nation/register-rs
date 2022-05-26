@@ -47,7 +47,7 @@ impl Receipt {
             }
         }
         self.items
-            .sort_by(|v1, v2| match (v1.special(), v2.special()) {
+            .sort_by(|v1, v2| match (v1.is_special(), v2.is_special()) {
                 (false, false) | (true, true) => std::cmp::Ordering::Equal,
                 (false, true) => std::cmp::Ordering::Less,
                 (true, false) => std::cmp::Ordering::Greater,

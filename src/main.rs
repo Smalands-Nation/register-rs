@@ -3,7 +3,7 @@ use {
         error::Error,
         icons::Icon,
         screens::{
-            info::{self, Info},
+            info::Info,
             manager::{self, Manager},
             menu::{self, Menu},
             sales::{self, Sales},
