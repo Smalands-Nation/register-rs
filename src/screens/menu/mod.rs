@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{Item, ItemKind},
+        item,
         payment::Payment,
         print,
         receipt::{Receipt, ReceiptItem},
@@ -91,10 +91,11 @@ impl Screen for Menu {
                         Ok(Item {
                             name: row.get::<usize, String>(0)?,
                             price: row.get(1)?,
-                            kind: if row.get("special")? {
-                                ItemKind::Special
+                            //num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                            state: if row.get("special")? {
+                                Special
                             } else {
-                                ItemKind::Regular { num: 0 }
+                                Regular
                             },
                         })
                     },
@@ -106,11 +107,13 @@ impl Screen for Menu {
             Message::ClearReceipt => {
                 self.receipt = Receipt::new(Payment::Swish);
             }
-            Message::SellItem(mut i) => {
-                if let Some(0) = i.has_amount() {
-                    i.set_amount(self.calc.0 as i32);
-                }
-                self.receipt.add(i);
+            Message::SellItem(i) => {
+                self.receipt.add(i.map(|s| match s {
+                    Regular => ReceiptItem::Regular {
+                        num: self.calc.0 as i32,
+                    },
+                    Special => ReceiptItem::Special,
+                }));
                 self.calc.update(calc::Message::Clear);
             }
             Message::TogglePrint(b) => self.print = b,
@@ -148,7 +151,10 @@ impl Screen for Menu {
                                 stmt.execute(params![
                                     time,
                                     item.name,
-                                    item.has_amount().unwrap_or(0), //Special item has no ammount
+                                    match item.state {
+                                        ReceiptItem::Regular { num } => num,
+                                        ReceiptItem::Special => 0,
+                                    },
                                     item.price,
                                 ])?;
                             }

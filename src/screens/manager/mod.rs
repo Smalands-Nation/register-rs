@@ -3,9 +3,8 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{Item, ItemKind},
-        sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
+        item, sql,
+        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
         widgets::{Grid, NumberInput, SquareButton},
     },
     iced::{
@@ -111,9 +110,9 @@ where
                             params![],
                             |row| {
                                 Ok(Item {
-                                    name: row.get::<usize, String>(0)?,
-                                    price: row.get(1)?,
-                                    kind: ItemKind::InStock(row.get("available")?),
+                                    name: row.get("name")?,
+                                    price: row.get("price")?,
+                                    state: row.get("available")?,
                                 })
                             },
                             Vec<_>,
@@ -127,13 +126,13 @@ where
                 );
             }
             Message::ToggleItem(i, a) => {
-                if let Some(i) = self.menu.get_mut(i) {
-                    i.in_stock(a);
+                if let Some(i) = self.menu.get_mut(&i) {
+                    i.state = a;
                     let clone = i.clone();
                     return sql!(
                         "UPDATE menu SET available=?1 WHERE name=?2",
                         //Non breaking space gang
-                        params![a, clone.name.replace(' ', "\u{00A0}")],
+                        params![clone.state, clone.name.replace(' ', "\u{00A0}")],
                         Message::Refresh(false)
                     );
                 }
@@ -225,18 +224,8 @@ where
                             self.menu.len() as u32 / 3,
                             3,
                             self.menu
-                                .iter_mut()
-                                .enumerate()
-                                .map(|(i, item)| {
-                                    let available = item.is_in_stock();
-
-                                    item.as_widget()
-                                        .on_press(Message::EditItem)
-                                        .extra(Checkbox::new(available, "I Lager", move |b| {
-                                            Message::ToggleItem(i, b)
-                                        }))
-                                        .into()
-                                })
+                                .values_mut()
+                                .map(|item| item.as_widget().on_press(Message::EditItem).into())
                                 .collect(),
                         )
                         .width(Length::Fill)

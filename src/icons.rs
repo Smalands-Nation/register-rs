@@ -19,7 +19,6 @@ pub enum Icon {
     Right,
     Money,
     Lock,
-    Info,
 }
 
 impl From<Icon> for char {
@@ -35,7 +34,6 @@ impl From<Icon> for char {
             Icon::Right => '\u{e409}',
             Icon::Money => '\u{ef63}',
             Icon::Lock => '\u{e897}',
-            Icon::Info => '\u{e88e}',
         }
     }
 }

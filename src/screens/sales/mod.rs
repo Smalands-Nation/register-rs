@@ -3,7 +3,6 @@ use {
     crate::{
         command,
         error::Error,
-        item::{Item, ItemKind},
         payment::Payment,
         receipt::{Item, Receipt, ReceiptItem::*},
         sql,
@@ -84,14 +83,18 @@ impl Screen for Sales {
                     WHERE time BETWEEN ?1 AND ?2",
                     params![from, to],
                     |row| {
+                        //God hates me so all of these are type annotated
+                        //let num = row.get::<_, i32>("amount")?;
                         Ok((
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
-                                kind: if row.get("special")? {
-                                    ItemKind::Special
+                                //special
+                                //num: (!row.get::<_, bool>("special")?).then(|| num),
+                                state: if row.get("special")? {
+                                    Special
                                 } else {
-                                    ItemKind::Regular {
+                                    Regular {
                                         num: row.get("amount")?,
                                     }
                                 },

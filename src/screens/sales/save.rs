@@ -82,8 +82,8 @@ fn create_pdf(
     doc.push(Break::new(2));
 
     let (payments, mut items): (IndexSet<_>, IndexSet<_>) = stats.clone().into_iter().unzip();
-    items.sort_by(|v1, v2| match (v1.is_special(), v2.is_special()) {
-        (false, false) | (true, true) => {
+    items.sort_by(|v1, v2| match (v1.state, v2.state) {
+        (Regular { .. }, Regular { .. }) | (Special, Special) => {
             if v1.name == v2.name {
                 v1.price.cmp(&v2.price)
             } else {
@@ -112,8 +112,8 @@ fn create_pdf(
 
         row.push_element(Text::new(item.name.clone()).padded(3).framed());
         row.push_element(
-            Paragraph::new(if item.is_special() {
-                String::new()
+            Paragraph::new(if let Regular { num } = item.state {
+                format!("{}kr", num)
             } else {
                 String::new()
             })
@@ -138,9 +138,9 @@ fn create_pdf(
                         }
                         tot += price;
 
-                        Paragraph::new(match item.has_amount() {
-                            Some(n) => format!("{}st", n),
-                            None => format!("{}kr", item.price_total()),
+                        Paragraph::new(match item.state {
+                            Regular { num } => format!("{}st", num),
+                            Special => format!("{}kr", item.price_total()),
                         })
                     }
                     None => Paragraph::new("0"),

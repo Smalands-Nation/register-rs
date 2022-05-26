@@ -3,7 +3,6 @@ use {
         error::Error,
         icons::Icon,
         screens::{
-            info::Info,
             manager::{self, Manager},
             menu::{self, Menu},
             sales::{self, Sales},
@@ -80,7 +79,6 @@ struct App {
     transactions: Transactions,
     manager: Manager,
     sales: Sales,
-    info: Info,
 }
 
 impl Application for App {
@@ -89,7 +87,7 @@ impl Application for App {
     type Flags = ();
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = vec![];
+        let mut cmds = vec![command!(config::update().map(|_| Self::Message::None))];
 
         let (menu, mcmd) = Menu::new();
         cmds.push(mcmd);
@@ -103,9 +101,6 @@ impl Application for App {
         let (sales, mcmd) = Sales::new();
         cmds.push(mcmd);
 
-        let (info, mcmd) = Info::new();
-        cmds.push(mcmd);
-
         (
             Self {
                 err: modal::State::new(None),
@@ -114,7 +109,6 @@ impl Application for App {
                 transactions,
                 manager,
                 sales,
-                info,
             },
             Command::batch(cmds),
         )
@@ -130,7 +124,6 @@ impl Application for App {
             Message::SwapTab(n) => {
                 self.tab = n;
                 match n {
-                    //info doesn't refresh
                     3 => self.manager.update(manager::Message::Refresh(true)),
                     2 => self.sales.update(sales::Message::Refresh),
                     1 => self.transactions.update(transactions::Message::Refresh),
@@ -151,7 +144,6 @@ impl Application for App {
             Message::Transactions(msg) => self.transactions.update(msg),
             Message::Manager(msg) => self.manager.update(msg),
             Message::Sales(msg) => self.sales.update(msg),
-            Message::Info(msg) => self.info.update(msg),
         }
     }
 
@@ -185,10 +177,6 @@ impl Application for App {
                         .push(
                             TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
                             self.manager.view(),
-                        )
-                        .push(
-                            TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
-                            self.info.view(),
                         ),
                 )
                 .style(TABS)

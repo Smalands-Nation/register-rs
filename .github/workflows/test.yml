@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-      - '**'
     tags-ignore:
       - v[0-9]+.*
 
@@ -9,22 +7,21 @@ jobs:
   cargo-test:
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-gnu
-    runs-on: ${{ matrix.os }}
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-gnu
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
-      - name: Install rustup
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust
+        run: rustup update stable
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          toolchain: stable
           target: ${{ matrix.target }}
-      - run: cargo check --target=${{ matrix.target }}
-      - run: cargo check --target=${{ matrix.target }} --release 
-        env:
-          SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            SMALANDS_PASSWORD: ${{ secrets.SMALANDS_PASSWORD }}
+      - run: cargo test --release
