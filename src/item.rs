@@ -44,7 +44,7 @@ impl Item {
 
 impl std::cmp::PartialEq for Item {
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.price == rhs.price
+        self.name == rhs.name && (self.price == rhs.price || self.special())
     }
 }
 
@@ -54,7 +54,9 @@ impl std::hash::Hash for Item {
         H: std::hash::Hasher,
     {
         self.name.hash(state);
-        self.price.hash(state);
+        if !self.special() {
+            self.price.hash(state);
+        }
     }
 }
 
