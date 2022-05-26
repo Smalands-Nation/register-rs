@@ -134,11 +134,12 @@ impl Receipt {
                 self.items.insert(item);
             }
         }
-        self.items.sort_by(|v1, v2| match (v1.state, v2.state) {
-            (Regular { .. }, Regular { .. }) | (Special, Special) => std::cmp::Ordering::Equal,
-            (Regular { .. }, Special) => std::cmp::Ordering::Less,
-            (Special, Regular { .. }) => std::cmp::Ordering::Greater,
-        });
+        self.items
+            .sort_by(|v1, v2| match (v1.is_special(), v2.is_special()) {
+                (false, false) | (true, true) => std::cmp::Ordering::Equal,
+                (false, true) => std::cmp::Ordering::Less,
+                (true, false) => std::cmp::Ordering::Greater,
+            });
     }
 
     pub fn len(&self) -> usize {
