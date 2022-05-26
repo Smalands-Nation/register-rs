@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -72,7 +72,11 @@ impl Screen for Menu {
                         Ok(Item {
                             name: row.get::<usize, String>(0)?,
                             price: row.get(1)?,
-                            num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                            kind: if row.get("special")? {
+                                ItemKind::Special
+                            } else {
+                                ItemKind::Regular { num: 0 }
+                            },
                         })
                     },
                     Vec<_>,
@@ -84,7 +88,9 @@ impl Screen for Menu {
                 self.receipt = Receipt::new(Payment::Swish);
             }
             Message::SellItem(mut i) => {
-                i.num = i.num.map(|_| self.calc.0 as i32);
+                if let Some(0) = i.has_amount() {
+                    i.set_amount(self.calc.0 as i32);
+                }
                 self.receipt.add(i);
                 self.calc.update(calc::Message::Clear);
             }
@@ -123,7 +129,7 @@ impl Screen for Menu {
                                 stmt.execute(params![
                                     time,
                                     item.name,
-                                    item.num.unwrap_or(0), //Special item has no ammount
+                                    item.has_amount().unwrap_or(0), //Special item has no ammount
                                     item.price,
                                 ])?;
                             }

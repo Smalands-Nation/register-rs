@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -66,14 +66,18 @@ impl Screen for Transactions {
                     WHERE time > date('now','-1 day') ORDER BY time DESC",
                     params![],
                     |row| {
-                        //God hates me so all of these are type annotated
-                        let num = row.get::<_, i32>("amount")?;
                         Ok((
                             row.get::<_, DateTime<Local>>("time")?,
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
-                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                                kind: if row.get("special")? {
+                                    ItemKind::Special
+                                } else {
+                                    ItemKind::Regular {
+                                        num: row.get("amount")?,
+                                    }
+                                },
                             },
                             Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
                         ))

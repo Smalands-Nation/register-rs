@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         sql,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton},
@@ -92,9 +92,7 @@ where
                                 Ok(Item {
                                     name: row.get::<usize, String>(0)?,
                                     price: row.get(1)?,
-                                    //None => unavailable
-                                    //Some(0) => available
-                                    num: row.get::<usize, bool>(2)?.then(|| 0),
+                                    kind: ItemKind::InStock(row.get("available")?),
                                 })
                             },
                             Vec<_>,
@@ -109,12 +107,12 @@ where
             }
             Message::ToggleItem(i, a) => {
                 if let Some(i) = self.menu.get_mut(i) {
-                    i.num = a.then(|| 0);
+                    i.in_stock(a);
                     let clone = i.clone();
                     return sql!(
                         "UPDATE menu SET available=?1 WHERE name=?2",
                         //Non breaking space gang
-                        params![clone.num.is_some(), clone.name.replace(' ', "\u{00A0}")],
+                        params![a, clone.name.replace(' ', "\u{00A0}")],
                         Message::Refresh(false)
                     );
                 }
@@ -209,7 +207,7 @@ where
                                 .iter_mut()
                                 .enumerate()
                                 .map(|(i, item)| {
-                                    let available = item.num.is_some();
+                                    let available = item.is_in_stock();
 
                                     item.as_widget()
                                         .on_press(Message::EditItem)
