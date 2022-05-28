@@ -118,9 +118,9 @@ impl Screen for Transactions {
             Message::Deselect => self.selected = None,
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
-                    return Command::perform(print::print(receipt.clone(), *time), |r| {
-                        r.map(|_| Message::Deselect).into()
-                    });
+                    let receipt = receipt.clone();
+                    let time = *time;
+                    return command!(print::print(receipt, time).await.map(|_| Message::Deselect));
                 }
             }
             _ => (),
