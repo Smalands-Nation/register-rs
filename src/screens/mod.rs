@@ -1,3 +1,4 @@
+pub mod info;
 pub mod manager;
 pub mod menu;
 pub mod sales;
@@ -8,9 +9,9 @@ use {
     giftwrap::Wrap,
     iced::{Command, Element},
 };
-pub use {manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
+pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
-#[derive(Clone, Wrap)]
+#[derive(Clone, Wrap, Debug)]
 pub enum Message {
     #[noWrap]
     None,
@@ -23,20 +24,12 @@ pub enum Message {
     Transactions(transactions::Message),
     Manager(manager::Message),
     Sales(sales::Message),
+    Info(info::Message),
 }
 
-impl std::fmt::Debug for Message {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::None => write!(f, "None"),
-            Self::SwapTab(n) => write!(f, "SwapTab({:?})", n),
-            Self::CloseModal => write!(f, "CloseModal"),
-            Self::Error(n) => write!(f, "Error({:?})", n),
-            Self::Menu(n) => write!(f, "Menu({:?})", n),
-            Self::Transactions(n) => write!(f, "Transactions({:?})", n),
-            Self::Manager(n) => write!(f, "Manager({:?})", n),
-            Self::Sales(n) => write!(f, "Sales({:?})", n),
-        }
+impl From<()> for Message {
+    fn from(_: ()) -> Self {
+        Self::None
     }
 }
 
@@ -64,28 +57,22 @@ pub trait Screen: Sized {
 #[macro_export]
 macro_rules! sql {
     ($sql:literal, $params:expr, $msg:expr) => {
-        Command::perform(
-            async move {
-                crate::DB.lock().await.execute($sql, $params)?;
-                Ok($msg)
-            },
-            crate::screens::Message::from,
-        )
+        crate::command!({
+            crate::DB.lock().await.execute($sql, $params)?;
+            Ok($msg)
+        })
     };
 
     ($sql:literal, $params:expr, $map_row:expr, $collect:ty, $msg:expr) => {
-        Command::perform(
-            async move {
-                Ok($msg(
-                    crate::DB
-                        .lock()
-                        .await
-                        .prepare($sql)?
-                        .query_map($params, $map_row)?
-                        .collect::<std::result::Result<$collect, rusqlite::Error>>()?,
-                ))
-            },
-            crate::screens::Message::from,
-        )
+        crate::command!({
+            Ok($msg(
+                crate::DB
+                    .lock()
+                    .await
+                    .prepare($sql)?
+                    .query_map($params, $map_row)?
+                    .collect::<std::result::Result<$collect, rusqlite::Error>>()?,
+            ))
+        })
     };
 }

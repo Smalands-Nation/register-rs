@@ -2422,6 +2422,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusqlite_migration"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eda44233be97aea786691f9f6f7ef230bcf905061f4012e90f4f39e6dcf31163"
+dependencies = [
+ "log",
+ "rusqlite",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2633,7 +2643,7 @@ dependencies = [
 
 [[package]]
 name = "smalands-rs"
-version = "0.5.2"
+version = "0.7.1"
 dependencies = [
  "chrono",
  "dirs",
@@ -2647,6 +2657,7 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "rusqlite",
+ "rusqlite_migration",
  "self_update",
  "serde",
  "serde_derive",

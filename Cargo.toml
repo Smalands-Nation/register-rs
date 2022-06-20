@@ -1,6 +1,6 @@
 [package]
 name = "smalands-rs"
-version = "0.5.2"
+version = "0.7.1"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2021"
 
@@ -21,6 +21,7 @@ dirs = "4.0.0"
 iced_native = "0.5.0"
 iced_pure = "0.2.0"
 lazy_static = "1.4.0"
+rusqlite_migration = "1.0.0"
 
 [dependencies.self_update]
 version = "0.27.0"
@@ -45,7 +46,16 @@ git = "https://github.com/iced-rs/iced_aw"
 # tag = "v0.1.0"
 rev = "045e16d"
 default-features = false
-features = ["tab_bar", "tabs", "modal", "card", "number_input", "date_picker"]
+features = [
+    "tab_bar", 
+    "tabs", 
+    "modal", 
+    "card", 
+    "number_input", 
+    "date_picker",
+    "badge",
+    "colors"
+]
 
 [dependencies.genpdf]
 version = "0.2.0"

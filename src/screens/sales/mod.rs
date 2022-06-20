@@ -1,8 +1,9 @@
 use {
     super::Screen,
     crate::{
-        command_now,
-        item::Item,
+        command,
+        error::Error,
+        item::{Item, ItemKind},
         payment::Payment,
         receipt::Receipt,
         sql,
@@ -25,6 +26,8 @@ use {
     indexmap::IndexMap,
     rusqlite::params,
 };
+
+mod save;
 
 #[derive(Debug, Clone)]
 pub enum Picker {
@@ -63,7 +66,7 @@ impl Screen for Sales {
                 save: button::State::new(),
                 receipts: IndexMap::new(),
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -81,14 +84,17 @@ impl Screen for Sales {
                     WHERE time BETWEEN ?1 AND ?2",
                     params![from, to],
                     |row| {
-                        //God hates me so all of these are type annotated
-                        let num = row.get::<_, i32>("amount")?;
                         Ok((
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
-                                //special
-                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                                kind: if row.get("special")? {
+                                    ItemKind::Special
+                                } else {
+                                    ItemKind::Regular {
+                                        num: row.get("amount")?,
+                                    }
+                                },
                             },
                             //method
                             Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
@@ -114,7 +120,28 @@ impl Screen for Sales {
                     },
                 );
             }
-            Message::Save => (),
+            Message::Save => {
+                let from = Local
+                    .from_local_date(&NaiveDate::from(self.from.value()))
+                    .unwrap();
+                let to = Local
+                    .from_local_date(&NaiveDate::from(self.to.value()))
+                    .unwrap();
+
+                let stats = self.receipts.clone();
+                //Always return error to give info via modal
+                return command!(if !stats.is_empty() {
+                    match save::save(stats, (from, to)).await {
+                        Ok(e) => Result::<(), Error>::Err(Error::Other(format!(
+                            "Sparad till {}",
+                            e.to_string_lossy()
+                        ))),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    Err(Error::Other("Ingen försäljning att spara".into()))
+                });
+            }
             Message::OpenDate(p) => {
                 let p = match p {
                     Picker::From => &mut self.from,
@@ -130,7 +157,7 @@ impl Screen for Sales {
                 };
                 p.update(d);
                 p.state.show(false);
-                return command_now!(Message::Refresh.into());
+                return command!(Message::Refresh);
             }
             Message::CloseDate(p) => {
                 match p {
@@ -139,7 +166,7 @@ impl Screen for Sales {
                 }
                 .state
                 .show(false);
-                return command_now!(Message::Refresh.into());
+                return command!(Message::Refresh);
             }
         }
         Command::none()

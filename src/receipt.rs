@@ -12,22 +12,22 @@ use {
         },
         Length,
     },
-    indexmap::IndexMap,
+    indexmap::IndexSet,
 };
 
 #[derive(Debug, Clone)]
 pub struct Receipt {
-    pub items: IndexMap<String, Item>,
+    pub items: IndexSet<Item>,
     pub sum: i32,
     pub payment: Payment,
 }
 
 impl Receipt {
     pub fn new(payment: Payment) -> Self {
-        Self::new_from(IndexMap::new(), 0, payment)
+        Self::new_from(IndexSet::new(), 0, payment)
     }
 
-    pub fn new_from(items: IndexMap<String, Item>, sum: i32, payment: Payment) -> Self {
+    pub fn new_from(items: IndexSet<Item>, sum: i32, payment: Payment) -> Self {
         Self {
             items,
             sum,
@@ -37,16 +37,17 @@ impl Receipt {
 
     pub fn add(&mut self, item: Item) {
         self.sum += item.price_total();
-        match self.items.get_mut(&item.name) {
+        let it = self.items.get(&item).cloned();
+        match it {
             Some(it) => {
-                *it += item;
+                self.items.replace(it + item);
             }
             None => {
-                self.items.insert(item.name.clone(), item);
+                self.items.insert(item);
             }
         }
         self.items
-            .sort_by(|_, v1, _, v2| match (v1.special(), v2.special()) {
+            .sort_by(|v1, v2| match (v1.is_special(), v2.is_special()) {
                 (false, false) | (true, true) => std::cmp::Ordering::Equal,
                 (false, true) => std::cmp::Ordering::Less,
                 (true, false) => std::cmp::Ordering::Greater,
@@ -96,7 +97,7 @@ where
                     Scrollable::new(
                         r.inner
                             .items
-                            .values_mut()
+                            .iter()
                             .fold(Column::new().spacing(DEF_PADDING), |col, item| {
                                 col.push(item.as_widget())
                             }),

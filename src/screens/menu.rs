@@ -1,9 +1,9 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -57,7 +57,7 @@ impl Screen for Menu {
                 receipt: Receipt::new(Payment::Swish),
                 print: false,
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -72,7 +72,11 @@ impl Screen for Menu {
                         Ok(Item {
                             name: row.get::<usize, String>(0)?,
                             price: row.get(1)?,
-                            num: (!row.get::<usize, bool>(2)?).then(|| 0),
+                            kind: if row.get("special")? {
+                                ItemKind::Special
+                            } else {
+                                ItemKind::Regular { num: 0 }
+                            },
                         })
                     },
                     Vec<_>,
@@ -84,7 +88,9 @@ impl Screen for Menu {
                 self.receipt = Receipt::new(Payment::Swish);
             }
             Message::SellItem(mut i) => {
-                i.num = i.num.map(|_| self.calc.0 as i32);
+                if let Some(0) = i.has_amount() {
+                    i.set_amount(self.calc.0 as i32);
+                }
                 self.receipt.add(i);
                 self.calc.update(calc::Message::Clear);
             }
@@ -95,46 +101,41 @@ impl Screen for Menu {
                 let should_print = self.print;
                 if !self.receipt.is_empty() {
                     return Command::batch([
-                        Command::perform(
-                            async move {
-                                if should_print {
-                                    print::print(receipt1, Local::now())
-                                        .await
-                                        .map(|_| Message::Refresh)
-                                } else {
-                                    Ok(Message::Refresh)
-                                }
-                            },
-                            Self::ExMessage::from,
-                        ),
-                        Command::perform(
-                            async move {
-                                let time = Local::now();
+                        command!({
+                            if should_print {
+                                print::print(receipt1, Local::now())
+                                    .await
+                                    .map(|_| Message::Refresh)
+                            } else {
+                                Ok(Message::Refresh)
+                            }
+                        }),
+                        command!({
+                            let time = Local::now();
 
-                                let con = crate::DB.lock().await;
+                            let con = crate::DB.lock().await;
 
-                                con.execute(
-                                    "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
-                                    params![time, String::from(p)],
-                                )?;
+                            con.execute(
+                                "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+                                params![time, String::from(p)],
+                            )?;
 
-                                let mut stmt = con.prepare(
-                                    "INSERT INTO receipt_item (receipt, item, amount) \
-                                            VALUES (?1, ?2, ?3)",
-                                )?;
+                            let mut stmt = con.prepare(
+                                "INSERT INTO receipt_item (receipt, item, amount, price) \
+                                            VALUES (?1, ?2, ?3, ?4)",
+                            )?;
 
-                                for item in receipt2.items.values() {
-                                    stmt.execute(params![
-                                        time,
-                                        item.name,
-                                        item.num.unwrap_or(item.price)
-                                    ])?;
-                                }
+                            for item in receipt2.items.iter() {
+                                stmt.execute(params![
+                                    time,
+                                    item.name,
+                                    item.has_amount().unwrap_or(0), //Special item has no ammount
+                                    item.price,
+                                ])?;
+                            }
 
-                                Ok(Message::ClearReceipt)
-                            },
-                            Self::ExMessage::from,
-                        ),
+                            Ok(Message::ClearReceipt)
+                        }),
                     ]);
                 }
             }
@@ -170,9 +171,6 @@ impl Screen for Menu {
                     .spacing(DEF_PADDING)
                     .padding(DEF_PADDING),
                 )
-                //NOTE not available on pure .width(Length::Fill)
-                //NOTE --||-- .spacing(DEF_PADDING)
-                //NOTE --||-- .padding(DEF_PADDING)
                 .into(),
                 Rule::vertical(DEF_PADDING).into(),
                 Column::with_children(vec![

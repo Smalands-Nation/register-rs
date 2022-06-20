@@ -1,9 +1,9 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -54,7 +54,7 @@ impl Screen for Transactions {
                 selected: None,
                 offset: 0,
             },
-            command_now!(Message::Refresh.into()),
+            command!(Message::Refresh),
         )
     }
 
@@ -66,14 +66,18 @@ impl Screen for Transactions {
                     WHERE time > date('now','-1 day') ORDER BY time DESC",
                     params![],
                     |row| {
-                        //God hates me so all of these are type annotated
-                        let num = row.get::<_, i32>("amount")?;
                         Ok((
                             row.get::<_, DateTime<Local>>("time")?,
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
-                                num: (!row.get::<_, bool>("special")?).then(|| num),
+                                kind: if row.get("special")? {
+                                    ItemKind::Special
+                                } else {
+                                    ItemKind::Regular {
+                                        num: row.get("amount")?,
+                                    }
+                                },
                             },
                             Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
                         ))
@@ -114,13 +118,9 @@ impl Screen for Transactions {
             Message::Deselect => self.selected = None,
             Message::Print => {
                 if let Some((time, receipt)) = &self.selected {
-                    return Command::perform(
-                        print::print((*receipt).clone(), *time),
-                        |r| match r {
-                            Ok(_) => Message::Deselect.into(),
-                            Err(e) => super::Message::Error(e),
-                        },
-                    );
+                    let receipt = receipt.clone();
+                    let time = *time;
+                    return command!(print::print(receipt, time).await.map(|_| Message::Deselect));
                 }
             }
             _ => (),

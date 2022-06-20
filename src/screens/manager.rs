@@ -1,9 +1,9 @@
 use {
     super::Screen,
     crate::{
-        command_now,
+        command,
         icons::Icon,
-        item::Item,
+        item::{Item, ItemKind},
         sql,
         styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton},
@@ -75,7 +75,7 @@ where
                 name: String::new(),
                 price: NumberInput::new(),
             },
-            command_now!(Message::Refresh(true).into()),
+            command!(Message::Refresh(true)),
         )
     }
 
@@ -92,16 +92,14 @@ where
                                 Ok(Item {
                                     name: row.get::<usize, String>(0)?,
                                     price: row.get(1)?,
-                                    //None => unavailable
-                                    //Some(0) => available
-                                    num: row.get::<usize, bool>(2)?.then(|| 0),
+                                    kind: ItemKind::InStock(row.get("available")?),
                                 })
                             },
                             Vec<_>,
                             Message::LoadMenu
                         ),
-                        command_now!(Message::Cancel.into()),
-                        command_now!(Message::Lock.into()),
+                        command!(Message::Cancel),
+                        command!(Message::Lock),
                     ]
                     .into_iter()
                     .take(if lock { 3 } else { 2 }),
@@ -109,12 +107,12 @@ where
             }
             Message::ToggleItem(i, a) => {
                 if let Some(i) = self.menu.get_mut(i) {
-                    i.num = a.then(|| 0);
+                    i.in_stock(a);
                     let clone = i.clone();
                     return sql!(
                         "UPDATE menu SET available=?1 WHERE name=?2",
                         //Non breaking space gang
-                        params![clone.num.is_some(), clone.name.replace(" ", "\u{00A0}")],
+                        params![a, clone.name.replace(' ', "\u{00A0}")],
                         Message::Refresh(false)
                     );
                 }
@@ -145,7 +143,7 @@ where
                         Mode::New => sql!(
                             "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
                             //Non breaking space gang
-                            params![name.replace(" ", "\u{00A0}"), price],
+                            params![name.replace(' ', "\u{00A0}"), price],
                             Message::Refresh(false)
                         ),
                         Mode::Update(old_name) => {
@@ -153,7 +151,7 @@ where
                             sql!(
                                 "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
                                 //Non breaking space gang
-                                params![name.replace(" ", "\u{00A0}"), price, old_name],
+                                params![name.replace(' ', "\u{00A0}"), price, old_name],
                                 Message::Refresh(false)
                             )
                         }
@@ -171,26 +169,25 @@ where
             //No password in debug mode
             #[cfg(debug_assertions)]
             Message::Login => {
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::Unlock);
             }
             //Use env for password
             #[cfg(not(debug_assertions))]
             Message::Login => {
                 let password_ok = self.login_modal.inner().0.as_str() == env!("SMALANDS_PASSWORD");
-                return command_now!(if password_ok {
+                return command!(if password_ok {
                     Message::Unlock
                 } else {
                     Message::Lock
-                }
-                .into());
+                });
             }
             Message::Lock => {
                 self.locked = true;
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::CloseLogin);
             }
             Message::Unlock => {
                 self.locked = false;
-                return command_now!(Message::CloseLogin.into());
+                return command!(Message::CloseLogin);
             }
         }
         Command::none()
@@ -210,7 +207,7 @@ where
                                 .iter_mut()
                                 .enumerate()
                                 .map(|(i, item)| {
-                                    let available = item.num.is_some();
+                                    let available = item.is_in_stock();
 
                                     item.as_widget()
                                         .on_press(Message::EditItem)
@@ -225,9 +222,6 @@ where
                         .spacing(DEF_PADDING)
                         .padding(DEF_PADDING),
                     )
-                    //.scroller_width(Length::Fill) //NOTE not sure if correct field
-                    //.spacing(DEF_PADDING)
-                    //.padding(DEF_PADDING)
                     .into(),
                     Rule::vertical(DEF_PADDING).into(),
                     Column::with_children(vec![
@@ -296,6 +290,7 @@ where
                             TextInput::new("", password, Message::UpdatePassword)
                                 .password()
                                 .padding(DEF_PADDING)
+                                .on_submit(Message::Login)
                                 .into(),
                             Button::new(Text::new("Logga In"))
                                 .on_press(Message::Login)
