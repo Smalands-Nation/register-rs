@@ -11,24 +11,24 @@ update = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-giftwrap = "0.3.0"
-num-traits = "0.2.14"
-serde_json = "1.0.59"
-serde = "1.0.117"
-serde_derive = "1.0.117"
-chrono = "0.4.19"
-dirs = "4.0.0"
-iced_native = "0.5.0"
-iced_pure = "0.2.0"
-lazy_static = "1.4.0"
-rusqlite_migration = "1.0.0"
+giftwrap = "0.3"
+num-traits = "0.2"
+serde_json = "1.0"
+serde = "1.0"
+serde_derive = "1.0"
+chrono = "0.4"
+dirs = "4.0"
+iced_native = "0.5"
+iced_pure = "0.2"
+lazy_static = "1.4"
+rusqlite_migration = "1.0"
 
 [dependencies.self_update]
-version = "0.27.0"
+version = "0.27"
 features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]
 
 [dependencies.iced]
-version = "0.4.2"
+version = "0.4"
 features = [
     # "glow", 
     "canvas", 
@@ -38,13 +38,11 @@ features = [
 ]
 
 [dependencies.rusqlite]
-version  = "0.26.3"
+version  = "0.26"
 features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
-git = "https://github.com/iced-rs/iced_aw"
-# tag = "v0.1.0"
-rev = "045e16d"
+version = "0.2"
 default-features = false
 features = [
     "tab_bar", 
@@ -58,15 +56,15 @@ features = [
 ]
 
 [dependencies.genpdf]
-version = "0.2.0"
+version = "0.2"
 features = ["images"]
 
 [dependencies.indexmap]
-version = "1.8.1"
+version = "1.8"
 features = ["serde-1"]
 
 [dependencies.tokio]
-version = "1.18.2"
+version = "1.18"
 features  = ["sync"]
 
 # Metadata
