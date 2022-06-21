@@ -17,7 +17,6 @@ use {
         },
         Alignment, Command, Length,
     },
-    //NOTE
     iced_aw::pure::date_picker::{self, DatePicker},
     indexmap::IndexMap,
     rusqlite::params,

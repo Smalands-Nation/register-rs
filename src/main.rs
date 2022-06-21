@@ -26,9 +26,6 @@ use {
     tokio::sync::Mutex,
 };
 
-//TODO use iced_aw::pure and remove uses of pure
-//TODO use iced_aw::Grid (needs pure)
-
 pub mod config;
 pub mod error;
 pub mod icons;

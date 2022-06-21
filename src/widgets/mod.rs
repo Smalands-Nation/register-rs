@@ -3,9 +3,5 @@ pub mod clickable;
 pub mod grid;
 pub mod numberinput;
 pub mod square_button;
-pub mod textinput;
 
-pub use {
-    clickable::Clickable, grid::Grid, numberinput::NumberInput, square_button::SquareButton,
-    textinput::TextInput,
-};
+pub use {clickable::Clickable, grid::Grid, numberinput::NumberInput, square_button::SquareButton};
