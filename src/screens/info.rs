@@ -5,10 +5,13 @@ use {
         styles::{DEF_PADDING, SMALL_TEXT},
     },
     iced::{
-        widget::{Column, Container, Row, Text},
-        Alignment, Command, Element, Length,
+        pure::{
+            widget::{Column, Container, Row, Text},
+            Element,
+        },
+        Alignment, Command, Length,
     },
-    iced_aw::{style::badge, Badge},
+    iced_aw::{pure::Badge, style::badge},
 };
 
 #[cfg(not(debug_assertions))]
@@ -51,7 +54,7 @@ impl Screen for Info {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::ExMessage> {
+    fn view(&self) -> Element<Self::ExMessage> {
         Column::new()
             .push(
                 Container::new(

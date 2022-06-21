@@ -13,7 +13,7 @@ where
         Self(None)
     }
 
-    pub fn build<F, M>(&mut self, min: N, max: N, msg: F) -> TextInput<M>
+    pub fn build<F, M>(&self, min: N, max: N, msg: F) -> TextInput<M>
     where
         N: 'static,
         F: 'static + Fn(Option<N>) -> M,

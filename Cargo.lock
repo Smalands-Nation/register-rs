@@ -1221,6 +1221,7 @@ dependencies = [
  "chrono",
  "iced_graphics",
  "iced_native",
+ "iced_pure",
  "iced_style",
  "lazy_static",
  "num-traits",

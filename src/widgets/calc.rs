@@ -47,7 +47,7 @@ impl Calc {
         };
     }
 
-    pub fn view(&mut self) -> Element<Message> {
+    pub fn view(&self) -> Element<Message> {
         Column::new()
             .align_items(Alignment::Center)
             .push(

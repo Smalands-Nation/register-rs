@@ -15,9 +15,9 @@ use {
     iced::{
         pure::{
             widget::{Column, Container, Row, Rule, Space},
-            Pure, State,
+            Element,
         },
-        Command, Element, Length,
+        Command, Length,
     },
     indexmap::IndexMap,
     rusqlite::params,
@@ -36,7 +36,6 @@ pub enum Message {
 }
 
 pub struct Transactions {
-    pure_state: State,
     receipts: IndexMap<DateTime<Local>, Receipt>,
     selected: Option<(DateTime<Local>, Receipt)>,
     offset: usize,
@@ -49,7 +48,6 @@ impl Screen for Transactions {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                pure_state: State::new(),
                 receipts: IndexMap::new(),
                 selected: None,
                 offset: 0,
@@ -128,14 +126,13 @@ impl Screen for Transactions {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::ExMessage> {
-        Into::<Element<Self::InMessage>>::into(Pure::new(
-            &mut self.pure_state,
+    fn view(&self) -> Element<Self::ExMessage> {
+        Into::<Element<Self::InMessage>>::into(
             Row::new()
                 .push(
                     Container::new(
                         self.receipts
-                            .iter_mut()
+                            .iter()
                             .skip(self.offset * 3)
                             .take(3)
                             .fold(
@@ -181,7 +178,7 @@ impl Screen for Transactions {
                 )
                 .push(Rule::vertical(DEF_PADDING))
                 .push(
-                    match &mut self.selected {
+                    match &self.selected {
                         Some((_, rec)) => Column::new().push(rec.as_widget()),
                         None => Column::new()
                             .push(Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill)),
@@ -197,7 +194,7 @@ impl Screen for Transactions {
                     .padding(DEF_PADDING)
                     .width(Length::Units(RECEIPT_WIDTH)),
                 ),
-        ))
+        )
         .map(Self::ExMessage::Transactions)
     }
 }

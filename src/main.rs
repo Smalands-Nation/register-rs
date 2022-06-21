@@ -13,12 +13,13 @@ use {
         styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, SMALL_TEXT, TABS},
     },
     iced::{
-        window, Application, Column, Command, Container, Element, Font, Length, Settings, Text,
+        pure::{
+            widget::{Column, Container, Text},
+            Application, Element,
+        },
+        window, Command, Font, Length, Settings,
     },
-    iced_aw::{
-        modal::{self, Modal},
-        Card, TabLabel, Tabs,
-    },
+    iced_aw::pure::{Card, Modal, TabLabel, Tabs},
     lazy_static::lazy_static,
     rusqlite::Connection,
     std::sync::Arc,
@@ -74,7 +75,7 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    err: modal::State<Option<Error>>,
+    err: Option<Error>,
     tab: usize,
     menu: Menu,
     transactions: Transactions,
@@ -108,7 +109,7 @@ impl Application for App {
 
         (
             Self {
-                err: modal::State::new(None),
+                err: None,
                 tab: 0,
                 menu,
                 transactions,
@@ -139,12 +140,12 @@ impl Application for App {
             }
             //Message::DB(f) => f(self.con.clone()),
             Message::CloseModal => {
-                *self.err.inner_mut() = None;
+                self.err = None;
                 Command::none()
             }
             Message::Error(e) => {
                 println!("Message::Error({:#?})", e);
-                *self.err.inner_mut() = Some(e);
+                self.err = Some(e);
                 //TODO add logging here
                 Command::none()
             }
@@ -156,15 +157,10 @@ impl Application for App {
         }
     }
 
-    fn view(&mut self) -> Element<Self::Message> {
-        if self.err.inner().is_some() {
-            self.err.show(true);
-        } else {
-            self.err.show(false);
-        }
-
+    fn view(&self) -> Element<Self::Message> {
+        let err = self.err.clone();
         Modal::new(
-            &mut self.err,
+            self.err.is_some(),
             Column::new().push(
                 Container::new(
                     Tabs::new(self.tab, Message::SwapTab)
@@ -195,10 +191,10 @@ impl Application for App {
                 .style(TABS)
                 .padding(BORDER_WIDTH as u16),
             ),
-            |state| {
+            move || {
                 Card::new(
                     Text::new("Error"),
-                    Text::new(match state {
+                    Text::new(match &err {
                         Some(e) => format!("{:#?}", e),
                         None => String::new(),
                     })

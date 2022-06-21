@@ -45,6 +45,7 @@ features = ["chrono", "bundled"]
 version = "0.2"
 default-features = false
 features = [
+    "pure",
     "tab_bar", 
     "tabs", 
     "modal", 

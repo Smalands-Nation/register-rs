@@ -5,7 +5,7 @@ use {
         button::{self, Button},
         Text,
     },
-    iced_aw::native::date_picker::{self, Date, State},
+    iced_aw::pure::date_picker::{self, Date, State},
 };
 
 pub struct DatePicker {
