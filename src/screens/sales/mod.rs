@@ -8,21 +8,16 @@ use {
         receipt::Receipt,
         sql,
         styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
-        widgets::DatePicker,
     },
-    chrono::{Local, NaiveDate, TimeZone},
+    chrono::{Date, Local, TimeZone},
     iced::{
-        button::{self, Button},
         pure::{
-            widget::{
-                Column as PColumn, Container as PContainer, Row as PRow, Space as PSpace,
-                Text as PText,
-            },
-            Pure, State,
+            widget::{Button, Column, Container, Row, Rule, Space, Text},
+            Element,
         },
-        Alignment, Column, Command, Container, Element, Length, Row, Rule, Space, Text,
+        Alignment, Command, Length,
     },
-    iced_aw::date_picker::Date,
+    iced_aw::pure::date_picker::{self, DatePicker},
     indexmap::IndexMap,
     rusqlite::params,
 };
@@ -41,15 +36,14 @@ pub enum Message {
     Load(Vec<(Item, Payment)>),
     Save,
     OpenDate(Picker),
-    UpdateDate(Picker, Date),
-    CloseDate(Picker),
+    UpdateDate(date_picker::Date),
+    CloseDate,
 }
 
 pub struct Sales {
-    pure_state: State,
-    from: DatePicker,
-    to: DatePicker,
-    save: button::State,
+    show_date: Option<Picker>,
+    from: Date<Local>,
+    to: Date<Local>,
     receipts: IndexMap<Payment, Receipt>,
 }
 
@@ -60,10 +54,9 @@ impl Screen for Sales {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                pure_state: State::new(),
-                from: DatePicker::new(),
-                to: DatePicker::new(),
-                save: button::State::new(),
+                show_date: None,
+                from: Local::today(),
+                to: Local::today(),
                 receipts: IndexMap::new(),
             },
             command!(Message::Refresh),
@@ -73,12 +66,8 @@ impl Screen for Sales {
     fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
         match msg {
             Message::Refresh => {
-                let from = Local
-                    .from_local_datetime(&NaiveDate::from(self.from.value()).and_hms(0, 0, 0))
-                    .unwrap();
-                let to = Local
-                    .from_local_datetime(&NaiveDate::from(self.to.value()).and_hms(23, 59, 59))
-                    .unwrap();
+                let from = self.from.and_hms(0, 0, 0);
+                let to = self.to.and_hms(23, 59, 59);
                 return sql!(
                     "SELECT item, amount, price, special, method FROM receipts_view \
                     WHERE time BETWEEN ?1 AND ?2",
@@ -121,13 +110,8 @@ impl Screen for Sales {
                 );
             }
             Message::Save => {
-                let from = Local
-                    .from_local_date(&NaiveDate::from(self.from.value()))
-                    .unwrap();
-                let to = Local
-                    .from_local_date(&NaiveDate::from(self.to.value()))
-                    .unwrap();
-
+                let from = self.from;
+                let to = self.to;
                 let stats = self.receipts.clone();
                 //Always return error to give info via modal
                 return command!(if !stats.is_empty() {
@@ -143,48 +127,44 @@ impl Screen for Sales {
                 });
             }
             Message::OpenDate(p) => {
-                let p = match p {
-                    Picker::From => &mut self.from,
-                    Picker::To => &mut self.to,
-                };
-                p.state.reset();
-                p.state.show(true);
+                self.show_date = Some(p);
             }
-            Message::UpdateDate(p, d) => {
-                let p = match p {
-                    Picker::From => &mut self.from,
-                    Picker::To => &mut self.to,
+            Message::UpdateDate(d) => {
+                let date = Local.from_local_date(&d.into()).unwrap();
+                match self.show_date {
+                    Some(Picker::From) => {
+                        self.from = date;
+                    }
+                    Some(Picker::To) => {
+                        self.to = date;
+                    }
+                    None => (), //TODO logging here?
                 };
-                p.update(d);
-                p.state.show(false);
+                self.show_date = None;
                 return command!(Message::Refresh);
             }
-            Message::CloseDate(p) => {
-                match p {
-                    Picker::From => &mut self.from,
-                    Picker::To => &mut self.to,
-                }
-                .state
-                .show(false);
+            Message::CloseDate => {
+                self.show_date = None;
                 return command!(Message::Refresh);
             }
         }
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(Row::with_children(vec![
-            if !self.receipts.is_empty() {
-                Pure::new(
-                    &mut self.pure_state,
+    fn view(&self) -> Element<Self::ExMessage> {
+        Element::<Self::InMessage>::from(DatePicker::new(
+            self.show_date.is_some(),
+            self.from.naive_local(),
+            Row::with_children(vec![
+                if !self.receipts.is_empty() {
                     self.receipts
-                        .iter_mut()
-                        .fold(PRow::new(), |row, (payment, rec)| {
+                        .iter()
+                        .fold(Row::new(), |row, (payment, rec)| {
                             row.push(
-                                PContainer::new(
-                                    PColumn::new()
-                                        .push(PText::new(*payment).size(BIG_TEXT))
-                                        .push(PSpace::new(Length::Fill, Length::Units(SMALL_TEXT)))
+                                Container::new(
+                                    Column::new()
+                                        .push(Text::new(*payment).size(BIG_TEXT))
+                                        .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
                                         .push(rec.as_widget())
                                         .width(Length::Units(RECEIPT_WIDTH))
                                         .padding(DEF_PADDING),
@@ -195,48 +175,42 @@ impl Screen for Sales {
                         .width(Length::Fill)
                         .align_items(Alignment::Center)
                         .padding(DEF_PADDING)
-                        .spacing(DEF_PADDING),
-                )
-                .into()
-            } else {
-                Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
-                    .width(Length::Fill)
-                    .center_x()
-                    .padding(DEF_PADDING)
-                    .into()
-            },
-            Rule::vertical(DEF_PADDING).into(),
-            Column::with_children(vec![
-                Text::new("Visa Försäljning").size(BIG_TEXT).into(),
-                Space::with_height(Length::Fill).into(),
-                Text::new("Fr.o.m.").into(),
-                self.from
-                    .build(
-                        Message::OpenDate(Picker::From),
-                        Message::CloseDate(Picker::From),
-                        |d| Message::UpdateDate(Picker::From, d),
-                    )
-                    .into(),
-                Text::new("T.o.m.").into(),
-                self.to
-                    .build(
-                        Message::OpenDate(Picker::To),
-                        Message::CloseDate(Picker::To),
-                        |d| Message::UpdateDate(Picker::To, d),
-                    )
-                    .into(),
-                Space::with_height(Length::Fill).into(),
-                Button::new(&mut self.save, Text::new("Exportera").size(BIG_TEXT))
-                    .on_press(Message::Save)
-                    .padding(DEF_PADDING)
-                    .width(Length::Fill)
-                    .into(),
-            ])
-            .width(Length::Units(RECEIPT_WIDTH))
-            .padding(DEF_PADDING)
-            .spacing(DEF_PADDING)
-            .into(),
-        ]))
+                        .spacing(DEF_PADDING)
+                        .into()
+                } else {
+                    Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
+                        .width(Length::Fill)
+                        .center_x()
+                        .padding(DEF_PADDING)
+                        .into()
+                },
+                Rule::vertical(DEF_PADDING).into(),
+                Column::with_children(vec![
+                    Text::new("Visa Försäljning").size(BIG_TEXT).into(),
+                    Space::with_height(Length::Fill).into(),
+                    Text::new("Fr.o.m.").into(),
+                    Button::new(Text::new(self.from.to_string()))
+                        .on_press(Message::OpenDate(Picker::From))
+                        .into(),
+                    Text::new("T.o.m.").into(),
+                    Button::new(Text::new(self.to.to_string()))
+                        .on_press(Message::OpenDate(Picker::To))
+                        .into(),
+                    Space::with_height(Length::Fill).into(),
+                    Button::new(Text::new("Exportera").size(BIG_TEXT))
+                        .on_press(Message::Save)
+                        .padding(DEF_PADDING)
+                        .width(Length::Fill)
+                        .into(),
+                ])
+                .width(Length::Units(RECEIPT_WIDTH))
+                .padding(DEF_PADDING)
+                .spacing(DEF_PADDING)
+                .into(),
+            ]),
+            Message::CloseDate,
+            Message::UpdateDate,
+        ))
         .map(Self::ExMessage::Sales)
     }
 }

@@ -7,7 +7,7 @@ pub mod transactions;
 use {
     crate::error::{Error, Result},
     giftwrap::Wrap,
-    iced::{Command, Element},
+    iced::{pure::Element, Command},
 };
 pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
@@ -51,7 +51,7 @@ pub trait Screen: Sized {
 
     fn new() -> (Self, Command<Self::ExMessage>);
     fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage>;
-    fn view(&mut self) -> Element<Self::ExMessage>;
+    fn view(&self) -> Element<Self::ExMessage>;
 }
 
 #[macro_export]

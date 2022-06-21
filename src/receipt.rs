@@ -62,7 +62,7 @@ impl Receipt {
         self.items.is_empty()
     }
 
-    pub fn as_widget<M>(&mut self) -> ReceiptWidget<M> {
+    pub fn as_widget<M>(&self) -> ReceiptWidget<M> {
         ReceiptWidget {
             message: None,
             inner: self,
@@ -73,7 +73,7 @@ impl Receipt {
 #[derive(Debug)]
 pub struct ReceiptWidget<'a, M> {
     message: Option<M>,
-    inner: &'a mut Receipt,
+    inner: &'a Receipt,
 }
 
 impl<'a, M> ReceiptWidget<'a, M>

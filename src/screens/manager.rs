@@ -11,14 +11,11 @@ use {
     iced::{
         pure::{
             widget::{Button, Checkbox, Column, Row, Rule, Scrollable, Text, TextInput},
-            Pure, State,
+            Element,
         },
-        Alignment, Command, Element, Length, Space,
+        Alignment, Command, Length, Space,
     },
-    iced_aw::{
-        modal::{self, Modal},
-        Card,
-    },
+    iced_aw::pure::{Card, Modal},
     rusqlite::params,
 };
 
@@ -30,8 +27,8 @@ pub enum Mode {
 
 pub struct Manager {
     locked: bool,
-    login_modal: modal::State<(String, State)>,
-    under_modal: State,
+    login_modal: bool,
+    password: String,
     menu: Vec<Item>,
     mode: Mode,
     name: String,
@@ -68,8 +65,8 @@ where
         (
             Self {
                 locked: true,
-                login_modal: modal::State::new((String::new(), State::new())),
-                under_modal: State::new(),
+                login_modal: false,
+                password: String::new(),
                 menu: Vec::new(),
                 mode: Mode::New,
                 name: String::new(),
@@ -158,13 +155,10 @@ where
                     };
                 }
             }
-            Message::OpenLogin => self.login_modal.show(true),
-            Message::CloseLogin => {
-                self.login_modal.show(false);
-                self.login_modal.inner_mut().0.clear();
-            }
+            Message::OpenLogin => self.login_modal = true,
+            Message::CloseLogin => self.login_modal = false,
             Message::UpdatePassword(password) => {
-                self.login_modal.inner_mut().0 = password;
+                self.password = password;
             }
             //No password in debug mode
             #[cfg(debug_assertions)]
@@ -174,7 +168,7 @@ where
             //Use env for password
             #[cfg(not(debug_assertions))]
             Message::Login => {
-                let password_ok = self.login_modal.inner().0.as_str() == env!("SMALANDS_PASSWORD");
+                let password_ok = self.password == env!("SMALANDS_PASSWORD");
                 return command!(if password_ok {
                     Message::Unlock
                 } else {
@@ -193,112 +187,106 @@ where
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::ExMessage> {
+    fn view(&self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Modal::new(
-            &mut self.login_modal,
-            Pure::new(
-                &mut self.under_modal,
-                Row::with_children(vec![
-                    Scrollable::new(
-                        Grid::with_children(
-                            self.menu.len() as u32 / 3,
-                            3,
-                            self.menu
-                                .iter_mut()
-                                .enumerate()
-                                .map(|(i, item)| {
-                                    let available = item.is_in_stock();
+            self.login_modal,
+            Row::with_children(vec![
+                Scrollable::new(
+                    Grid::with_children(
+                        self.menu.len() as u32 / 3,
+                        3,
+                        self.menu
+                            .iter()
+                            .enumerate()
+                            .map(|(i, item)| {
+                                let available = item.is_in_stock();
 
-                                    item.as_widget()
-                                        .on_press(Message::EditItem)
-                                        .extra(Checkbox::new(available, "I Lager", move |b| {
-                                            Message::ToggleItem(i, b)
-                                        }))
-                                        .into()
-                                })
-                                .collect(),
-                        )
-                        .width(Length::Fill)
-                        .spacing(DEF_PADDING)
-                        .padding(DEF_PADDING),
+                                item.as_widget()
+                                    .on_press(Message::EditItem)
+                                    .extra(Checkbox::new(available, "I Lager", move |b| {
+                                        Message::ToggleItem(i, b)
+                                    }))
+                                    .into()
+                            })
+                            .collect(),
                     )
-                    .into(),
-                    Rule::vertical(DEF_PADDING).into(),
-                    Column::with_children(vec![
-                        Row::new()
-                            .push(
-                                Column::with_children(match &self.mode {
-                                    Mode::New => {
-                                        vec![
-                                            Text::new("Ny").size(BIG_TEXT).into(),
-                                            Text::new(" ").into(),
-                                        ]
-                                    }
-                                    Mode::Update(v) => vec![
-                                        Text::new("Ändrar").size(BIG_TEXT).into(),
-                                        Text::new(v).into(),
-                                    ],
-                                })
-                                .width(Length::Fill),
-                            )
-                            .push(SquareButton::new(Icon::Cross).on_press(Message::Cancel))
-                            .align_items(Alignment::Start)
-                            .into(),
-                        Space::with_height(Length::FillPortion(1)).into(),
-                        Text::new("Namn").into(),
-                        TextInput::new("", self.name.as_str(), Message::UpdateName)
-                            .padding(DEF_PADDING)
-                            .into(),
-                        Text::new("Pris (kr)").into(),
-                        self.price
-                            .build(1, 1000, Message::UpdatePrice)
-                            .padding(DEF_PADDING)
-                            .width(Length::Fill)
-                            .into(),
-                        Space::with_height(Length::FillPortion(5)).into(),
-                        if !self.locked {
-                            Button::new(Text::new("Spara").size(BIG_TEXT))
-                                .on_press(Message::Save)
-                                .padding(DEF_PADDING)
-                                .width(Length::Fill)
-                                .into()
-                        } else {
-                            Button::new(Row::with_children(vec![
-                                Text::new("Spara").size(BIG_TEXT).into(),
-                                Space::with_width(Length::Fill).into(),
-                                Text::from(Icon::Lock).size(BIG_TEXT).into(),
-                            ]))
-                            .on_press(Message::OpenLogin)
+                    .width(Length::Fill)
+                    .spacing(DEF_PADDING)
+                    .padding(DEF_PADDING),
+                )
+                .into(),
+                Rule::vertical(DEF_PADDING).into(),
+                Column::with_children(vec![
+                    Row::new()
+                        .push(
+                            Column::with_children(match &self.mode {
+                                Mode::New => {
+                                    vec![
+                                        Text::new("Ny").size(BIG_TEXT).into(),
+                                        Text::new(" ").into(),
+                                    ]
+                                }
+                                Mode::Update(v) => vec![
+                                    Text::new("Ändrar").size(BIG_TEXT).into(),
+                                    Text::new(v).into(),
+                                ],
+                            })
+                            .width(Length::Fill),
+                        )
+                        .push(SquareButton::new(Icon::Cross).on_press(Message::Cancel))
+                        .align_items(Alignment::Start)
+                        .into(),
+                    Space::with_height(Length::FillPortion(1)).into(),
+                    Text::new("Namn").into(),
+                    TextInput::new("", self.name.as_str(), Message::UpdateName)
+                        .padding(DEF_PADDING)
+                        .into(),
+                    Text::new("Pris (kr)").into(),
+                    self.price
+                        .build(1, 1000, Message::UpdatePrice)
+                        .padding(DEF_PADDING)
+                        .width(Length::Fill)
+                        .into(),
+                    Space::with_height(Length::FillPortion(5)).into(),
+                    if !self.locked {
+                        Button::new(Text::new("Spara").size(BIG_TEXT))
+                            .on_press(Message::Save)
                             .padding(DEF_PADDING)
                             .width(Length::Fill)
                             .into()
-                        },
-                    ])
-                    .width(Length::Units(RECEIPT_WIDTH))
-                    .spacing(DEF_PADDING)
-                    .padding(DEF_PADDING)
-                    .into(),
-                ]),
-            ),
-            |(password, in_modal)| {
+                    } else {
+                        Button::new(Row::with_children(vec![
+                            Text::new("Spara").size(BIG_TEXT).into(),
+                            Space::with_width(Length::Fill).into(),
+                            Text::from(Icon::Lock).size(BIG_TEXT).into(),
+                        ]))
+                        .on_press(Message::OpenLogin)
+                        .padding(DEF_PADDING)
+                        .width(Length::Fill)
+                        .into()
+                    },
+                ])
+                .width(Length::Units(RECEIPT_WIDTH))
+                .spacing(DEF_PADDING)
+                .padding(DEF_PADDING)
+                .into(),
+            ]),
+            || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
-                    Pure::new(
-                        in_modal,
-                        Column::with_children(vec![
-                            Text::new("Lösendord").into(),
-                            TextInput::new("", password, Message::UpdatePassword)
-                                .password()
-                                .padding(DEF_PADDING)
-                                .on_submit(Message::Login)
-                                .into(),
-                            Button::new(Text::new("Logga In"))
-                                .on_press(Message::Login)
-                                .into(),
-                        ])
-                        .padding(DEF_PADDING)
-                        .spacing(DEF_PADDING),
-                    ),
+                    Column::with_children(vec![
+                        Text::new("Lösendord").into(),
+                        TextInput::new("", &self.password, Message::UpdatePassword)
+                            .password()
+                            .padding(DEF_PADDING)
+                            .on_submit(Message::Login)
+                            .into(),
+                        Button::new(Text::new("Logga In"))
+                            .on_press(Message::Login)
+                            .into(),
+                    ])
+                    .padding(DEF_PADDING)
+                    .spacing(DEF_PADDING),
                 )
                 .max_width(650)
                 .on_close(Message::CloseLogin)
