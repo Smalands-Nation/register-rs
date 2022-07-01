@@ -10,7 +10,8 @@ use {
             transactions::{self, Transactions},
             Message, Screen,
         },
-        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, SMALL_TEXT, TABS},
+        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, TABS},
+        widgets::SMALL_TEXT,
     },
     iced::{
         pure::{
@@ -42,7 +43,7 @@ pub mod widgets;
 #[macro_export]
 macro_rules! command {
     ($msg:expr) => {
-        Command::perform(async move { $msg }, crate::screens::Message::from)
+        Command::perform(async move { $msg }, $crate::screens::Message::from)
     };
 }
 
@@ -191,11 +192,10 @@ impl Application for App {
             move || {
                 Card::new(
                     Text::new("Error"),
-                    Text::new(match &err {
+                    SMALL_TEXT::new(match &err {
                         Some(e) => format!("{:#?}", e),
                         None => String::new(),
-                    })
-                    .size(SMALL_TEXT),
+                    }),
                 )
                 .max_width(650)
                 .padding(DEF_PADDING.into())

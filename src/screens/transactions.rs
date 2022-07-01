@@ -9,9 +9,10 @@ use {
         receipt::Receipt,
         sql,
         styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{Clickable, SquareButton},
+        widgets::SquareButton,
     },
     chrono::{DateTime, Local},
+    frost::pure::Clickable,
     iced::{
         pure::{
             widget::{Column, Container, Row, Rule, Space},
@@ -137,7 +138,7 @@ impl Screen for Transactions {
                             .take(3)
                             .fold(
                                 Row::new().push(
-                                    Clickable::new(
+                                    Clickable(
                                         Container::new(Icon::Left)
                                             .width(Length::Fill)
                                             .height(Length::Fill)
@@ -159,7 +160,7 @@ impl Screen for Transactions {
                                 },
                             )
                             .push(
-                                Clickable::new(
+                                Clickable(
                                     Container::new(Icon::Right)
                                         .width(Length::Fill)
                                         .height(Length::Fill)

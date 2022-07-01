@@ -8,16 +8,16 @@ use {
         print,
         receipt::Receipt,
         sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
+        styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
-            Grid, SquareButton,
+            Grid, SquareButton, BIG_TEXT,
         },
     },
     chrono::Local,
     iced::{
         pure::{
-            widget::{Button, Checkbox, Column, Container, Row, Rule, Scrollable, Space, Text},
+            widget::{Button, Checkbox, Column, Container, Row, Rule, Scrollable, Space},
             Element,
         },
         Alignment, Command, Length,
@@ -171,7 +171,7 @@ impl Screen for Menu {
             Rule::vertical(DEF_PADDING).into(),
             Column::with_children(vec![
                 Row::new()
-                    .push(Text::new("Kvitto").size(BIG_TEXT))
+                    .push(BIG_TEXT::new("Kvitto"))
                     .push(Space::with_width(Length::Fill))
                     .push(SquareButton::new(Icon::Cross).on_press(Message::ClearReceipt))
                     .align_items(Alignment::Center)

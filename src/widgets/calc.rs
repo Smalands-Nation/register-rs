@@ -76,12 +76,10 @@ impl Calc {
                     (0..12)
                         .map(|i| {
                             match i {
-                                0..=8 => SquareButton::new(Text::new(format!("{}", i + 1)))
+                                0..=8 => SquareButton::new(format!("{}", i + 1))
                                     .on_press(Message::Update(i as u32 + 1)),
-                                9 => SquareButton::new(Text::new("c")).on_press(Message::Clear),
-                                10 => {
-                                    SquareButton::new(Text::new("0")).on_press(Message::Update(0))
-                                }
+                                9 => SquareButton::new("c").on_press(Message::Clear),
+                                10 => SquareButton::new("0").on_press(Message::Update(0)),
                                 _ => SquareButton::new(Icon::Cross).on_press(Message::Save),
                             }
                             .into()

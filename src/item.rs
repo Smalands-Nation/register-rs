@@ -1,8 +1,9 @@
 use {
     crate::{
-        styles::{BORDERED, DEF_PADDING, SMALL_PADDING, SMALL_TEXT},
-        widgets::Clickable,
+        styles::{BORDERED, DEF_PADDING, SMALL_PADDING},
+        widgets::SMALL_TEXT,
     },
+    frost::pure::Clickable,
     iced::{
         alignment::Horizontal,
         pure::{
@@ -156,7 +157,7 @@ where
     M: Clone + 'a,
 {
     fn from(i: ItemWidget<'a, M>) -> Self {
-        let body = Clickable::new(
+        let body = Clickable(
             Container::new(
                 Column::new()
                     .spacing(SMALL_PADDING)
@@ -164,19 +165,15 @@ where
                     .push(match i.inner.kind {
                         ItemKind::Regular { num: 0 } | ItemKind::InStock(_) | ItemKind::Special => {
                             Row::new().push(
-                                Text::new(format!("{} kr", i.inner.price))
-                                    .size(SMALL_TEXT)
+                                SMALL_TEXT::new(format!("{} kr", i.inner.price))
                                     .width(Length::Fill)
                                     .horizontal_alignment(Horizontal::Left),
                             )
                         }
                         ItemKind::Regular { num } => Row::new()
+                            .push(SMALL_TEXT::new(format!("{}x{} kr", num, i.inner.price)))
                             .push(
-                                Text::new(format!("{}x{} kr", num, i.inner.price)).size(SMALL_TEXT),
-                            )
-                            .push(
-                                Text::new(format!("{} kr", i.inner.price_total()))
-                                    .size(SMALL_TEXT)
+                                SMALL_TEXT::new(format!("{} kr", i.inner.price_total()))
                                     .width(Length::Fill)
                                     .horizontal_alignment(Horizontal::Right),
                             ),

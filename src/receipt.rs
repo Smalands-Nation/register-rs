@@ -3,8 +3,8 @@ use {
         item::Item,
         payment::Payment,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
-        widgets::Clickable,
     },
+    frost::pure::Clickable,
     iced::{
         pure::{
             widget::{Column, Scrollable, Text},
@@ -91,7 +91,7 @@ where
     M: Clone + 'a,
 {
     fn from(r: ReceiptWidget<'a, M>) -> Self {
-        let body = Clickable::new(
+        let body = Clickable(
             Column::new()
                 .push(
                     Scrollable::new(

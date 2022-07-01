@@ -40,9 +40,15 @@ impl From<Icon> for char {
     }
 }
 
+impl From<Icon> for String {
+    fn from(i: Icon) -> Self {
+        char::from(i).to_string()
+    }
+}
+
 impl From<Icon> for Text {
     fn from(i: Icon) -> Text {
-        Text::new(char::from(i).to_string()).font(ICON_FONT)
+        Text::new(i).font(ICON_FONT)
     }
 }
 

@@ -7,7 +7,8 @@ use {
         payment::Payment,
         receipt::Receipt,
         sql,
-        styles::{BIG_TEXT, BORDERED, DEF_PADDING, RECEIPT_WIDTH, SMALL_TEXT},
+        styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{BIG_TEXT, SMALL_TEXT},
     },
     chrono::{Date, Local, TimeZone},
     iced::{
@@ -163,8 +164,11 @@ impl Screen for Sales {
                             row.push(
                                 Container::new(
                                     Column::new()
-                                        .push(Text::new(*payment).size(BIG_TEXT))
-                                        .push(Space::new(Length::Fill, Length::Units(SMALL_TEXT)))
+                                        .push(BIG_TEXT::new(*payment))
+                                        .push(Space::new(
+                                            Length::Fill,
+                                            Length::Units(SMALL_TEXT::size()),
+                                        ))
                                         .push(rec.as_widget())
                                         .width(Length::Units(RECEIPT_WIDTH))
                                         .padding(DEF_PADDING),
@@ -178,7 +182,7 @@ impl Screen for Sales {
                         .spacing(DEF_PADDING)
                         .into()
                 } else {
-                    Container::new(Text::new("Ingen försäljning än").size(BIG_TEXT))
+                    Container::new(BIG_TEXT::new("Ingen försäljning än"))
                         .width(Length::Fill)
                         .center_x()
                         .padding(DEF_PADDING)
@@ -186,7 +190,7 @@ impl Screen for Sales {
                 },
                 Rule::vertical(DEF_PADDING).into(),
                 Column::with_children(vec![
-                    Text::new("Visa Försäljning").size(BIG_TEXT).into(),
+                    BIG_TEXT::new("Visa Försäljning").into(),
                     Space::with_height(Length::Fill).into(),
                     Text::new("Fr.o.m.").into(),
                     Button::new(Text::new(self.from.to_string()))
@@ -197,7 +201,7 @@ impl Screen for Sales {
                         .on_press(Message::OpenDate(Picker::To))
                         .into(),
                     Space::with_height(Length::Fill).into(),
-                    Button::new(Text::new("Exportera").size(BIG_TEXT))
+                    Button::new(BIG_TEXT::new("Exportera"))
                         .on_press(Message::Save)
                         .padding(DEF_PADDING)
                         .width(Length::Fill)

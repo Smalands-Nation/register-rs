@@ -64,12 +64,10 @@ impl tab_bar::StyleSheet for TABS {
     }
 }
 
-pub const BIG_TEXT: u16 = 45;
 pub const DEF_TEXT: u16 = 35;
-pub const SMALL_TEXT: u16 = 20;
 
 pub const DEF_PADDING: u16 = 10;
 pub const SMALL_PADDING: u16 = 5;
 
 pub const RECEIPT_WIDTH: u16 = 300;
-pub const SQUARE_BUTTON: u16 = 15 + BIG_TEXT;
+pub const SQUARE_BUTTON: u16 = 15 + crate::widgets::BIG_TEXT::size();

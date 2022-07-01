@@ -5,8 +5,8 @@ use {
         icons::Icon,
         item::{Item, ItemKind},
         sql,
-        styles::{BIG_TEXT, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{Grid, NumberInput, SquareButton},
+        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{Grid, NumberInput, SquareButton, BIG_TEXT},
     },
     iced::{
         pure::{
@@ -221,15 +221,11 @@ where
                         .push(
                             Column::with_children(match &self.mode {
                                 Mode::New => {
-                                    vec![
-                                        Text::new("Ny").size(BIG_TEXT).into(),
-                                        Text::new(" ").into(),
-                                    ]
+                                    vec![BIG_TEXT::new("Ny").into(), Text::new(" ").into()]
                                 }
-                                Mode::Update(v) => vec![
-                                    Text::new("Ändrar").size(BIG_TEXT).into(),
-                                    Text::new(v).into(),
-                                ],
+                                Mode::Update(v) => {
+                                    vec![BIG_TEXT::new("Ändrar").into(), Text::new(v).into()]
+                                }
                             })
                             .width(Length::Fill),
                         )
@@ -249,16 +245,16 @@ where
                         .into(),
                     Space::with_height(Length::FillPortion(5)).into(),
                     if !self.locked {
-                        Button::new(Text::new("Spara").size(BIG_TEXT))
+                        Button::new(BIG_TEXT::new("Spara"))
                             .on_press(Message::Save)
                             .padding(DEF_PADDING)
                             .width(Length::Fill)
                             .into()
                     } else {
                         Button::new(Row::with_children(vec![
-                            Text::new("Spara").size(BIG_TEXT).into(),
+                            BIG_TEXT::new("Spara").into(),
                             Space::with_width(Length::Fill).into(),
-                            Text::from(Icon::Lock).size(BIG_TEXT).into(),
+                            BIG_TEXT::new(Icon::Lock).into(),
                         ]))
                         .on_press(Message::OpenLogin)
                         .padding(DEF_PADDING)

@@ -1,9 +1,6 @@
 use {
     super::Screen,
-    crate::{
-        command,
-        styles::{DEF_PADDING, SMALL_TEXT},
-    },
+    crate::{command, styles::DEF_PADDING, widgets::SMALL_TEXT},
     iced::{
         pure::{
             widget::{Column, Container, Row, Text},
@@ -94,14 +91,12 @@ impl Screen for Info {
                 .width(Length::Fill)
                 .height(Length::Fill),
             )
-            .push(
-                Text::new("Programmerad av Axel Paulander (Styrelse 20/21 & 21/22)")
-                    .size(SMALL_TEXT),
-            )
-            .push(
-                Text::new("All kod är tillänglig på github.com/Smalands-Nation/register-rs")
-                    .size(SMALL_TEXT),
-            )
+            .push(SMALL_TEXT::new(
+                "Programmerad av Axel Paulander (Styrelse 20/21 & 21/22)",
+            ))
+            .push(SMALL_TEXT::new(
+                "All kod är tillänglig på github.com/Smalands-Nation/register-rs",
+            ))
             .align_items(Alignment::Center)
             .into()
     }

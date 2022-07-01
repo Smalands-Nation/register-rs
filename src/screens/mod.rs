@@ -57,16 +57,16 @@ pub trait Screen: Sized {
 #[macro_export]
 macro_rules! sql {
     ($sql:literal, $params:expr, $msg:expr) => {
-        crate::command!({
-            crate::DB.lock().await.execute($sql, $params)?;
+        $crate::command!({
+            $crate::DB.lock().await.execute($sql, $params)?;
             Ok($msg)
         })
     };
 
     ($sql:literal, $params:expr, $map_row:expr, $collect:ty, $msg:expr) => {
-        crate::command!({
+        $crate::command!({
             Ok($msg(
-                crate::DB
+                $crate::DB
                     .lock()
                     .await
                     .prepare($sql)?

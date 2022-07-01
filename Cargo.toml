@@ -23,6 +23,8 @@ iced_pure = "0.2"
 lazy_static = "1.4"
 rusqlite_migration = "1.0"
 
+frost = {git = "https://github.com/Strosel/frost", features = ["pure"]}
+
 [dependencies.self_update]
 version = "0.27"
 features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]

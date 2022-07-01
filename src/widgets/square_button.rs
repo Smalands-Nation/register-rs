@@ -1,8 +1,9 @@
 use {
-    crate::styles::{BIG_TEXT, SQUARE_BUTTON},
+    super::BIG_TEXT,
+    crate::styles::SQUARE_BUTTON,
     iced::{
         alignment::{Horizontal, Vertical},
-        pure::widget::{Button, Text},
+        pure::widget::Button,
         Length,
     },
 };
@@ -10,13 +11,12 @@ use {
 pub struct SquareButton;
 
 impl SquareButton {
-    pub fn new<'a, M>(txt: impl Into<Text>) -> Button<'a, M>
+    pub fn new<'a, M>(txt: impl Into<String>) -> Button<'a, M>
     where
         M: Clone,
     {
         Button::new(
-            txt.into()
-                .size(BIG_TEXT)
+            BIG_TEXT::new(txt)
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
