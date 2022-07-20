@@ -1,6 +1,6 @@
 use {
     iced::pure::widget::TextInput,
-    std::{fmt, str},
+    std::{fmt, ops, str},
 };
 
 pub struct NumberInput<N>(Option<N>);
@@ -13,13 +13,12 @@ where
         Self(None)
     }
 
-    pub fn build<F, M>(&self, min: N, max: N, msg: F) -> TextInput<M>
+    pub fn build<'a, R, F, M>(&'a self, range: R, msg: F) -> TextInput<'a, M>
     where
-        N: 'static,
-        F: 'static + Fn(Option<N>) -> M,
+        R: 'a + ops::RangeBounds<N>,
+        F: 'a + Fn(Option<N>) -> M,
         M: Clone,
     {
-        let clone = self.0;
         TextInput::new(
             "",
             match self.0 {
@@ -29,10 +28,10 @@ where
                 None => String::new(),
             }
             .as_str(),
-            move |s| match N::from_str(s.as_str()) {
-                Ok(n) if (min..=max).contains(&n) => msg(Some(n)),
+            move |s| match s.parse() {
+                Ok(n) if range.contains(&n) => msg(Some(n)),
                 Err(_) if s.is_empty() => msg(None),
-                _ => msg(clone),
+                _ => msg(self.0),
             },
         )
     }

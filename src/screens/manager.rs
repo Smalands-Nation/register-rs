@@ -239,7 +239,7 @@ where
                         .into(),
                     Text::new("Pris (kr)").into(),
                     self.price
-                        .build(1, 1000, Message::UpdatePrice)
+                        .build(1..=1000, Message::UpdatePrice)
                         .padding(DEF_PADDING)
                         .width(Length::Fill)
                         .into(),
