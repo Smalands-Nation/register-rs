@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{Item, ItemKind},
+        item::{kind::Sales, Item},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -27,7 +27,7 @@ use {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Init(Vec<(DateTime<Local>, Item, Payment)>),
+    Init(Vec<(DateTime<Local>, Item<Sales>, Payment)>),
     Append(IndexMap<DateTime<Local>, Receipt>),
     ScrollLeft,
     ScrollRight,
@@ -71,9 +71,9 @@ impl Screen for Transactions {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
                                 kind: if row.get("special")? {
-                                    ItemKind::Special
+                                    Sales::Special
                                 } else {
-                                    ItemKind::Regular {
+                                    Sales::Regular {
                                         num: row.get("amount")?,
                                     }
                                 },

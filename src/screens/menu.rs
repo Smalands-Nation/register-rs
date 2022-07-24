@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{Item, ItemKind},
+        item::{kind::Sales, Item},
         payment::Payment,
         print,
         receipt::Receipt,
@@ -27,7 +27,7 @@ use {
 
 pub struct Menu {
     calc: Calc,
-    menu: Vec<Item>,
+    menu: Vec<Item<Sales>>,
     receipt: Receipt,
     print: bool,
 }
@@ -36,11 +36,11 @@ pub struct Menu {
 pub enum Message {
     Refresh,
     Calc(calc::Message),
-    SellItem(Item),
+    SellItem(Item<Sales>),
     ClearReceipt,
     TogglePrint(bool),
     Sell(Payment),
-    LoadMenu(Vec<Item>),
+    LoadMenu(Vec<Item<Sales>>),
 }
 
 impl Screen for Menu {
@@ -71,9 +71,9 @@ impl Screen for Menu {
                             name: row.get::<usize, String>(0)?,
                             price: row.get(1)?,
                             kind: if row.get("special")? {
-                                ItemKind::Special
+                                Sales::Special
                             } else {
-                                ItemKind::Regular { num: 0 }
+                                Sales::Regular { num: 0 }
                             },
                         })
                     },

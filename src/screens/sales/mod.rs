@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         error::Error,
-        item::{Item, ItemKind},
+        item::{kind, Item},
         payment::Payment,
         receipt::Receipt,
         sql,
@@ -34,7 +34,7 @@ pub enum Picker {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Load(Vec<(Item, Payment)>),
+    Load(Vec<(Item<kind::Sales>, Payment)>),
     Save,
     OpenDate(Picker),
     UpdateDate(date_picker::Date),
@@ -79,9 +79,9 @@ impl Screen for Sales {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
                                 kind: if row.get("special")? {
-                                    ItemKind::Special
+                                    kind::Sales::Special
                                 } else {
-                                    ItemKind::Regular {
+                                    kind::Sales::Regular {
                                         num: row.get("amount")?,
                                     }
                                 },
@@ -90,7 +90,7 @@ impl Screen for Sales {
                             Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
                         ))
                     },
-                    Vec<(Item, Payment)>,
+                    Vec<(Item<_>, Payment)>,
                     Message::Load
                 );
             }

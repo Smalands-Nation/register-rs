@@ -1,5 +1,10 @@
 use {
-    crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
+    crate::{
+        error::Result,
+        item::{kind::Sales, Item},
+        payment::Payment,
+        receipt::Receipt,
+    },
     chrono::{Date, Local},
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
@@ -13,7 +18,7 @@ use {
 
 fn create_pdf(
     path: impl Into<PathBuf>,
-    stats: IndexSet<(Payment, Item)>,
+    stats: IndexSet<(Payment, Item<Sales>)>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
@@ -191,7 +196,7 @@ fn create_pdf(
     Ok(path)
 }
 
-fn make_stats(data: IndexMap<Payment, Receipt>) -> IndexSet<(Payment, Item)> {
+fn make_stats(data: IndexMap<Payment, Receipt>) -> IndexSet<(Payment, Item<Sales>)> {
     data.into_values().fold(IndexSet::new(), |hm, r| {
         r.items.into_iter().fold(hm, |mut hm, item| {
             hm.insert((r.payment, item));

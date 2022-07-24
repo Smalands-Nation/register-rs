@@ -1,6 +1,6 @@
 use {
     crate::{
-        item::Item,
+        item::{kind::Sales, Item},
         payment::Payment,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
     },
@@ -17,7 +17,7 @@ use {
 
 #[derive(Debug, Clone)]
 pub struct Receipt {
-    pub items: IndexSet<Item>,
+    pub items: IndexSet<Item<Sales>>,
     pub sum: i32,
     pub payment: Payment,
 }
@@ -27,7 +27,7 @@ impl Receipt {
         Self::new_from(IndexSet::new(), 0, payment)
     }
 
-    pub fn new_from(items: IndexSet<Item>, sum: i32, payment: Payment) -> Self {
+    pub fn new_from(items: IndexSet<Item<Sales>>, sum: i32, payment: Payment) -> Self {
         Self {
             items,
             sum,
@@ -35,7 +35,7 @@ impl Receipt {
         }
     }
 
-    pub fn add(&mut self, item: Item) {
+    pub fn add(&mut self, item: Item<Sales>) {
         self.sum += item.price_total();
         let it = self.items.get(&item).cloned();
         match it {

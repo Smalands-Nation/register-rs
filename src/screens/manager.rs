@@ -3,14 +3,14 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{Item, ItemKind},
+        item::{kind::Stock, Item},
         sql,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{Grid, NumberInput, SquareButton, BIG_TEXT},
     },
     iced::{
         pure::{
-            widget::{Button, Checkbox, Column, Row, Rule, Scrollable, Text, TextInput},
+            widget::{Button, Column, Row, Rule, Scrollable, Text, TextInput},
             Element,
         },
         Alignment, Command, Length, Space,
@@ -29,7 +29,7 @@ pub struct Manager {
     locked: bool,
     login_modal: bool,
     password: String,
-    menu: Vec<Item>,
+    menu: Vec<Item<Stock>>,
     mode: Mode,
     name: String,
     price: NumberInput<i32>,
@@ -39,8 +39,8 @@ pub struct Manager {
 pub enum Message {
     Refresh(bool),
     ToggleItem(usize, bool),
-    LoadMenu(Vec<Item>),
-    EditItem(Item),
+    LoadMenu(Vec<Item<Stock>>),
+    EditItem(Item<Stock>),
     UpdateName(String),
     UpdatePrice(Option<i32>),
     Cancel,
@@ -89,7 +89,10 @@ where
                                 Ok(Item {
                                     name: row.get::<usize, String>(0)?,
                                     price: row.get(1)?,
-                                    kind: ItemKind::InStock(row.get("available")?),
+                                    kind: Stock {
+                                        idx: 0,
+                                        available: row.get("available")?,
+                                    },
                                 })
                             },
                             Vec<_>,
@@ -116,8 +119,8 @@ where
             }
             Message::LoadMenu(m) => {
                 self.menu.clear();
-                for item in m {
-                    self.menu.push(item);
+                for (i, item) in m.into_iter().enumerate() {
+                    self.menu.push(item.with_index(i));
                 }
             }
             Message::EditItem(i) => {
@@ -197,17 +200,7 @@ where
                         3,
                         self.menu
                             .iter()
-                            .enumerate()
-                            .map(|(i, item)| {
-                                let available = item.is_in_stock();
-
-                                item.as_widget()
-                                    .on_press(Message::EditItem)
-                                    .extra(Checkbox::new(available, "I Lager", move |b| {
-                                        Message::ToggleItem(i, b)
-                                    }))
-                                    .into()
-                            })
+                            .map(|item| item.as_widget().on_press(Message::EditItem).into())
                             .collect(),
                     )
                     .width(Length::Fill)
