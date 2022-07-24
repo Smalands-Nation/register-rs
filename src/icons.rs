@@ -1,6 +1,10 @@
-use iced::{
-    pure::{widget::Text, Element},
-    Font,
+use {
+    crate::widgets::BIG_TEXT,
+    iced::{
+        alignment::{Horizontal, Vertical},
+        pure::{widget::Text, Element},
+        Font,
+    },
 };
 
 pub const ICON_FONT: Font = Font::External {
@@ -48,7 +52,10 @@ impl From<Icon> for String {
 
 impl From<Icon> for Text {
     fn from(i: Icon) -> Text {
-        Text::new(i).font(ICON_FONT)
+        BIG_TEXT::new(i)
+            .font(ICON_FONT)
+            .horizontal_alignment(Horizontal::Center)
+            .vertical_alignment(Vertical::Center)
     }
 }
 

@@ -173,7 +173,7 @@ impl Screen for Menu {
                 Row::new()
                     .push(BIG_TEXT::new("Kvitto"))
                     .push(Space::with_width(Length::Fill))
-                    .push(SquareButton::new(Icon::Cross).on_press(Message::ClearReceipt))
+                    .push(SquareButton::icon(Icon::Cross).on_press(Message::ClearReceipt))
                     .align_items(Alignment::Center)
                     .into(),
                 self.receipt.as_widget().into(),

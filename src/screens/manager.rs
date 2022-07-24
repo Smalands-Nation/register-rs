@@ -222,7 +222,7 @@ where
                             })
                             .width(Length::Fill),
                         )
-                        .push(SquareButton::new(Icon::Cross).on_press(Message::Cancel))
+                        .push(SquareButton::icon(Icon::Cross).on_press(Message::Cancel))
                         .align_items(Alignment::Start)
                         .into(),
                     Space::with_height(Length::FillPortion(1)).into(),
@@ -247,7 +247,7 @@ where
                         Button::new(Row::with_children(vec![
                             BIG_TEXT::new("Spara").into(),
                             Space::with_width(Length::Fill).into(),
-                            BIG_TEXT::new(Icon::Lock).into(),
+                            Icon::Lock.into(),
                         ]))
                         .on_press(Message::OpenLogin)
                         .padding(DEF_PADDING)

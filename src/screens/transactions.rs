@@ -186,9 +186,9 @@ impl Screen for Transactions {
                     }
                     .push(
                         Row::new()
-                            .push(SquareButton::new(Icon::Cross).on_press(Message::Deselect))
+                            .push(SquareButton::icon(Icon::Cross).on_press(Message::Deselect))
                             .push(Space::with_width(Length::Fill))
-                            .push(SquareButton::new(Icon::Print).on_press(Message::Print))
+                            .push(SquareButton::icon(Icon::Print).on_press(Message::Print))
                             .padding(DEF_PADDING)
                             .spacing(DEF_PADDING),
                     )
