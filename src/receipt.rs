@@ -3,6 +3,7 @@ use {
         item::{kind::Sales, Item},
         payment::Payment,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
+        widgets::column,
     },
     frost::pure::Clickable,
     iced::{
@@ -91,23 +92,25 @@ where
     M: Clone + 'a,
 {
     fn from(r: ReceiptWidget<'a, M>) -> Self {
-        let body = Clickable(
-            Column::new()
-                .push(
-                    Scrollable::new(
+        let body = Clickable::new(
+            column![
+                #nopad
+                Scrollable::new(
+                    Column::with_children(
                         r.inner
                             .items
                             .iter()
-                            .fold(Column::new().spacing(DEF_PADDING), |col, item| {
-                                col.push(item.as_widget())
-                            }),
+                            .map(|item| item.as_widget(false).into())
+                            .collect(),
                     )
-                    .scrollbar_width(10)
-                    .height(Length::Fill),
+                    .spacing(DEF_PADDING),
                 )
-                .push(Text::new(format!("Total: {}kr", r.inner.sum)))
-                .width(Length::Units(RECEIPT_WIDTH))
-                .spacing(DEF_PADDING),
+                .scrollbar_width(10)
+                .height(Length::Fill),
+                Text::new(format!("Total: {}kr", r.inner.sum)),
+            ]
+            .width(Length::Units(RECEIPT_WIDTH))
+            .spacing(DEF_PADDING),
         )
         .padding(0)
         .height(Length::Fill);

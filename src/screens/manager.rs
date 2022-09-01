@@ -3,14 +3,14 @@ use {
     crate::{
         command,
         icons::Icon,
-        item::{kind::Stock, Item},
+        item::{kind::Stock, Category, Item},
         sql,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{Grid, NumberInput, SquareButton, BIG_TEXT},
+        widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
     },
     iced::{
         pure::{
-            widget::{Button, Column, Row, Rule, Scrollable, Text, TextInput},
+            widget::{Button, PickList, Rule, Scrollable, Text, TextInput},
             Element,
         },
         Alignment, Command, Length, Space,
@@ -33,6 +33,7 @@ pub struct Manager {
     mode: Mode,
     name: String,
     price: NumberInput<i32>,
+    category: Option<Category>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +44,7 @@ pub enum Message {
     EditItem(Item<Stock>),
     UpdateName(String),
     UpdatePrice(Option<i32>),
+    UpdateCategory(Category),
     Cancel,
     Save,
     OpenLogin,
@@ -71,6 +73,7 @@ where
                 mode: Mode::New,
                 name: String::new(),
                 price: NumberInput::new(),
+                category: None,
             },
             command!(Message::Refresh(true)),
         )
@@ -82,13 +85,23 @@ where
                 return Command::batch(
                     [
                         sql!(
-                            "SELECT name, price, available FROM menu \
-                            WHERE special = 0 ORDER BY name DESC",
+                            "SELECT name, price, available, category FROM menu \
+                            WHERE special = 0 
+                            ORDER BY 
+                                CASE category 
+                                    WHEN 'alcohol' THEN 1
+                                    WHEN 'drink' THEN 2
+                                    WHEN 'food' THEN 3
+                                    WHEN 'other' THEN 4
+                                    ELSE 5
+                                END,
+                                name DESC",
                             params![],
                             |row| {
                                 Ok(Item {
-                                    name: row.get::<usize, String>(0)?,
-                                    price: row.get(1)?,
+                                    name: row.get("name")?,
+                                    price: row.get("price")?,
+                                    category: row.get("category")?,
                                     kind: Stock {
                                         idx: 0,
                                         available: row.get("available")?,
@@ -127,9 +140,11 @@ where
                 self.mode = Mode::Update(i.name.clone());
                 self.name = i.name;
                 self.price.update(Some(i.price));
+                self.category = Some(i.category);
             }
             Message::UpdateName(s) => self.name = s,
             Message::UpdatePrice(n) => self.price.update(n),
+            Message::UpdateCategory(c) => self.category = Some(c),
             Message::Cancel => {
                 self.mode = Mode::New;
                 self.name.clear();
@@ -138,6 +153,7 @@ where
             Message::Save => {
                 let name = self.name.clone();
                 let price = self.price.value().unwrap_or(0);
+                let category = self.category;
                 if !name.is_empty() {
                     return match &self.mode {
                         Mode::New => sql!(
@@ -149,9 +165,9 @@ where
                         Mode::Update(old_name) => {
                             let old_name = old_name.clone();
                             sql!(
-                                "UPDATE menu SET name=?1, price=?2 WHERE name=?3",
+                                "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
                                 //Non breaking space gang
-                                params![name.replace(' ', "\u{00A0}"), price, old_name],
+                                params![name.replace(' ', "\u{00A0}"), price, category, old_name],
                                 Message::Refresh(false)
                             )
                         }
@@ -193,89 +209,77 @@ where
     fn view(&self) -> Element<Self::ExMessage> {
         Element::<Self::InMessage>::from(Modal::new(
             self.login_modal,
-            Row::with_children(vec![
+            row![
+                #nopad
                 Scrollable::new(
                     Grid::with_children(
                         self.menu.len() as u32 / 3,
                         3,
                         self.menu
                             .iter()
-                            .map(|item| item.as_widget().on_press(Message::EditItem).into())
+                            .map(|item| item.as_widget(true).on_press(Message::EditItem).into())
                             .collect(),
                     )
                     .width(Length::Fill)
                     .spacing(DEF_PADDING)
                     .padding(DEF_PADDING),
-                )
-                .into(),
-                Rule::vertical(DEF_PADDING).into(),
-                Column::with_children(vec![
-                    Row::new()
-                        .push(
-                            Column::with_children(match &self.mode {
-                                Mode::New => {
-                                    vec![BIG_TEXT::new("Ny").into(), Text::new(" ").into()]
-                                }
-                                Mode::Update(v) => {
-                                    vec![BIG_TEXT::new("Ändrar").into(), Text::new(v).into()]
-                                }
-                            })
-                            .width(Length::Fill),
-                        )
-                        .push(SquareButton::icon(Icon::Cross).on_press(Message::Cancel))
-                        .align_items(Alignment::Start)
-                        .into(),
-                    Space::with_height(Length::FillPortion(1)).into(),
-                    Text::new("Namn").into(),
+                ),
+                Rule::vertical(DEF_PADDING),
+                column![
+                    row![
+                        #nopad
+                        BIG_TEXT::new(match &self.mode {
+                            Mode::New => String::from("Ny"),
+                            Mode::Update(v) => {
+                                format!("Ändrar {}", v)
+                            }
+                        }),
+                        Space::with_width(Length::Fill),
+                        SquareButton::icon(Icon::Cross).on_press(Message::Cancel),
+                    ]
+                    .align_items(Alignment::Center),
+                    Space::with_height(Length::FillPortion(1)),
+                    Text::new("Namn"),
                     TextInput::new("", self.name.as_str(), Message::UpdateName)
-                        .padding(DEF_PADDING)
-                        .into(),
-                    Text::new("Pris (kr)").into(),
+                        .padding(DEF_PADDING),
+                    Text::new("Pris (kr)"),
                     self.price
                         .build(1..=1000, Message::UpdatePrice)
                         .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
-                    Space::with_height(Length::FillPortion(5)).into(),
+                        .width(Length::Fill),
+                        Text::new("Typ"),
+                    PickList::new(&Category::ALL[..], self.category, Message::UpdateCategory),
+                    Space::with_height(Length::FillPortion(5)),
                     if !self.locked {
                         Button::new(BIG_TEXT::new("Spara"))
                             .on_press(Message::Save)
                             .padding(DEF_PADDING)
                             .width(Length::Fill)
-                            .into()
                     } else {
-                        Button::new(Row::with_children(vec![
-                            BIG_TEXT::new("Spara").into(),
-                            Space::with_width(Length::Fill).into(),
-                            Icon::Lock.into(),
-                        ]))
+                        Button::new(row![
+                            #nopad
+                            BIG_TEXT::new("Spara"),
+                            Space::with_width(Length::Fill),
+                            Icon::Lock,
+                        ])
                         .on_press(Message::OpenLogin)
                         .padding(DEF_PADDING)
                         .width(Length::Fill)
-                        .into()
                     },
-                ])
-                .width(Length::Units(RECEIPT_WIDTH))
-                .spacing(DEF_PADDING)
-                .padding(DEF_PADDING)
-                .into(),
-            ]),
+                ]
+                .width(Length::Units(RECEIPT_WIDTH)),
+            ],
             || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
-                    Column::with_children(vec![
-                        Text::new("Lösendord").into(),
+                    column![
+                        Text::new("Lösendord"),
                         TextInput::new("", &self.password, Message::UpdatePassword)
                             .password()
                             .padding(DEF_PADDING)
-                            .on_submit(Message::Login)
-                            .into(),
-                        Button::new(Text::new("Logga In"))
-                            .on_press(Message::Login)
-                            .into(),
-                    ])
-                    .padding(DEF_PADDING)
-                    .spacing(DEF_PADDING),
+                            .on_submit(Message::Login),
+                        Button::new(Text::new("Logga In")).on_press(Message::Login),
+                    ],
                 )
                 .max_width(650)
                 .on_close(Message::CloseLogin)

@@ -1,9 +1,13 @@
 use {
     super::Screen,
-    crate::{command, styles::DEF_PADDING, widgets::SMALL_TEXT},
+    crate::{
+        command,
+        styles::DEF_PADDING,
+        widgets::{column, row, SMALL_TEXT},
+    },
     iced::{
         pure::{
-            widget::{Column, Container, Row, Text},
+            widget::{Container, Text},
             Element,
         },
         Alignment, Command, Length,
@@ -52,52 +56,45 @@ impl Screen for Info {
     }
 
     fn view(&self) -> Element<Self::ExMessage> {
-        Column::new()
-            .push(
-                Container::new(
-                    Column::with_children(vec![
-                        Row::new()
-                            .push(Text::new("Smålands_register version"))
-                            .push(
-                                Badge::new(Text::new(self.current))
-                                    .style(badge::Info)
-                                    .padding(DEF_PADDING),
-                            )
-                            .spacing(DEF_PADDING)
-                            .align_items(Alignment::Center)
-                            .into(),
-                        match &self.new_version {
-                            Some(ver) => Row::new()
-                                .push(Text::new("Ny version"))
-                                .push(
-                                    Badge::new(Text::new(ver))
-                                        .style(badge::Warning)
-                                        .padding(DEF_PADDING),
-                                )
-                                .push(Text::new("installeras vid omstart."))
-                                .spacing(DEF_PADDING)
-                                .align_items(Alignment::Center)
-                                .into(),
-                            None => Badge::new(Text::new("Detta är senaste versionen."))
-                                .padding(DEF_PADDING)
+        column![
+            #nopad
+            Container::new(
+                column![
+                    row![
+                        Text::new("Smålands_register version"),
+                        Badge::new(Text::new(self.current))
+                            .style(badge::Info)
+                            .padding(DEF_PADDING),
+                    ]
+                    .align_items(Alignment::Center),
+                    match &self.new_version {
+                        Some(ver) => row![
+                            Text::new("Ny version"),
+                            Badge::new(Text::new(ver))
+                                .style(badge::Warning)
+                                .padding(DEF_PADDING),
+                            Text::new("installeras vid omstart."),
+                        ],
+                        None => row![
+                            Text::new("Dettta är"),
+                            Badge::new(Text::new("Senaste versionen."))
                                 .style(badge::Success)
-                                .into(),
-                        },
-                    ])
-                    .spacing(DEF_PADDING),
-                )
-                .center_x()
-                .center_y()
-                .width(Length::Fill)
-                .height(Length::Fill),
+                                .padding(DEF_PADDING),
+                        ],
+                    }
+                    .align_items(Alignment::Center),
+                ]
+                .align_items(Alignment::Center)
+                .spacing(DEF_PADDING),
             )
-            .push(SMALL_TEXT::new(
-                "Programmerad av Axel Paulander (Styrelse 20/21 & 21/22)",
-            ))
-            .push(SMALL_TEXT::new(
-                "All kod är tillänglig på github.com/Smalands-Nation/register-rs",
-            ))
-            .align_items(Alignment::Center)
-            .into()
+            .center_x()
+            .center_y()
+            .width(Length::Fill)
+            .height(Length::Fill),
+            SMALL_TEXT::new("Programmerad av Axel Paulander (Styrelse 20/21 & 21/22)",),
+            SMALL_TEXT::new("All kod är tillänglig på github.com/Smalands-Nation/register-rs",),
+        ]
+        .align_items(Alignment::Center)
+        .into()
     }
 }

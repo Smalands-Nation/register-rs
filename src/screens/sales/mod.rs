@@ -7,13 +7,13 @@ use {
         payment::Payment,
         receipt::Receipt,
         sql,
-        styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{BIG_TEXT, SMALL_TEXT},
+        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{column, row, BIG_TEXT, SMALL_TEXT},
     },
     chrono::{Date, Local, TimeZone},
     iced::{
         pure::{
-            widget::{Button, Column, Container, Row, Rule, Space, Text},
+            widget::{Button, Container, Row, Rule, Space, Text},
             Element,
         },
         Alignment, Command, Length,
@@ -78,6 +78,7 @@ impl Screen for Sales {
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
+                                category: crate::item::Category::Other, //not relevant here
                                 kind: if row.get("special")? {
                                     kind::Sales::Special
                                 } else {
@@ -156,62 +157,63 @@ impl Screen for Sales {
         Element::<Self::InMessage>::from(DatePicker::new(
             self.show_date.is_some(),
             self.from.naive_local(),
-            Row::with_children(vec![
+            row![
+                #nopad
                 if !self.receipts.is_empty() {
-                    self.receipts
-                        .iter()
-                        .fold(Row::new(), |row, (payment, rec)| {
-                            row.push(
+                    Row::with_children(
+                        self.receipts
+                            .iter()
+                            .map(|(payment, rec)| {
                                 Container::new(
-                                    Column::new()
-                                        .push(BIG_TEXT::new(*payment))
-                                        .push(Space::new(
+                                    column![
+                                        #nopad
+                                        BIG_TEXT::new(*payment),
+                                        Space::new(
                                             Length::Fill,
                                             Length::Units(SMALL_TEXT::size()),
-                                        ))
-                                        .push(rec.as_widget())
-                                        .width(Length::Units(RECEIPT_WIDTH))
-                                        .padding(DEF_PADDING),
+                                        ),
+                                        rec.as_widget(),
+                                    ]
+                                    .width(Length::Units(RECEIPT_WIDTH))
+                                    .padding(DEF_PADDING),
                                 )
-                                .style(BORDERED),
-                            )
-                        })
-                        .width(Length::Fill)
-                        .align_items(Alignment::Center)
-                        .padding(DEF_PADDING)
-                        .spacing(DEF_PADDING)
-                        .into()
+                                .style(Bordered::default())
+                                .into()
+                            })
+                            .collect(),
+                    )
+                    .width(Length::Fill)
+                    .align_items(Alignment::Center)
+                    .padding(DEF_PADDING)
+                    .spacing(DEF_PADDING)
                 } else {
-                    Container::new(BIG_TEXT::new("Ingen försäljning än"))
-                        .width(Length::Fill)
-                        .center_x()
-                        .padding(DEF_PADDING)
-                        .into()
+                    row![
+                        Space::with_width(Length::Fill),
+                        BIG_TEXT::new("Ingen försäljning än"),
+                        Space::with_width(Length::Fill),
+                    ]
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .align_items(Alignment::Center)
                 },
-                Rule::vertical(DEF_PADDING).into(),
-                Column::with_children(vec![
-                    BIG_TEXT::new("Visa Försäljning").into(),
-                    Space::with_height(Length::Fill).into(),
-                    Text::new("Fr.o.m.").into(),
+                Rule::vertical(DEF_PADDING),
+                column![
+                    BIG_TEXT::new("Visa Försäljning"),
+                    Space::with_height(Length::Fill),
+                    Text::new("Fr.o.m."),
                     Button::new(Text::new(self.from.to_string()))
-                        .on_press(Message::OpenDate(Picker::From))
-                        .into(),
-                    Text::new("T.o.m.").into(),
+                        .on_press(Message::OpenDate(Picker::From)),
+                    Text::new("T.o.m."),
                     Button::new(Text::new(self.to.to_string()))
-                        .on_press(Message::OpenDate(Picker::To))
-                        .into(),
-                    Space::with_height(Length::Fill).into(),
+                        .on_press(Message::OpenDate(Picker::To)),
+                    Space::with_height(Length::Fill),
                     Button::new(BIG_TEXT::new("Exportera"))
                         .on_press(Message::Save)
                         .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
-                ])
-                .width(Length::Units(RECEIPT_WIDTH))
-                .padding(DEF_PADDING)
-                .spacing(DEF_PADDING)
-                .into(),
-            ]),
+                        .width(Length::Fill),
+                ]
+                .width(Length::Units(RECEIPT_WIDTH)),
+            ],
             Message::CloseDate,
             Message::UpdateDate,
         ))

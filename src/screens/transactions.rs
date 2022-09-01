@@ -8,14 +8,14 @@ use {
         print,
         receipt::Receipt,
         sql,
-        styles::{BORDERED, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::SquareButton,
+        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{column, row, SquareButton},
     },
     chrono::{DateTime, Local},
     frost::pure::Clickable,
     iced::{
         pure::{
-            widget::{Column, Container, Row, Rule, Space},
+            widget::{Container, Row, Rule, Space},
             Element,
         },
         Command, Length,
@@ -70,6 +70,7 @@ impl Screen for Transactions {
                             Item {
                                 name: row.get("item")?,
                                 price: row.get("price")?,
+                                category: crate::item::Category::Other, //not relevant here
                                 kind: if row.get("special")? {
                                     Sales::Special
                                 } else {
@@ -128,74 +129,56 @@ impl Screen for Transactions {
     }
 
     fn view(&self) -> Element<Self::ExMessage> {
-        Into::<Element<Self::InMessage>>::into(
-            Row::new()
-                .push(
-                    Container::new(
-                        self.receipts
-                            .iter()
-                            .skip(self.offset * 3)
-                            .take(3)
-                            .fold(
-                                Row::new().push(
-                                    Clickable(
-                                        Container::new(Icon::Left)
-                                            .width(Length::Fill)
-                                            .height(Length::Fill)
-                                            .center_x()
-                                            .center_y(),
-                                    )
-                                    .width(Length::Fill)
-                                    .height(Length::Fill)
-                                    .on_press(Message::ScrollLeft),
-                                ),
-                                |row, (t, rec)| {
-                                    row.push(
-                                        Container::new(
-                                            rec.as_widget().on_press(Message::Select(*t)),
-                                        )
-                                        .padding(DEF_PADDING)
-                                        .style(BORDERED),
-                                    )
-                                },
-                            )
-                            .push(
-                                Clickable(
-                                    Container::new(Icon::Right)
-                                        .width(Length::Fill)
-                                        .height(Length::Fill)
-                                        .center_x()
-                                        .center_y(),
-                                )
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .on_press(Message::ScrollRight),
-                            )
-                            .padding(DEF_PADDING)
-                            .spacing(DEF_PADDING),
-                    )
+        Into::<Element<Self::InMessage>>::into(row![
+            #nopad
+            Container::new(row![
+                #nopad
+                Clickable::new(Icon::Left)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
                     .center_x()
-                    .width(Length::Fill),
+                    .center_y()
+                    .on_press(Message::ScrollLeft),
+                Row::with_children(
+                    self.receipts
+                        .iter()
+                        .skip(self.offset * 3)
+                        .take(3)
+                        .map(|(t, rec)| {
+                            Container::new(rec.as_widget().on_press(Message::Select(*t)))
+                                .padding(DEF_PADDING)
+                                .style(Bordered::default())
+                                .into()
+                        },)
+                        .collect()
                 )
-                .push(Rule::vertical(DEF_PADDING))
-                .push(
-                    match &self.selected {
-                        Some((_, rec)) => Column::new().push(rec.as_widget()),
-                        None => Column::new()
-                            .push(Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill)),
-                    }
-                    .push(
-                        Row::new()
-                            .push(SquareButton::icon(Icon::Cross).on_press(Message::Deselect))
-                            .push(Space::with_width(Length::Fill))
-                            .push(SquareButton::icon(Icon::Print).on_press(Message::Print))
-                            .padding(DEF_PADDING)
-                            .spacing(DEF_PADDING),
-                    )
-                    .padding(DEF_PADDING)
-                    .width(Length::Units(RECEIPT_WIDTH)),
-                ),
-        )
+                .spacing(DEF_PADDING)
+                .padding(DEF_PADDING),
+                Clickable::new(Icon::Right)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .on_press(Message::ScrollRight),
+            ])
+            .center_x()
+            .width(Length::Fill),
+            Rule::vertical(DEF_PADDING),
+            column![
+                match &self.selected {
+                    Some((_, rec)) => Element::from(rec.as_widget()),
+                    None => Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill).into(),
+                },
+                row![
+                    #nopad
+                    SquareButton::icon(Icon::Cross).on_press(Message::Deselect),
+                    Space::with_width(Length::Fill),
+                    SquareButton::icon(Icon::Print).on_press(Message::Print),
+                ]
+                .spacing(DEF_PADDING)
+            ]
+            .width(Length::Units(RECEIPT_WIDTH)),
+        ])
         .map(Self::ExMessage::Transactions)
     }
 }

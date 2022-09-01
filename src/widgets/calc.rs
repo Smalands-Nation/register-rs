@@ -1,5 +1,5 @@
 use {
-    super::{Grid, SquareButton},
+    super::{column, row, Grid, SquareButton},
     crate::{
         icons::Icon,
         styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
@@ -7,7 +7,7 @@ use {
     iced::{
         alignment::{Alignment, Horizontal},
         pure::{
-            widget::{Column, Row, Rule, Space, Text},
+            widget::{Rule, Space, Text},
             Element,
         },
         Length,
@@ -48,46 +48,42 @@ impl Calc {
     }
 
     pub fn view(&self) -> Element<Message> {
-        Column::new()
-            .align_items(Alignment::Center)
-            .push(
-                Row::new()
-                    .push(
-                        Text::new(format!("{:>3}x", self.0)).horizontal_alignment(Horizontal::Left),
-                    )
-                    .push(Rule::vertical(DEF_PADDING))
-                    .push(
-                        Text::new(if self.1 != 0 {
-                            format!("{}", self.1)
-                        } else {
-                            String::new()
-                        })
-                        .width(Length::Fill)
-                        .horizontal_alignment(Horizontal::Right),
-                    )
-                    .height(Length::Units(DEF_TEXT))
-                    .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
+        column![
+            #nopad
+            row![
+                #nopad
+                Text::new(format!("{:>3}x", self.0)).horizontal_alignment(Horizontal::Left),
+                Rule::vertical(DEF_PADDING),
+                Text::new(if self.1 != 0 {
+                    format!("{}", self.1)
+                } else {
+                    String::new()
+                })
+                .width(Length::Fill)
+                .horizontal_alignment(Horizontal::Right),
+            ]
+            .height(Length::Units(DEF_TEXT))
+            .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
+            Space::with_height(Length::Units(DEF_PADDING)),
+            Grid::with_children(
+                4,
+                3,
+                (0..12)
+                    .map(|i| {
+                        match i {
+                            0..=8 => SquareButton::text(format!("{}", i + 1))
+                                .on_press(Message::Update(i as u32 + 1)),
+                            9 => SquareButton::text("c").on_press(Message::Clear),
+                            10 => SquareButton::text("0").on_press(Message::Update(0)),
+                            _ => SquareButton::icon(Icon::Cross).on_press(Message::Save),
+                        }
+                        .into()
+                    })
+                    .collect(),
             )
-            .push(Space::with_height(Length::Units(DEF_PADDING)))
-            .push(
-                Grid::with_children(
-                    4,
-                    3,
-                    (0..12)
-                        .map(|i| {
-                            match i {
-                                0..=8 => SquareButton::text(format!("{}", i + 1))
-                                    .on_press(Message::Update(i as u32 + 1)),
-                                9 => SquareButton::text("c").on_press(Message::Clear),
-                                10 => SquareButton::text("0").on_press(Message::Update(0)),
-                                _ => SquareButton::icon(Icon::Cross).on_press(Message::Save),
-                            }
-                            .into()
-                        })
-                        .collect(),
-                )
-                .spacing(DEF_PADDING),
-            )
-            .into()
+            .spacing(DEF_PADDING),
+        ]
+        .align_items(Alignment::Center)
+        .into()
     }
 }

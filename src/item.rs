@@ -1,18 +1,19 @@
 use {
     crate::{
-        styles::{BORDERED, DEF_PADDING, SMALL_PADDING},
-        widgets::SMALL_TEXT,
+        styles::{Bordered, DEF_PADDING, SMALL_PADDING},
+        widgets::{row, SMALL_TEXT},
     },
     frost::pure::Clickable,
     iced::{
         alignment::Horizontal,
         pure::{
-            widget::{Checkbox, Column, Container, Row, Text},
+            widget::{Checkbox, Column, Text},
             Element,
         },
-        Length,
+        Color, Length,
     },
     kind::*,
+    rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef},
 };
 
 pub mod kind {
@@ -33,14 +34,74 @@ pub mod kind {
     impl ItemKind for Stock {}
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Category {
+    Alcohol,
+    Drink,
+    Food,
+    Other,
+}
+
+impl Category {
+    pub const ALL: [Self; 4] = [Self::Alcohol, Self::Drink, Self::Food, Self::Other];
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Alcohol => "Alkohol",
+                Self::Drink => "Dryck",
+                Self::Food => "Mat",
+                Self::Other => "Övrigt",
+            }
+        )
+    }
+}
+
+impl FromSql for Category {
+    fn column_result(value: ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        match value {
+            ValueRef::Text(b"alcohol") => Ok(Self::Alcohol),
+            ValueRef::Text(b"drink") => Ok(Self::Drink),
+            ValueRef::Text(b"food") => Ok(Self::Food),
+            ValueRef::Text(b"other") => Ok(Self::Other),
+            _ => Err(FromSqlError::InvalidType),
+        }
+    }
+}
+
+impl ToSql for Category {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::Borrowed(ValueRef::Text(match self {
+            Self::Alcohol => b"alcohol",
+            Self::Drink => b"drink",
+            Self::Food => b"food",
+            Self::Other => b"other",
+        })))
+    }
+}
+
+impl From<Category> for Bordered {
+    fn from(c: Category) -> Self {
+        Bordered::new(match c {
+            Category::Alcohol => Color::from_rgb8(0xFF, 0x6F, 0x59),
+            Category::Drink => Color::from_rgb8(0xC0, 0xDA, 0x74),
+            Category::Food => Color::from_rgb8(0xA7, 0xC6, 0xDA),
+            Category::Other => Color::WHITE,
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Item<K: ItemKind> {
     pub name: String,
     pub price: i32,
+    pub category: Category,
     pub kind: K,
 }
-
-//#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 
 impl Item<Sales> {
     pub fn is_special(&self) -> bool {
@@ -85,9 +146,10 @@ impl Item<Stock> {
 }
 
 impl<K: ItemKind> Item<K> {
-    pub fn as_widget<M>(&self) -> ItemWidget<M, K> {
+    pub fn as_widget<M>(&self, color: bool) -> ItemWidget<M, K> {
         ItemWidget {
             msg: None,
+            color,
             inner: self.clone(),
         }
     }
@@ -127,6 +189,7 @@ impl std::ops::Add for Item<Sales> {
             } else {
                 self.price
             },
+            category: self.category,
             kind: match (self.kind, rhs.kind) {
                 (Sales::Special, Sales::Special) => Sales::Special,
                 (Sales::Regular { num }, Sales::Regular { num: num2 }) => {
@@ -146,6 +209,7 @@ impl std::ops::AddAssign for Item<Sales> {
 
 pub struct ItemWidget<M, K: ItemKind> {
     msg: Option<M>,
+    color: bool,
     inner: Item<K>,
 }
 
@@ -163,21 +227,22 @@ where
     }
 
     fn element(&self, inner: Vec<Element<'a, M>>) -> Element<'a, M> {
-        let body = Clickable(
-            Container::new(
-                Column::with_children(
-                    vec![Text::new(self.inner.name.as_str()).into()]
-                        .into_iter()
-                        .chain(inner)
-                        .collect(),
-                )
-                .spacing(SMALL_PADDING),
+        let body = Clickable::new(
+            Column::with_children(
+                vec![Text::new(self.inner.name.as_str()).into()]
+                    .into_iter()
+                    .chain(inner)
+                    .collect(),
             )
-            .padding(DEF_PADDING)
-            .width(Length::Fill)
-            .style(BORDERED),
+            .spacing(SMALL_PADDING),
         )
-        .width(Length::Fill);
+        .padding(DEF_PADDING)
+        .width(Length::Fill)
+        .style(if self.color {
+            self.inner.category.into()
+        } else {
+            Bordered::default()
+        });
         match self.msg {
             Some(ref msg) => body.on_press(msg.clone()),
             None => body,
@@ -192,18 +257,19 @@ where
 {
     fn from(i: ItemWidget<M, Sales>) -> Self {
         i.element(vec![match i.inner.kind {
-            Sales::Regular { num: 0 } | Sales::Special => Row::new().push(
+            Sales::Regular { num: 0 } | Sales::Special => row![
+                #nopad
                 SMALL_TEXT::new(format!("{} kr", i.inner.price))
                     .width(Length::Fill)
                     .horizontal_alignment(Horizontal::Left),
-            ),
-            Sales::Regular { num } => Row::new()
-                .push(SMALL_TEXT::new(format!("{}x{} kr", num, i.inner.price)))
-                .push(
-                    SMALL_TEXT::new(format!("{} kr", i.inner.price_total()))
-                        .width(Length::Fill)
-                        .horizontal_alignment(Horizontal::Right),
-                ),
+            ],
+            Sales::Regular { num } => row![
+                #nopad
+                SMALL_TEXT::new(format!("{}x{} kr", num, i.inner.price)),
+                SMALL_TEXT::new(format!("{} kr", i.inner.price_total()))
+                    .width(Length::Fill)
+                    .horizontal_alignment(Horizontal::Right),
+            ],
         }
         .into()])
     }
@@ -213,13 +279,10 @@ use crate::screens::manager::Message;
 impl From<ItemWidget<Message, Stock>> for Element<'_, Message> {
     fn from(i: ItemWidget<Message, Stock>) -> Self {
         i.element(vec![
-            Row::new()
-                .push(
-                    SMALL_TEXT::new(format!("{} kr", i.inner.price))
-                        .width(Length::Fill)
-                        .horizontal_alignment(Horizontal::Left),
-                )
-                .into(),
+            row![#nopad SMALL_TEXT::new(format!("{} kr", i.inner.price))
+                .width(Length::Fill)
+                .horizontal_alignment(Horizontal::Left),]
+            .into(),
             Checkbox::new(i.inner.kind.available, "I Lager", move |b| {
                 Message::ToggleItem(i.inner.kind.idx, b)
             })

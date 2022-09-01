@@ -11,11 +11,11 @@ use {
             Message, Screen,
         },
         styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, TABS},
-        widgets::SMALL_TEXT,
+        widgets::{column, SMALL_TEXT},
     },
     iced::{
         pure::{
-            widget::{Column, Container, Text},
+            widget::{Container, Text},
             Application, Element,
         },
         window, Command, Font, Length, Settings,
@@ -159,7 +159,8 @@ impl Application for App {
         let err = self.err.clone();
         Modal::new(
             self.err.is_some(),
-            Column::new().push(
+            column![
+                #nopad
                 Container::new(
                     Tabs::new(self.tab, Message::SwapTab)
                         .icon_font(icons::ICON_FONT)
@@ -188,7 +189,7 @@ impl Application for App {
                 )
                 .style(TABS)
                 .padding(BORDER_WIDTH as u16),
-            ),
+            ],
             move || {
                 Card::new(
                     Text::new("Error"),

@@ -6,13 +6,29 @@ use {
 const BORDER_RADIUS: f32 = 2.0;
 pub const BORDER_WIDTH: f32 = 2.0;
 
-pub struct BORDERED;
+pub struct Bordered {
+    background: Color,
+}
 
-impl container::StyleSheet for BORDERED {
+impl Default for Bordered {
+    fn default() -> Self {
+        Bordered {
+            background: Color::WHITE,
+        }
+    }
+}
+
+impl Bordered {
+    pub fn new(background: Color) -> Self {
+        Self { background }
+    }
+}
+
+impl container::StyleSheet for Bordered {
     fn style(&self) -> container::Style {
         container::Style {
             text_color: Some(Color::BLACK),
-            background: None,
+            background: Some(Background::Color(self.background)),
             border_radius: BORDER_RADIUS,
             border_width: BORDER_WIDTH,
             border_color: Color::BLACK,

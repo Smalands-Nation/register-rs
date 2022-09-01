@@ -11,13 +11,13 @@ use {
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{
             calc::{self, Calc},
-            Grid, SquareButton, BIG_TEXT,
+            column, row, Grid, SquareButton, BIG_TEXT,
         },
     },
     chrono::Local,
     iced::{
         pure::{
-            widget::{Button, Checkbox, Column, Container, Row, Rule, Scrollable, Space},
+            widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
             Element,
         },
         Alignment, Command, Length,
@@ -63,13 +63,24 @@ impl Screen for Menu {
         match message {
             Message::Refresh => {
                 return sql!(
-                    "SELECT name, price, special FROM menu \
-                    WHERE available=true ORDER BY special ASC, name DESC",
+                    "SELECT name, price, special, category FROM menu \
+                    WHERE available=true 
+                    ORDER BY 
+                        special ASC, 
+                        CASE category 
+                            WHEN 'alcohol' THEN 1
+                            WHEN 'drink' THEN 2
+                            WHEN 'food' THEN 3
+                            WHEN 'other' THEN 4
+                            ELSE 5
+                        END,
+                        name DESC",
                     params![],
                     |row| {
                         Ok(Item {
-                            name: row.get::<usize, String>(0)?,
-                            price: row.get(1)?,
+                            name: row.get("name")?,
+                            price: row.get("price")?,
+                            category: row.get("category")?,
                             kind: if row.get("special")? {
                                 Sales::Special
                             } else {
@@ -145,59 +156,54 @@ impl Screen for Menu {
     }
 
     fn view(&self) -> Element<Self::ExMessage> {
-        Into::<Element<Self::InMessage>>::into(Row::with_children(vec![
+        Into::<Element<Self::InMessage>>::into(row![
+            #nopad
             Container::new(self.calc.view().map(Message::Calc))
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
                 .width(Length::Units(RECEIPT_WIDTH))
-                .height(Length::Fill)
-                .into(),
-            Rule::vertical(DEF_PADDING).into(),
+                .height(Length::Fill),
+            Rule::vertical(DEF_PADDING),
             Scrollable::new(
                 Grid::with_children(
                     self.menu.len() as u32 / 3,
                     3,
                     self.menu
                         .iter()
-                        .map(|i| i.as_widget().on_press(Message::SellItem).into())
+                        .map(|i| i.as_widget(true).on_press(Message::SellItem).into())
                         .collect(),
                 )
                 .width(Length::Fill)
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING),
-            )
-            .into(),
-            Rule::vertical(DEF_PADDING).into(),
-            Column::with_children(vec![
-                Row::new()
-                    .push(BIG_TEXT::new("Kvitto"))
-                    .push(Space::with_width(Length::Fill))
-                    .push(SquareButton::icon(Icon::Cross).on_press(Message::ClearReceipt))
-                    .align_items(Alignment::Center)
-                    .into(),
-                self.receipt.as_widget().into(),
-                Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint).into(),
-                Row::with_children(vec![
+            ),
+            Rule::vertical(DEF_PADDING),
+            column![
+                row![
+                    #nopad
+                    BIG_TEXT::new("Kvitto"),
+                    Space::with_width(Length::Fill),
+                    SquareButton::icon(Icon::Cross).on_press(Message::ClearReceipt),
+                ]
+                .align_items(Alignment::Center),
+                self.receipt.as_widget(),
+                Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint),
+                row![
+                    #nopad
                     Button::new(Payment::Swish)
                         .on_press(Message::Sell(Payment::Swish))
                         .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
+                        .width(Length::Fill),
                     Button::new(Payment::Paypal)
                         .on_press(Message::Sell(Payment::Paypal))
                         .padding(DEF_PADDING)
-                        .width(Length::Fill)
-                        .into(),
-                ])
+                        .width(Length::Fill),
+                ]
                 .spacing(DEF_PADDING)
-                .into(),
-            ])
-            .width(Length::Units(RECEIPT_WIDTH))
-            .spacing(DEF_PADDING)
-            .padding(DEF_PADDING)
-            .into(),
-        ]))
+            ]
+            .width(Length::Units(RECEIPT_WIDTH)),
+        ])
         .map(Self::ExMessage::Menu)
     }
 }
