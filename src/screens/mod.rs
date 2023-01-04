@@ -13,11 +13,11 @@ pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::T
 
 #[derive(Clone, Wrap, Debug)]
 pub enum Message {
-    #[noWrap]
+    #[giftwrap(noWrap = true)]
     None,
-    #[noWrap]
+    #[giftwrap(noWrap = true)]
     SwapTab(usize),
-    #[noWrap]
+    #[giftwrap(noWrap = true)]
     CloseModal,
     Error(Error),
     Menu(menu::Message),

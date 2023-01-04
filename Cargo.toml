@@ -11,7 +11,7 @@ update = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-giftwrap = "0.3"
+giftwrap = "0.5"
 num-traits = "0.2"
 chrono = "0.4"
 dirs = "4.0"
