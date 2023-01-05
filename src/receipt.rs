@@ -5,13 +5,10 @@ use {
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
     },
-    frost::pure::Clickable,
+    frost::clickable::Clickable,
     iced::{
-        pure::{
-            widget::{Column, Scrollable, Text},
-            Element,
-        },
-        Length,
+        widget::{Column, Scrollable, Text},
+        Element, Length,
     },
     indexmap::IndexSet,
 };
@@ -100,7 +97,7 @@ where
                         r.inner
                             .items
                             .iter()
-                            .map(|item| item.as_widget(false).into())
+                            .map(|item| item.as_widget().into())
                             .collect(),
                     )
                     .spacing(DEF_PADDING),

@@ -7,7 +7,7 @@ pub mod transactions;
 use {
     crate::error::{Error, Result},
     giftwrap::Wrap,
-    iced::{pure::Element, Command},
+    iced::{Command, Element},
 };
 pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 

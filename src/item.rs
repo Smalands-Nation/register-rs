@@ -3,14 +3,11 @@ use {
         styles::{Bordered, DEF_PADDING, SMALL_PADDING},
         widgets::{row, SMALL_TEXT},
     },
-    frost::pure::Clickable,
+    frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
-        pure::{
-            widget::{Checkbox, Column, Text},
-            Element,
-        },
-        Color, Length,
+        widget::{Checkbox, Column, Text},
+        Color, Element, Length,
     },
     kind::*,
     rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef},
@@ -104,6 +101,34 @@ pub struct Item<K: ItemKind> {
 }
 
 impl Item<Sales> {
+    pub fn new_menu(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            name: row.get("name")?,
+            price: row.get("price")?,
+            category: row.get("category")?,
+            kind: if row.get("special")? {
+                Sales::Special
+            } else {
+                Sales::Regular { num: 0 }
+            },
+        })
+    }
+
+    pub fn new_sales(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            name: row.get("name")?,
+            price: row.get("price")?,
+            category: Category::Other, //Not relevant
+            kind: if row.get("special")? {
+                Sales::Special
+            } else {
+                Sales::Regular {
+                    num: row.get("amount")?,
+                }
+            },
+        })
+    }
+
     pub fn is_special(&self) -> bool {
         matches!(self.kind, Sales::Special)
     }
@@ -131,6 +156,18 @@ impl Item<Sales> {
 }
 
 impl Item<Stock> {
+    pub fn new_stock(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            name: row.get("name")?,
+            price: row.get("price")?,
+            category: row.get("category")?,
+            kind: Stock {
+                idx: 0,
+                available: row.get("available")?,
+            },
+        })
+    }
+
     pub fn with_index(mut self, idx: usize) -> Self {
         self.kind.idx = idx;
         self
@@ -145,13 +182,36 @@ impl Item<Stock> {
     }
 }
 
-impl<K: ItemKind> Item<K> {
-    pub fn as_widget<M>(&self, color: bool) -> ItemWidget<M, K> {
+impl<K> Item<K>
+where
+    K: ItemKind,
+{
+    pub fn as_widget<M: Clone>(&self) -> ItemWidget<K, M> {
+        let Self {
+            name,
+            price,
+            category,
+            kind,
+        } = self.clone();
+
         ItemWidget {
+            name,
+            price,
+            category,
+            kind,
             msg: None,
-            color,
-            inner: self.clone(),
         }
+    }
+
+    pub fn on_press<F, M>(&self, msg: F) -> ItemWidget<K, M>
+    where
+        F: FnOnce(Self) -> M,
+        M: Clone,
+    {
+        let mut comp = self.as_widget();
+        //TODO maybe refactor messages of items only used for ID's to reduce clones
+        comp.msg = Some(msg(self.clone()));
+        comp
     }
 }
 
@@ -178,7 +238,7 @@ impl std::hash::Hash for Item<Sales> {
 ///Adds two of the same item into one with their combined amounts
 impl std::ops::Add for Item<Sales> {
     type Output = Self;
-    fn add(self, rhs: Item<Sales>) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         if self != rhs {
             unreachable!("Tried to add different items:\n'{:#?}'\n'{:#?}'", self, rhs);
         }
@@ -202,91 +262,96 @@ impl std::ops::Add for Item<Sales> {
 }
 
 impl std::ops::AddAssign for Item<Sales> {
-    fn add_assign(&mut self, rhs: Item<Sales>) {
+    fn add_assign(&mut self, rhs: Self) {
         *self = self.clone() + rhs
     }
 }
 
-pub struct ItemWidget<M, K: ItemKind> {
+pub struct ItemWidget<K, M>
+where
+    K: ItemKind,
+    M: Clone,
+{
+    name: String,
+    price: i32,
+    category: Category,
+    kind: K,
     msg: Option<M>,
-    color: bool,
-    inner: Item<K>,
+    //color: bool,
 }
 
-impl<'a, M, K> ItemWidget<M, K>
-where
-    M: Clone + 'a,
-    K: ItemKind,
-{
-    pub fn on_press<F>(mut self, msg: F) -> Self
-    where
-        F: Fn(Item<K>) -> M,
-    {
-        self.msg = Some(msg(self.inner.clone()));
-        self
-    }
-
-    fn element(&self, inner: Vec<Element<'a, M>>) -> Element<'a, M> {
-        let body = Clickable::new(
-            Column::with_children(
-                vec![Text::new(self.inner.name.as_str()).into()]
-                    .into_iter()
-                    .chain(inner)
-                    .collect(),
-            )
-            .spacing(SMALL_PADDING),
+//NOTE use macro due to wierd scoping
+macro_rules! item_widget {
+    ($($child:expr),*) => {
+        Clickable::new(
+            Column::new()
+            .spacing(SMALL_PADDING)
+            $(.push($child))*
+            ,
         )
         .padding(DEF_PADDING)
         .width(Length::Fill)
-        .style(if self.color {
-            self.inner.category.into()
-        } else {
-            Bordered::default()
-        });
-        match self.msg {
-            Some(ref msg) => body.on_press(msg.clone()),
-            None => body,
+        //TODO fix styles later
+        //.style(if self.color {
+        //    self.inner.category.into()
+        //} else {
+        //    Bordered::default()
+        //});
+
+    }
+}
+
+impl<'a, M> From<ItemWidget<Sales, M>> for Element<'a, M>
+where
+    M: Clone + 'a,
+{
+    fn from(i: ItemWidget<Sales, M>) -> Self {
+        let w = item_widget![
+            Text::new(i.name.to_string()),
+            match i.kind {
+                Sales::Regular { num: 0 } | Sales::Special => row![
+                    #nopad
+                    SMALL_TEXT::new(format!("{} kr", i.price))
+                        .width(Length::Fill)
+                        .horizontal_alignment(Horizontal::Left),
+                ],
+                Sales::Regular { num } => row![
+                    #nopad
+                    SMALL_TEXT::new(format!("{}x{} kr", num, i.price)),
+                    SMALL_TEXT::new(format!("{} kr", num* i.price))
+                        .width(Length::Fill)
+                        .horizontal_alignment(Horizontal::Right),
+                ],
+            }
+        ];
+
+        match i.msg {
+            Some(msg) => w.on_press(msg),
+            None => w,
         }
         .into()
     }
 }
 
-impl<'a, M> From<ItemWidget<M, Sales>> for Element<'a, M>
-where
-    M: Clone + 'a,
-{
-    fn from(i: ItemWidget<M, Sales>) -> Self {
-        i.element(vec![match i.inner.kind {
-            Sales::Regular { num: 0 } | Sales::Special => row![
-                #nopad
-                SMALL_TEXT::new(format!("{} kr", i.inner.price))
-                    .width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Left),
-            ],
-            Sales::Regular { num } => row![
-                #nopad
-                SMALL_TEXT::new(format!("{}x{} kr", num, i.inner.price)),
-                SMALL_TEXT::new(format!("{} kr", i.inner.price_total()))
-                    .width(Length::Fill)
-                    .horizontal_alignment(Horizontal::Right),
-            ],
-        }
-        .into()])
-    }
-}
-
 use crate::screens::manager::Message;
-impl From<ItemWidget<Message, Stock>> for Element<'_, Message> {
-    fn from(i: ItemWidget<Message, Stock>) -> Self {
-        i.element(vec![
-            row![#nopad SMALL_TEXT::new(format!("{} kr", i.inner.price))
+impl From<ItemWidget<Stock, Message>> for Element<'_, Message> {
+    fn from(i: ItemWidget<Stock, Message>) -> Self {
+        let w = item_widget![
+            Text::new(i.name.to_string()),
+            row![#nopad
+                SMALL_TEXT::new(format!("{} kr", i.price))
                 .width(Length::Fill)
-                .horizontal_alignment(Horizontal::Left),]
-            .into(),
-            Checkbox::new(i.inner.kind.available, "I Lager", move |b| {
-                Message::ToggleItem(i.inner.kind.idx, b)
+                .horizontal_alignment(Horizontal::Left),
+            ],
+            Checkbox::new(i.kind.available, "I Lager", move |b| {
+                Message::ToggleItem(i.kind.idx, b)
             })
-            .into(),
-        ])
+        ];
+
+        match i.msg {
+            Some(msg) => w.on_press(msg),
+            None => w,
+        }
+        .into()
     }
 }

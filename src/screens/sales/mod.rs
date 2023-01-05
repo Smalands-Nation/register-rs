@@ -12,13 +12,10 @@ use {
     },
     chrono::{Date, Local, TimeZone},
     iced::{
-        pure::{
-            widget::{Button, Container, Row, Rule, Space, Text},
-            Element,
-        },
-        Alignment, Command, Length,
+        widget::{Button, Container, Row, Rule, Space, Text},
+        Alignment, Command, Element, Length,
     },
-    iced_aw::pure::date_picker::{self, DatePicker},
+    iced_aw::date_picker::{self, DatePicker},
     indexmap::IndexMap,
     rusqlite::params,
 };
@@ -75,18 +72,7 @@ impl Screen for Sales {
                     params![from, to],
                     |row| {
                         Ok((
-                            Item {
-                                name: row.get("item")?,
-                                price: row.get("price")?,
-                                category: crate::item::Category::Other, //not relevant here
-                                kind: if row.get("special")? {
-                                    kind::Sales::Special
-                                } else {
-                                    kind::Sales::Regular {
-                                        num: row.get("amount")?,
-                                    }
-                                },
-                            },
+                            Item::new_sales(row)?,
                             //method
                             Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
                         ))
@@ -167,7 +153,7 @@ impl Screen for Sales {
                                 Container::new(
                                     column![
                                         #nopad
-                                        BIG_TEXT::new(*payment),
+                                        BIG_TEXT::new(String::from(*payment)),
                                         Space::new(
                                             Length::Fill,
                                             Length::Units(SMALL_TEXT::size()),
@@ -177,7 +163,8 @@ impl Screen for Sales {
                                     .width(Length::Units(RECEIPT_WIDTH))
                                     .padding(DEF_PADDING),
                                 )
-                                .style(Bordered::default())
+                                //TODO fix styles later
+                                //.style(Bordered::default())
                                 .into()
                             })
                             .collect(),

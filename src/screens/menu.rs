@@ -9,24 +9,18 @@ use {
         receipt::Receipt,
         sql,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{
-            calc::{self, Calc},
-            column, row, Grid, SquareButton, BIG_TEXT,
-        },
+        widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
     },
     chrono::Local,
     iced::{
-        pure::{
-            widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
-            Element,
-        },
-        Alignment, Command, Length,
+        widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
+        Alignment, Command, Element, Length,
     },
     rusqlite::params,
 };
 
 pub struct Menu {
-    calc: Calc,
+    multiplier: u32,
     menu: Vec<Item<Sales>>,
     receipt: Receipt,
     print: bool,
@@ -35,7 +29,7 @@ pub struct Menu {
 #[derive(Debug, Clone)]
 pub enum Message {
     Refresh,
-    Calc(calc::Message),
+    Multiplier(u32),
     SellItem(Item<Sales>),
     ClearReceipt,
     TogglePrint(bool),
@@ -50,7 +44,7 @@ impl Screen for Menu {
     fn new() -> (Self, Command<Self::ExMessage>) {
         (
             Self {
-                calc: Calc::new(),
+                multiplier: 1,
                 menu: vec![],
                 receipt: Receipt::new(Payment::Swish),
                 print: false,
@@ -76,32 +70,23 @@ impl Screen for Menu {
                         END,
                         name DESC",
                     params![],
-                    |row| {
-                        Ok(Item {
-                            name: row.get("name")?,
-                            price: row.get("price")?,
-                            category: row.get("category")?,
-                            kind: if row.get("special")? {
-                                Sales::Special
-                            } else {
-                                Sales::Regular { num: 0 }
-                            },
-                        })
-                    },
+                    Item::new_menu,
                     Vec<_>,
                     Message::LoadMenu
                 );
             }
-            Message::Calc(m) => self.calc.update(m),
+            Message::Multiplier(m) => {
+                self.multiplier = m;
+            }
             Message::ClearReceipt => {
                 self.receipt = Receipt::new(Payment::Swish);
             }
             Message::SellItem(mut i) => {
                 if let Some(0) = i.has_amount() {
-                    i.set_amount(self.calc.0 as i32);
+                    i.set_amount(self.multiplier as i32);
                 }
                 self.receipt.add(i);
-                self.calc.update(calc::Message::Clear);
+                self.multiplier = 1;
             }
             Message::TogglePrint(b) => self.print = b,
             Message::Sell(p) => {
@@ -158,7 +143,7 @@ impl Screen for Menu {
     fn view(&self) -> Element<Self::ExMessage> {
         Into::<Element<Self::InMessage>>::into(row![
             #nopad
-            Container::new(self.calc.view().map(Message::Calc))
+            Container::new(Calc::new(self.multiplier ,Message::Multiplier))
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
@@ -171,7 +156,7 @@ impl Screen for Menu {
                     3,
                     self.menu
                         .iter()
-                        .map(|i| i.as_widget(true).on_press(Message::SellItem).into())
+                        .map(|i| i.on_press(Message::SellItem).into())
                         .collect(),
                 )
                 .width(Length::Fill)

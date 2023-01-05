@@ -9,13 +9,10 @@ use {
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
     },
     iced::{
-        pure::{
-            widget::{Button, PickList, Rule, Scrollable, Text, TextInput},
-            Element,
-        },
-        Alignment, Command, Length, Space,
+        widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
+        Alignment, Command, Element, Length,
     },
-    iced_aw::pure::{Card, Modal},
+    iced_aw::{Card, Modal},
     rusqlite::params,
 };
 
@@ -97,17 +94,7 @@ where
                                 END,
                                 name DESC",
                             params![],
-                            |row| {
-                                Ok(Item {
-                                    name: row.get("name")?,
-                                    price: row.get("price")?,
-                                    category: row.get("category")?,
-                                    kind: Stock {
-                                        idx: 0,
-                                        available: row.get("available")?,
-                                    },
-                                })
-                            },
+                            Item::new_stock,
                             Vec<_>,
                             Message::LoadMenu
                         ),
@@ -217,7 +204,7 @@ where
                         3,
                         self.menu
                             .iter()
-                            .map(|item| item.as_widget(true).on_press(Message::EditItem).into())
+                            .map(|item| item.on_press(Message::EditItem).into())
                             .collect(),
                     )
                     .width(Length::Fill)

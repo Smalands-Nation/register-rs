@@ -34,7 +34,7 @@ impl TryFrom<String> for Payment {
     }
 }
 
-use {iced::pure::Element, iced_native::image::Handle, iced_pure::widget::image::Image};
+use {iced::widget::image::Image, iced::Element, iced_native::image::Handle};
 impl<'a, M> From<Payment> for Element<'a, M>
 where
     M: Clone + 'a,

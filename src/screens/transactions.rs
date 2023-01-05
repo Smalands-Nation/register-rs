@@ -12,13 +12,10 @@ use {
         widgets::{column, row, SquareButton},
     },
     chrono::{DateTime, Local},
-    frost::pure::Clickable,
+    frost::clickable::Clickable,
     iced::{
-        pure::{
-            widget::{Container, Row, Rule, Space},
-            Element,
-        },
-        Command, Length,
+        widget::{Container, Row, Rule, Space},
+        Command, Element, Length,
     },
     indexmap::IndexMap,
     rusqlite::params,
@@ -67,18 +64,7 @@ impl Screen for Transactions {
                     |row| {
                         Ok((
                             row.get::<_, DateTime<Local>>("time")?,
-                            Item {
-                                name: row.get("item")?,
-                                price: row.get("price")?,
-                                category: crate::item::Category::Other, //not relevant here
-                                kind: if row.get("special")? {
-                                    Sales::Special
-                                } else {
-                                    Sales::Regular {
-                                        num: row.get("amount")?,
-                                    }
-                                },
-                            },
+                            Item::new_sales(row)?,
                             Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
                         ))
                     },
@@ -147,7 +133,8 @@ impl Screen for Transactions {
                         .map(|(t, rec)| {
                             Container::new(rec.as_widget().on_press(Message::Select(*t)))
                                 .padding(DEF_PADDING)
-                                .style(Bordered::default())
+                                //TODO fix styles later
+                                //.style(Bordered::default())
                                 .into()
                         },)
                         .collect()

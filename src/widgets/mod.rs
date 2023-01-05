@@ -6,9 +6,9 @@ pub mod square_button;
 pub use {grid::Grid, numberinput::NumberInput, square_button::SquareButton};
 
 #[allow(non_camel_case_types)]
-pub type BIG_TEXT = frost::pure::Text<45>;
+pub type BIG_TEXT = frost::text::Text<45>;
 #[allow(non_camel_case_types)]
-pub type SMALL_TEXT = frost::pure::Text<20>;
+pub type SMALL_TEXT = frost::text::Text<20>;
 
 macro_rules! spacing {
     () => {};
@@ -18,7 +18,7 @@ macro_rules! spacing {
 
 macro_rules! _column {
     (#nopad $($elem:expr),+ $(,)?) => {
-        ::iced::pure::widget::Column::with_children(vec![$($elem.into()),*])
+        ::iced::widget::Column::with_children(vec![$($elem.into()),*])
     };
     ($($elem:expr),+ $(,)?) => {
         $crate::widgets::column!(#nopad $($elem),*)
@@ -28,7 +28,7 @@ macro_rules! _column {
 }
 macro_rules! _row {
     (#nopad $($elem:expr),+ $(,)?) => {
-        ::iced::pure::widget::Row::with_children(vec![$($elem.into()),*])
+        ::iced::widget::Row::with_children(vec![$($elem.into()),*])
     };
     ($($elem:expr),+ $(,)?) => {
         $crate::widgets::row!(#nopad $($elem),*)

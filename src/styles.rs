@@ -1,5 +1,5 @@
 use {
-    iced::{container, Background, Color},
+    iced::{widget::container, Background, Color},
     iced_aw::style::tab_bar,
 };
 
@@ -25,8 +25,10 @@ impl Bordered {
 }
 
 impl container::StyleSheet for Bordered {
-    fn style(&self) -> container::Style {
-        container::Style {
+    type Style = Self;
+
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
             text_color: Some(Color::BLACK),
             background: Some(Background::Color(self.background)),
             border_radius: BORDER_RADIUS,
@@ -36,11 +38,14 @@ impl container::StyleSheet for Bordered {
     }
 }
 
+#[derive(Default, Clone, Copy)]
 pub struct TABS;
 
 impl container::StyleSheet for TABS {
-    fn style(&self) -> container::Style {
-        container::Style {
+    type Style = <iced::Theme as container::StyleSheet>::Style;
+
+    fn appearance(&self, _style: &Self::Style) -> container::Appearance {
+        container::Appearance {
             text_color: Some(Color::BLACK),
             background: None,
             border_radius: BORDER_RADIUS,
@@ -51,8 +56,10 @@ impl container::StyleSheet for TABS {
 }
 
 impl tab_bar::StyleSheet for TABS {
-    fn active(&self, is_active: bool) -> tab_bar::Style {
-        tab_bar::Style {
+    type Style = <iced::Theme as tab_bar::StyleSheet>::Style;
+
+    fn active(&self, _style: Self::Style, is_active: bool) -> tab_bar::Appearance {
+        tab_bar::Appearance {
             background: None,
             border_color: Some(Color::TRANSPARENT),
             border_width: BORDER_WIDTH * 2.0,
@@ -68,14 +75,14 @@ impl tab_bar::StyleSheet for TABS {
         }
     }
 
-    fn hovered(&self, is_active: bool) -> tab_bar::Style {
-        tab_bar::Style {
+    fn hovered(&self, style: Self::Style, is_active: bool) -> tab_bar::Appearance {
+        tab_bar::Appearance {
             tab_label_background: if is_active {
                 Background::Color(Color::WHITE)
             } else {
                 Background::Color([0.9, 0.9, 0.9].into())
             },
-            ..self.active(is_active)
+            ..self.active(style, is_active)
         }
     }
 }

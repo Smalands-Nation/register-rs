@@ -6,13 +6,10 @@ use {
         widgets::{column, row, SMALL_TEXT},
     },
     iced::{
-        pure::{
-            widget::{Container, Text},
-            Element,
-        },
-        Alignment, Command, Length,
+        widget::{Container, Text},
+        Alignment, Command, Element, Length,
     },
-    iced_aw::{pure::Badge, style::badge},
+    iced_aw::{style::badge::BadgeStyles, Badge},
 };
 
 #[cfg(not(debug_assertions))]
@@ -63,7 +60,7 @@ impl Screen for Info {
                     row![
                         Text::new("Smålands_register version"),
                         Badge::new(Text::new(self.current))
-                            .style(badge::Info)
+                            .style(BadgeStyles::Info)
                             .padding(DEF_PADDING),
                     ]
                     .align_items(Alignment::Center),
@@ -71,14 +68,14 @@ impl Screen for Info {
                         Some(ver) => row![
                             Text::new("Ny version"),
                             Badge::new(Text::new(ver))
-                                .style(badge::Warning)
+                                .style(BadgeStyles::Warning)
                                 .padding(DEF_PADDING),
                             Text::new("installeras vid omstart."),
                         ],
                         None => row![
                             Text::new("Dettta är"),
                             Badge::new(Text::new("Senaste versionen."))
-                                .style(badge::Success)
+                                .style(BadgeStyles::Success)
                                 .padding(DEF_PADDING),
                         ],
                     }

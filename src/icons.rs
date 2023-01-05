@@ -2,9 +2,10 @@ use {
     crate::widgets::BIG_TEXT,
     iced::{
         alignment::{Horizontal, Vertical},
-        pure::{widget::Text, Element},
-        Font,
+        widget::Text,
+        Element, Font,
     },
+    std::borrow::Cow,
 };
 
 pub const ICON_FONT: Font = Font::External {
@@ -50,16 +51,27 @@ impl From<Icon> for String {
     }
 }
 
-impl From<Icon> for Text {
-    fn from(i: Icon) -> Text {
-        BIG_TEXT::new(i)
+impl<'a, R> From<Icon> for Text<'a, R>
+where
+    R: iced_native::Renderer + iced_native::text::Renderer,
+    R::Theme: iced_native::widget::text::StyleSheet,
+    iced::Font: Into<R::Font>,
+{
+    fn from(i: Icon) -> Text<'a, R> {
+        BIG_TEXT::new(String::from(i))
             .font(ICON_FONT)
             .horizontal_alignment(Horizontal::Center)
             .vertical_alignment(Vertical::Center)
     }
 }
 
-impl<'a, M> From<Icon> for Element<'a, M> {
+impl<'a, M, R> From<Icon> for Element<'a, M, R>
+where
+    M: 'a,
+    R: iced_native::Renderer + iced_native::text::Renderer + 'a,
+    R::Theme: iced_native::widget::text::StyleSheet,
+    iced::Font: Into<R::Font>,
+{
     fn from(i: Icon) -> Self {
         Text::from(i).into()
     }

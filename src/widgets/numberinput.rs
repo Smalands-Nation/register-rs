@@ -1,8 +1,9 @@
 use {
-    iced::pure::widget::TextInput,
+    iced::widget::TextInput,
     std::{fmt, ops, str},
 };
 
+//TODO -> Component
 pub struct NumberInput<N>(Option<N>);
 
 impl<N> NumberInput<N>

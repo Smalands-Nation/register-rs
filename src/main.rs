@@ -1,3 +1,6 @@
+//TODO use new iced_lazy::components for custom widgets and such
+//maybe screens can be moved to components too?
+//TODO fix styling, might need to impl custom Theme to pass stylesheets
 use {
     crate::{
         error::Error,
@@ -14,13 +17,10 @@ use {
         widgets::{column, SMALL_TEXT},
     },
     iced::{
-        pure::{
-            widget::{Container, Text},
-            Application, Element,
-        },
-        window, Command, Font, Length, Settings,
+        widget::{Container, Text},
+        window, Application, Command, Element, Font, Length, Settings,
     },
-    iced_aw::pure::{Card, Modal, TabLabel, Tabs},
+    iced_aw::{Card, Modal, TabLabel, Tabs},
     lazy_static::lazy_static,
     rusqlite::Connection,
     std::sync::Arc,
@@ -86,6 +86,7 @@ impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Flags = ();
+    type Theme = iced::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut cmds = vec![];
@@ -165,7 +166,8 @@ impl Application for App {
                     Tabs::new(self.tab, Message::SwapTab)
                         .icon_font(icons::ICON_FONT)
                         .height(Length::Shrink)
-                        .tab_bar_style(TABS)
+                        //TODO fix styles later
+                        //.tab_bar_style(TABS)
                         .push(
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
                             self.menu.view(),
@@ -187,7 +189,8 @@ impl Application for App {
                             self.info.view(),
                         ),
                 )
-                .style(TABS)
+                //TODO fix styles later
+                //.style(TABS)
                 .padding(BORDER_WIDTH as u16),
             ],
             move || {
