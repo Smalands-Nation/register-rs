@@ -10,11 +10,12 @@ use {
         sql,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
+        Element,
     },
     chrono::Local,
     iced::{
         widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
-        Alignment, Command, Element, Length,
+        Alignment, Command, Length,
     },
     rusqlite::params,
 };

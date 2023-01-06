@@ -13,12 +13,12 @@ use {
             transactions::{self, Transactions},
             Message, Screen,
         },
-        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, TABS},
+        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
     iced::{
         widget::{Container, Text},
-        window, Application, Command, Element, Font, Length, Settings,
+        window, Application, Command, Font, Length, Settings,
     },
     iced_aw::{Card, Modal, TabLabel, Tabs},
     lazy_static::lazy_static,
@@ -39,6 +39,11 @@ pub mod screens;
 pub mod styles;
 #[allow(clippy::new_ret_no_self, clippy::new_without_default)]
 pub mod widgets;
+
+pub mod theme;
+
+pub type Renderer = iced::Renderer<theme::Theme>;
+pub type Element<'a, M> = iced::Element<'a, M, Renderer>;
 
 #[macro_export]
 macro_rules! command {
@@ -86,7 +91,7 @@ impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Flags = ();
-    type Theme = iced::Theme;
+    type Theme = theme::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut cmds = vec![];
@@ -166,8 +171,6 @@ impl Application for App {
                     Tabs::new(self.tab, Message::SwapTab)
                         .icon_font(icons::ICON_FONT)
                         .height(Length::Shrink)
-                        //TODO fix styles later
-                        //.tab_bar_style(TABS)
                         .push(
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
                             self.menu.view(),
@@ -189,8 +192,6 @@ impl Application for App {
                             self.info.view(),
                         ),
                 )
-                //TODO fix styles later
-                //.style(TABS)
                 .padding(BORDER_WIDTH as u16),
             ],
             move || {

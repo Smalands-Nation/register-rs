@@ -4,11 +4,12 @@ use {
         payment::Payment,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
+        Element,
     },
     frost::clickable::Clickable,
     iced::{
         widget::{Column, Scrollable, Text},
-        Element, Length,
+        Length,
     },
     indexmap::IndexSet,
 };

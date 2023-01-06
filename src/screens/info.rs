@@ -4,10 +4,11 @@ use {
         command,
         styles::DEF_PADDING,
         widgets::{column, row, SMALL_TEXT},
+        Element,
     },
     iced::{
         widget::{Container, Text},
-        Alignment, Command, Element, Length,
+        Alignment, Command, Length,
     },
     iced_aw::{style::badge::BadgeStyles, Badge},
 };

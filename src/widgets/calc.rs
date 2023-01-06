@@ -3,11 +3,12 @@ use {
     crate::{
         icons::Icon,
         styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+        Element, Renderer,
     },
     iced::{
         alignment::{Alignment, Horizontal},
         widget::{Rule, Space, Text},
-        Element, Length,
+        Length,
     },
     iced_lazy::Component,
 };
@@ -48,14 +49,7 @@ impl<'a, M> Calc<'a, M> {
     //    }
 }
 
-impl<'a, M, R> Component<M, R> for Calc<'a, M>
-where
-    R: iced_native::text::Renderer + 'static,
-    R::Theme: iced_native::widget::button::StyleSheet
-        + iced_native::widget::text::StyleSheet
-        + iced_native::widget::rule::StyleSheet,
-    iced::Font: Into<R::Font>,
-{
+impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
     type State = u32;
     type Event = Event;
 
@@ -86,7 +80,7 @@ where
         }
     }
 
-    fn view(&self, state: &Self::State) -> Element<Event, R> {
+    fn view(&self, state: &Self::State) -> Element<Event> {
         column![
             #nopad
             row![
@@ -127,14 +121,9 @@ where
     }
 }
 
-impl<'a, M, R> From<Calc<'a, M>> for Element<'a, M, R>
+impl<'a, M> From<Calc<'a, M>> for Element<'a, M>
 where
     M: 'a,
-    R: iced_native::text::Renderer + 'static,
-    R::Theme: iced_native::widget::button::StyleSheet
-        + iced_native::widget::text::StyleSheet
-        + iced_native::widget::rule::StyleSheet,
-    iced::Font: Into<R::Font>,
 {
     fn from(calc: Calc<'a, M>) -> Self {
         iced_lazy::component(calc)

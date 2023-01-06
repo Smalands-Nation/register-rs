@@ -1,6 +1,6 @@
 use {
     super::BIG_TEXT,
-    crate::{icons::Icon, styles::SQUARE_BUTTON},
+    crate::{icons::Icon, styles::SQUARE_BUTTON, Renderer},
     iced::{
         alignment::{Horizontal, Vertical},
         widget::Button,
@@ -12,29 +12,26 @@ use {
 pub struct SquareButton;
 
 impl SquareButton {
-    pub fn text<'a, M, R>(txt: impl Into<Cow<'a, str>>) -> Button<'a, M, R>
+    pub fn text<'a, M>(txt: impl Into<Cow<'a, str>>) -> Button<'a, M, Renderer>
     where
         M: Clone,
-        R: iced_native::Renderer + iced_native::text::Renderer + 'a,
-        R::Theme: iced_native::widget::button::StyleSheet + iced_native::widget::text::StyleSheet,
     {
         Button::new(
             BIG_TEXT::new(txt)
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
+        .style(iced_native::theme::Button::Text)
         .width(Length::Units(SQUARE_BUTTON))
         .height(Length::Units(SQUARE_BUTTON))
     }
 
-    pub fn icon<'a, M, R>(icon: Icon) -> Button<'a, M, R>
+    pub fn icon<'a, M>(icon: Icon) -> Button<'a, M, Renderer>
     where
         M: Clone + 'a,
-        R: iced_native::Renderer + iced_native::text::Renderer + 'a,
-        R::Theme: iced_native::widget::button::StyleSheet + iced_native::widget::text::StyleSheet,
-        iced::Font: Into<R::Font>,
     {
         Button::new(icon)
+            .style(iced_native::theme::Button::Text)
             .width(Length::Units(SQUARE_BUTTON))
             .height(Length::Units(SQUARE_BUTTON))
     }

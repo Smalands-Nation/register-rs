@@ -5,9 +5,12 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::error::{Error, Result},
+    crate::{
+        error::{Error, Result},
+        Element,
+    },
     giftwrap::Wrap,
-    iced::{Command, Element},
+    iced::Command,
 };
 pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 

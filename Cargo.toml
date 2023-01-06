@@ -12,7 +12,6 @@ update = []
 
 [dependencies]
 giftwrap = "0.5"
-num-traits = "0.2"
 chrono = "0.4"
 dirs = "4.0"
 iced_native = "0.7"

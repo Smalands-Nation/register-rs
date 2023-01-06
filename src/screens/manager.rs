@@ -7,10 +7,11 @@ use {
         sql,
         styles::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
+        Element,
     },
     iced::{
         widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
-        Alignment, Command, Element, Length,
+        Alignment, Command, Length,
     },
     iced_aw::{Card, Modal},
     rusqlite::params,
@@ -29,7 +30,7 @@ pub struct Manager {
     menu: Vec<Item<Stock>>,
     mode: Mode,
     name: String,
-    price: NumberInput<i32>,
+    price: i32,
     category: Option<Category>,
 }
 
@@ -40,7 +41,7 @@ pub enum Message {
     LoadMenu(Vec<Item<Stock>>),
     EditItem(Item<Stock>),
     UpdateName(String),
-    UpdatePrice(Option<i32>),
+    UpdatePrice(i32),
     UpdateCategory(Category),
     Cancel,
     Save,
@@ -69,7 +70,7 @@ where
                 menu: Vec::new(),
                 mode: Mode::New,
                 name: String::new(),
-                price: NumberInput::new(),
+                price: 0,
                 category: None,
             },
             command!(Message::Refresh(true)),
@@ -126,20 +127,20 @@ where
             Message::EditItem(i) => {
                 self.mode = Mode::Update(i.name.clone());
                 self.name = i.name;
-                self.price.update(Some(i.price));
+                self.price = i.price;
                 self.category = Some(i.category);
             }
             Message::UpdateName(s) => self.name = s,
-            Message::UpdatePrice(n) => self.price.update(n),
+            Message::UpdatePrice(n) => self.price = n,
             Message::UpdateCategory(c) => self.category = Some(c),
             Message::Cancel => {
                 self.mode = Mode::New;
                 self.name.clear();
-                self.price.update(None);
+                self.price = 0;
             }
             Message::Save => {
                 let name = self.name.clone();
-                let price = self.price.value().unwrap_or(0);
+                let price = self.price; //HACK COPY?
                 let category = self.category;
                 if !name.is_empty() {
                     return match &self.mode {
@@ -230,11 +231,8 @@ where
                     TextInput::new("", self.name.as_str(), Message::UpdateName)
                         .padding(DEF_PADDING),
                     Text::new("Pris (kr)"),
-                    self.price
-                        .build(1..=1000, Message::UpdatePrice)
-                        .padding(DEF_PADDING)
-                        .width(Length::Fill),
-                        Text::new("Typ"),
+                    NumberInput::new(1..=1000, Message::UpdatePrice),
+                    Text::new("Typ"),
                     PickList::new(&Category::ALL[..], self.category, Message::UpdateCategory),
                     Space::with_height(Length::FillPortion(5)),
                     if !self.locked {

@@ -9,11 +9,12 @@ use {
         sql,
         styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, BIG_TEXT, SMALL_TEXT},
+        Element,
     },
     chrono::{Date, Local, TimeZone},
     iced::{
         widget::{Button, Container, Row, Rule, Space, Text},
-        Alignment, Command, Element, Length,
+        Alignment, Command, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
     indexmap::IndexMap,

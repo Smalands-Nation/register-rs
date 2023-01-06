@@ -2,12 +2,13 @@ use {
     crate::{
         styles::{Bordered, DEF_PADDING, SMALL_PADDING},
         widgets::{row, SMALL_TEXT},
+        Element,
     },
     frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
         widget::{Checkbox, Column, Text},
-        Color, Element, Length,
+        Color, Length,
     },
     kind::*,
     rusqlite::types::{FromSql, FromSqlError, ToSql, ToSqlOutput, ValueRef},

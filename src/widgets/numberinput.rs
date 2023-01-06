@@ -1,47 +1,74 @@
 use {
+    crate::{styles::DEF_PADDING, Element, Renderer},
     iced::widget::TextInput,
-    std::{fmt, ops, str},
+    iced_lazy::Component,
+    std::{cmp::PartialOrd, fmt::Display, ops::RangeInclusive, str::FromStr},
 };
 
-//TODO -> Component
-pub struct NumberInput<N>(Option<N>);
+pub struct NumberInput<'a, N, M> {
+    on_change: Box<dyn Fn(N) -> M + 'a>,
+    range: RangeInclusive<N>,
+}
 
-impl<N> NumberInput<N>
+impl<'a, N, M> NumberInput<'a, N, M> {
+    pub fn new<F>(range: RangeInclusive<N>, on_change: F) -> Self
+    where
+        F: Fn(N) -> M + 'a,
+    {
+        Self {
+            on_change: Box::new(on_change),
+            range,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum Event {
+    Input(String),
+}
+
+impl<'a, N, M> Component<M, Renderer> for NumberInput<'a, N, M>
 where
-    N: num_traits::Num + Copy + fmt::Display + str::FromStr + PartialOrd,
+    N: Display + FromStr + Default + PartialOrd + Copy,
+    M: Clone,
 {
-    pub fn new() -> Self {
-        Self(None)
+    type State = Option<N>;
+    type Event = Event;
+
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
+        match event {
+            Event::Input(s) => {
+                if s.is_empty() {
+                    *state = None;
+                    None
+                } else {
+                    let n: N = s.parse().ok()?;
+                    self.range.contains(&n).then(|| {
+                        *state = Some(n);
+                        (self.on_change)(n)
+                    })
+                }
+            }
+        }
     }
 
-    pub fn build<'a, R, F, M>(&'a self, range: R, msg: F) -> TextInput<'a, M>
-    where
-        R: 'a + ops::RangeBounds<N>,
-        F: 'a + Fn(Option<N>) -> M,
-        M: Clone,
-    {
+    fn view(&self, state: &Self::State) -> Element<Self::Event> {
         TextInput::new(
             "",
-            match self.0 {
-                Some(n) => {
-                    format!("{}", n)
-                }
-                None => String::new(),
-            }
-            .as_str(),
-            move |s| match s.parse() {
-                Ok(n) if range.contains(&n) => msg(Some(n)),
-                Err(_) if s.is_empty() => msg(None),
-                _ => msg(self.0),
-            },
+            &state.map(|s| s.to_string()).unwrap_or_default(),
+            Event::Input,
         )
+        .padding(DEF_PADDING)
+        .into()
     }
+}
 
-    pub fn update(&mut self, v: Option<N>) {
-        self.0 = v;
-    }
-
-    pub fn value(&mut self) -> Option<N> {
-        self.0
+impl<'a, N, M> From<NumberInput<'a, N, M>> for Element<'a, M>
+where
+    N: Display + FromStr + Default + PartialOrd + Copy + 'static,
+    M: Clone + 'a,
+{
+    fn from(calc: NumberInput<'a, N, M>) -> Self {
+        iced_lazy::component(calc)
     }
 }
