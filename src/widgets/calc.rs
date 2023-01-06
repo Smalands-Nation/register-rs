@@ -2,7 +2,7 @@ use {
     super::{column, row, Grid, SquareButton},
     crate::{
         icons::Icon,
-        styles::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
+        theme::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
         Element, Renderer,
     },
     iced::{

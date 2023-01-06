@@ -5,7 +5,7 @@ use {
         icons::Icon,
         item::{kind::Stock, Category, Item},
         sql,
-        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
         Element,
     },
@@ -140,7 +140,7 @@ where
             }
             Message::Save => {
                 let name = self.name.clone();
-                let price = self.price; //HACK COPY?
+                let price = self.price;
                 let category = self.category;
                 if !name.is_empty() {
                     return match &self.mode {
@@ -205,7 +205,7 @@ where
                         3,
                         self.menu
                             .iter()
-                            .map(|item| item.on_press(Message::EditItem).into())
+                            .map(|item| item.as_widget(true).on_press(Message::EditItem).into())
                             .collect(),
                     )
                     .width(Length::Fill)

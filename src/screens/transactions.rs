@@ -8,7 +8,7 @@ use {
         print,
         receipt::Receipt,
         sql,
-        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, SquareButton},
         Element,
     },
@@ -134,8 +134,7 @@ impl Screen for Transactions {
                         .map(|(t, rec)| {
                             Container::new(rec.as_widget().on_press(Message::Select(*t)))
                                 .padding(DEF_PADDING)
-                                //TODO fix styles later
-                                //.style(Bordered::default())
+                                .style(theme::Container::Border)
                                 .into()
                         },)
                         .collect()

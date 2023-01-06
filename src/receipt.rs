@@ -2,7 +2,7 @@ use {
     crate::{
         item::{kind::Sales, Item},
         payment::Payment,
-        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
         Element,
     },
@@ -98,7 +98,7 @@ where
                         r.inner
                             .items
                             .iter()
-                            .map(|item| item.as_widget().into())
+                            .map(|item| item.as_widget(false).into())
                             .collect(),
                     )
                     .spacing(DEF_PADDING),

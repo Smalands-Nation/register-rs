@@ -1,5 +1,4 @@
 use {
-    crate::styles::BORDER_WIDTH,
     iced_aw::style::{badge, card, date_picker, modal, tab_bar},
     iced_native::{
         application,
@@ -9,6 +8,17 @@ use {
     },
 };
 
+const BORDER_RADIUS: f32 = 2.0;
+pub const BORDER_WIDTH: f32 = 2.0;
+
+pub const DEF_TEXT: u16 = 35;
+
+pub const DEF_PADDING: u16 = 10;
+pub const SMALL_PADDING: u16 = 5;
+
+pub const RECEIPT_WIDTH: u16 = 300;
+pub const SQUARE_BUTTON: u16 = 15 + crate::widgets::BIG_TEXT::size();
+
 #[derive(Default)]
 pub struct Theme(iced_native::Theme);
 
@@ -17,6 +27,38 @@ impl text::StyleSheet for Theme {
 
     fn appearance(&self, style: Self::Style) -> text::Appearance {
         text::Appearance { color: style }
+    }
+}
+
+#[derive(Default)]
+pub enum Container {
+    #[default]
+    Empty,
+    Border,
+    Fill(Color),
+    BorderFill(Color),
+}
+
+impl container::StyleSheet for Theme {
+    type Style = Container;
+
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            text_color: Some(Color::BLACK),
+            background: match *style {
+                Container::Fill(bg) | Container::BorderFill(bg) => Some(Background::Color(bg)),
+                _ => None,
+            },
+            border_radius: match style {
+                Container::Border | Container::BorderFill(_) => BORDER_RADIUS,
+                _ => 0.0,
+            },
+            border_width: match style {
+                Container::Border | Container::BorderFill(_) => BORDER_WIDTH,
+                _ => 0.0,
+            },
+            border_color: Color::BLACK,
+        }
     }
 }
 
@@ -48,27 +90,27 @@ impl text_input::StyleSheet for Theme {
     type Style = <iced_native::Theme as text_input::StyleSheet>::Style;
 
     fn hovered(&self, style: &Self::Style) -> text_input::Appearance {
-        <iced_native::Theme as text_input::StyleSheet>::hovered(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::hovered(self, style)
     }
 
     fn active(&self, style: &Self::Style) -> text_input::Appearance {
-        <iced_native::Theme as text_input::StyleSheet>::active(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::active(self, style)
     }
 
     fn focused(&self, style: &Self::Style) -> text_input::Appearance {
-        <iced_native::Theme as text_input::StyleSheet>::focused(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::focused(self, style)
     }
 
     fn placeholder_color(&self, style: &Self::Style) -> Color {
-        <iced_native::Theme as text_input::StyleSheet>::placeholder_color(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::placeholder_color(self, style)
     }
 
     fn value_color(&self, style: &Self::Style) -> Color {
-        <iced_native::Theme as text_input::StyleSheet>::value_color(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::value_color(self, style)
     }
 
     fn selection_color(&self, style: &Self::Style) -> Color {
-        <iced_native::Theme as text_input::StyleSheet>::selection_color(&self, style)
+        <iced_native::Theme as text_input::StyleSheet>::selection_color(self, style)
     }
 }
 
@@ -138,7 +180,6 @@ macro_rules! impl_via_deref {
 
 impl_via_deref! {application, &appearance}
 impl_via_deref! {button, &active}
-impl_via_deref! {container, &appearance}
 impl_via_deref! {pick_list, &active, &hovered}
 impl_via_deref! {rule, &appearance}
 impl_via_deref! {menu, &appearance}

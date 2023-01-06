@@ -1,5 +1,5 @@
 use {
-    crate::{styles::DEF_PADDING, Element, Renderer},
+    crate::{theme::DEF_PADDING, Element, Renderer},
     iced::widget::TextInput,
     iced_lazy::Component,
     std::{cmp::PartialOrd, fmt::Display, ops::RangeInclusive, str::FromStr},

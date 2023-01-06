@@ -7,7 +7,7 @@ use {
         payment::Payment,
         receipt::Receipt,
         sql,
-        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, BIG_TEXT, SMALL_TEXT},
         Element,
     },
@@ -164,8 +164,7 @@ impl Screen for Sales {
                                     .width(Length::Units(RECEIPT_WIDTH))
                                     .padding(DEF_PADDING),
                                 )
-                                //TODO fix styles later
-                                //.style(Bordered::default())
+                                .style(theme::Container::Border)
                                 .into()
                             })
                             .collect(),

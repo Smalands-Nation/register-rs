@@ -22,8 +22,8 @@ macro_rules! _column {
     };
     ($($elem:expr),+ $(,)?) => {
         $crate::widgets::column!(#nopad $($elem),*)
-            .spacing($crate::styles::DEF_PADDING)
-            .padding($crate::styles::DEF_PADDING)
+            .spacing($crate::theme::DEF_PADDING)
+            .padding($crate::theme::DEF_PADDING)
     };
 }
 macro_rules! _row {
@@ -33,8 +33,8 @@ macro_rules! _row {
     };
     ($($elem:expr),+ $(,)?) => {
         $crate::widgets::row!(#nopad $($elem),*)
-            .spacing($crate::styles::DEF_PADDING)
-            .padding($crate::styles::DEF_PADDING)
+            .spacing($crate::theme::DEF_PADDING)
+            .padding($crate::theme::DEF_PADDING)
     };
 }
 

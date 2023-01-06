@@ -1,6 +1,5 @@
 //TODO use new iced_lazy::components for custom widgets and such
 //maybe screens can be moved to components too?
-//TODO fix styling, might need to impl custom Theme to pass stylesheets
 use {
     crate::{
         error::Error,
@@ -13,7 +12,7 @@ use {
             transactions::{self, Transactions},
             Message, Screen,
         },
-        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
+        theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
     iced::{
@@ -36,7 +35,6 @@ pub mod print;
 pub mod receipt;
 #[allow(clippy::new_without_default)]
 pub mod screens;
-pub mod styles;
 #[allow(clippy::new_ret_no_self, clippy::new_without_default)]
 pub mod widgets;
 

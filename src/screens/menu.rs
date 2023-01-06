@@ -8,7 +8,7 @@ use {
         print,
         receipt::Receipt,
         sql,
-        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
         Element,
     },
@@ -157,7 +157,7 @@ impl Screen for Menu {
                     3,
                     self.menu
                         .iter()
-                        .map(|i| i.on_press(Message::SellItem).into())
+                        .map(|i| i.as_widget(true).on_press(Message::SellItem).into())
                         .collect(),
                 )
                 .width(Length::Fill)

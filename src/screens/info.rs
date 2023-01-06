@@ -2,7 +2,7 @@ use {
     super::Screen,
     crate::{
         command,
-        styles::DEF_PADDING,
+        theme::DEF_PADDING,
         widgets::{column, row, SMALL_TEXT},
         Element,
     },

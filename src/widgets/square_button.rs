@@ -1,6 +1,6 @@
 use {
     super::BIG_TEXT,
-    crate::{icons::Icon, styles::SQUARE_BUTTON, Renderer},
+    crate::{icons::Icon, theme::SQUARE_BUTTON, Renderer},
     iced::{
         alignment::{Horizontal, Vertical},
         widget::Button,

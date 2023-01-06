@@ -1,6 +1,6 @@
 use {
     crate::{
-        styles::{Bordered, DEF_PADDING, SMALL_PADDING},
+        theme::{Container, DEF_PADDING, SMALL_PADDING},
         widgets::{row, SMALL_TEXT},
         Element,
     },
@@ -82,9 +82,9 @@ impl ToSql for Category {
     }
 }
 
-impl From<Category> for Bordered {
+impl From<Category> for Container {
     fn from(c: Category) -> Self {
-        Bordered::new(match c {
+        Self::BorderFill(match c {
             Category::Alcohol => Color::from_rgb8(0xFF, 0x6F, 0x59),
             Category::Drink => Color::from_rgb8(0xC0, 0xDA, 0x74),
             Category::Food => Color::from_rgb8(0xA7, 0xC6, 0xDA),
@@ -187,7 +187,7 @@ impl<K> Item<K>
 where
     K: ItemKind,
 {
-    pub fn as_widget<M: Clone>(&self) -> ItemWidget<K, M> {
+    pub fn as_widget<M: Clone>(&self, color: bool) -> ItemWidget<K, M> {
         let Self {
             name,
             price,
@@ -200,19 +200,9 @@ where
             price,
             category,
             kind,
+            color,
             msg: None,
         }
-    }
-
-    pub fn on_press<F, M>(&self, msg: F) -> ItemWidget<K, M>
-    where
-        F: FnOnce(Self) -> M,
-        M: Clone,
-    {
-        let mut comp = self.as_widget();
-        //TODO maybe refactor messages of items only used for ID's to reduce clones
-        comp.msg = Some(msg(self.clone()));
-        comp
     }
 }
 
@@ -278,12 +268,31 @@ where
     category: Category,
     kind: K,
     msg: Option<M>,
-    //color: bool,
+    color: bool,
+}
+
+impl<K, M> ItemWidget<K, M>
+where
+    K: ItemKind,
+    M: Clone,
+{
+    pub fn on_press<F>(mut self, msg: F) -> Self
+    where
+        F: Fn(Item<K>) -> M,
+    {
+        self.msg = Some(msg(Item {
+            name: self.name.clone(),
+            price: self.price,
+            category: self.category,
+            kind: self.kind.clone(),
+        }));
+        self
+    }
 }
 
 //NOTE use macro due to wierd scoping
 macro_rules! item_widget {
-    ($($child:expr),*) => {
+    ($self:ident; $($child:expr),*) => {
         Clickable::new(
             Column::new()
             .spacing(SMALL_PADDING)
@@ -292,13 +301,11 @@ macro_rules! item_widget {
         )
         .padding(DEF_PADDING)
         .width(Length::Fill)
-        //TODO fix styles later
-        //.style(if self.color {
-        //    self.inner.category.into()
-        //} else {
-        //    Bordered::default()
-        //});
-
+        .style(if $self.color {
+            $self.category.into()
+        } else {
+            Container::Border
+        })
     }
 }
 
@@ -308,6 +315,7 @@ where
 {
     fn from(i: ItemWidget<Sales, M>) -> Self {
         let w = item_widget![
+            i;
             Text::new(i.name.to_string()),
             match i.kind {
                 Sales::Regular { num: 0 } | Sales::Special => row![
@@ -338,6 +346,7 @@ use crate::screens::manager::Message;
 impl From<ItemWidget<Stock, Message>> for Element<'_, Message> {
     fn from(i: ItemWidget<Stock, Message>) -> Self {
         let w = item_widget![
+            i;
             Text::new(i.name.to_string()),
             row![#nopad
                 SMALL_TEXT::new(format!("{} kr", i.price))
