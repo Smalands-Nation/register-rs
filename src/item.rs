@@ -117,7 +117,7 @@ impl Item<Sales> {
 
     pub fn new_sales(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
-            name: row.get("name")?,
+            name: row.get("item")?,
             price: row.get("price")?,
             category: Category::Other, //Not relevant
             kind: if row.get("special")? {
