@@ -5,7 +5,7 @@ use {
         icons::Icon,
         item::{kind::Stock, Category, Item},
         sql,
-        theme::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
         Element,
     },
@@ -249,6 +249,7 @@ where
                         ])
                         .on_press(Message::OpenLogin)
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill)
                     },
                 ]
@@ -263,7 +264,9 @@ where
                             .password()
                             .padding(DEF_PADDING)
                             .on_submit(Message::Login),
-                        Button::new(Text::new("Logga In")).on_press(Message::Login),
+                        Button::new(Text::new("Logga In"))
+                            .style(theme::Container::Border)
+                            .on_press(Message::Login),
                     ],
                 )
                 .max_width(650)

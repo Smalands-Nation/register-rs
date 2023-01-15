@@ -1,5 +1,3 @@
-//TODO use new iced_lazy::components for custom widgets and such
-//maybe screens can be moved to components too?
 use {
     crate::{
         error::Error,

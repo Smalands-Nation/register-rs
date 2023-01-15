@@ -189,14 +189,19 @@ impl Screen for Sales {
                     Space::with_height(Length::Fill),
                     Text::new("Fr.o.m."),
                     Button::new(Text::new(self.from.to_string()))
+                        .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .on_press(Message::OpenDate(Picker::From)),
                     Text::new("T.o.m."),
                     Button::new(Text::new(self.to.to_string()))
+                        .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .on_press(Message::OpenDate(Picker::To)),
                     Space::with_height(Length::Fill),
                     Button::new(BIG_TEXT::new("Exportera"))
                         .on_press(Message::Save)
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                 ]
                 .width(Length::Units(RECEIPT_WIDTH)),

@@ -8,7 +8,7 @@ use {
         print,
         receipt::Receipt,
         sql,
-        theme::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
         Element,
     },
@@ -180,10 +180,12 @@ impl Screen for Menu {
                     Button::new(Payment::Swish)
                         .on_press(Message::Sell(Payment::Swish))
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                     Button::new(Payment::Paypal)
                         .on_press(Message::Sell(Payment::Paypal))
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                 ]
                 .spacing(DEF_PADDING)

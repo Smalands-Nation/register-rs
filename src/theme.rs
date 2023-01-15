@@ -1,7 +1,7 @@
 use {
     iced_aw::style::{badge, card, date_picker, modal, tab_bar},
     iced_native::{
-        application,
+        application, color,
         overlay::menu,
         widget::{button, checkbox, container, pick_list, rule, scrollable, text, text_input},
         Background, Color,
@@ -62,15 +62,57 @@ impl container::StyleSheet for Theme {
     }
 }
 
+impl button::StyleSheet for Theme {
+    type Style = Container;
+
+    fn active(&self, style: &Self::Style) -> button::Appearance {
+        button::Appearance {
+            text_color: Color::BLACK,
+            background: match *style {
+                Container::Fill(bg) | Container::BorderFill(bg) => Some(Background::Color(bg)),
+                _ => None,
+            },
+            border_radius: match style {
+                Container::Border | Container::BorderFill(_) => BORDER_RADIUS,
+                _ => 0.0,
+            },
+            border_width: match style {
+                Container::Border | Container::BorderFill(_) => BORDER_WIDTH,
+                _ => 0.0,
+            },
+            border_color: Color::BLACK,
+            shadow_offset: Default::default(),
+        }
+    }
+
+    fn disabled(&self, style: &Self::Style) -> button::Appearance {
+        Self::active(self, style)
+    }
+}
+
 impl checkbox::StyleSheet for Theme {
     type Style = <iced_native::Theme as checkbox::StyleSheet>::Style;
 
-    fn active(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
-        <iced_native::Theme as checkbox::StyleSheet>::active(self, style, is_checked)
+    fn active(&self, _style: &Self::Style, _is_checked: bool) -> checkbox::Appearance {
+        checkbox::Appearance {
+            background: Background::Color(Color::WHITE),
+            checkmark_color: Color::BLACK,
+            border_radius: BORDER_RADIUS,
+            border_width: BORDER_WIDTH,
+            border_color: Color::BLACK,
+            text_color: None,
+        }
     }
 
-    fn hovered(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
-        <iced_native::Theme as checkbox::StyleSheet>::hovered(self, style, is_checked)
+    fn hovered(&self, _style: &Self::Style, _is_checked: bool) -> checkbox::Appearance {
+        checkbox::Appearance {
+            background: Background::Color(color!(0xD0D0D0)),
+            checkmark_color: Color::BLACK,
+            border_radius: BORDER_RADIUS,
+            border_width: BORDER_WIDTH,
+            border_color: Color::BLACK,
+            text_color: None,
+        }
     }
 }
 
@@ -179,7 +221,6 @@ macro_rules! impl_via_deref {
 }
 
 impl_via_deref! {application, &appearance}
-impl_via_deref! {button, &active}
 impl_via_deref! {pick_list, &active, &hovered}
 impl_via_deref! {rule, &appearance}
 impl_via_deref! {menu, &appearance}

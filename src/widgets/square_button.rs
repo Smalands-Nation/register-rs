@@ -1,6 +1,10 @@
 use {
     super::BIG_TEXT,
-    crate::{icons::Icon, theme::SQUARE_BUTTON, Renderer},
+    crate::{
+        icons::Icon,
+        theme::{Container, SQUARE_BUTTON},
+        Renderer,
+    },
     iced::{
         alignment::{Horizontal, Vertical},
         widget::Button,
@@ -21,7 +25,7 @@ impl SquareButton {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
-        .style(iced_native::theme::Button::Text)
+        .style(Container::Border)
         .width(Length::Units(SQUARE_BUTTON))
         .height(Length::Units(SQUARE_BUTTON))
     }
@@ -31,7 +35,7 @@ impl SquareButton {
         M: Clone + 'a,
     {
         Button::new(icon)
-            .style(iced_native::theme::Button::Text)
+            .style(Container::Border)
             .width(Length::Units(SQUARE_BUTTON))
             .height(Length::Units(SQUARE_BUTTON))
     }

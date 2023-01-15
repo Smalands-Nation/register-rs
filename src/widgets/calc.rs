@@ -13,7 +13,6 @@ use {
     iced_lazy::Component,
 };
 
-//pub struct Calc(pub u32, u32);
 pub struct Calc<'a, M> {
     multi: u32,
     on_set: Box<dyn Fn(u32) -> M + 'a>,
@@ -36,17 +35,6 @@ impl<'a, M> Calc<'a, M> {
             on_set: Box::new(on_set),
         }
     }
-    //    pub fn new() -> Self {
-    //        Self(1, 0)
-    //    }
-    //
-    //    pub fn clear(&mut self) {
-    //        if self.1 == 0 {
-    //            self.on_set = 1;
-    //        } else {
-    //            self.1 = 0;
-    //        }
-    //    }
 }
 
 impl<'a, M> Component<M, Renderer> for Calc<'a, M> {

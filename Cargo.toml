@@ -19,7 +19,7 @@ iced_lazy = "0.3"
 lazy_static = "1.4"
 rusqlite_migration = "1.0"
 
-frost = {git = "https://github.com/Strosel/frost"}
+frost = {git = "https://github.com/Strosel/frost", tag="v0.2.0"}
 
 [dependencies.self_update]
 version = "0.27"
