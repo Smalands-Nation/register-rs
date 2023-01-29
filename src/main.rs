@@ -176,10 +176,10 @@ impl Application for App {
                         //    TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
                         //    self.manager.view(),
                         //)
-                        //.push(
-                        //    TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
-                        //    self.info.view(),
-                        //),
+                        .push(
+                            TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
+                            self.tab.as_info(),
+                        ),
                 )
                 .padding(BORDER_WIDTH as u16),
             ],

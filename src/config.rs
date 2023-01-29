@@ -67,6 +67,6 @@ pub fn update() -> Result<Status> {
 }
 
 #[cfg(debug_assertions)]
-pub fn update() -> Result<()> {
-    Ok(())
+pub fn update() -> Result<self_update::Status> {
+    Ok(self_update::Status::UpToDate("Dev".into()))
 }

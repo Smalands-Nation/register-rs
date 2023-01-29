@@ -1,4 +1,4 @@
-//pub mod info;
+pub mod info;
 //pub mod manager;
 pub mod menu;
 //pub mod sales;
@@ -20,7 +20,7 @@ use {
     },
 };
 
-use menu::Menu;
+use {info::Info, menu::Menu};
 //pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
 #[macro_export]
@@ -42,12 +42,14 @@ macro_rules! sql {
 #[derive(Clone, Debug)]
 pub enum Tab {
     Menu(Vec<Item<Sales>>),
+    Info(self_update::Status),
 }
 
 impl From<&Tab> for usize {
     fn from(value: &Tab) -> Self {
         match value {
             Tab::Menu(_) => 0,
+            Tab::Info(_) => 1,
         }
     }
 }
@@ -56,6 +58,7 @@ impl From<usize> for Tab {
     fn from(value: usize) -> Self {
         match value {
             0 => Self::Menu(vec![]),
+            1 => Self::Info(self_update::Status::UpToDate("".into())),
             n => unreachable!("Tab {} does not exist", n),
         }
     }
@@ -65,6 +68,14 @@ impl Tab {
     pub fn as_menu(&self) -> Element<Message> {
         if let Self::Menu(menu) = self {
             Menu::new(menu.clone(), Message::Sideffect).into()
+        } else {
+            iced::widget::Text::new("Empty").into()
+        }
+    }
+
+    pub fn as_info(&self) -> Element<Message> {
+        if let Self::Info(ver) = self {
+            Info::new(ver.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -90,6 +101,8 @@ impl Tab {
                     Item::new_menu,
                     Vec<_>
                 )),
+
+                Self::Info(_) => Self::Info(crate::config::update()?),
             }))
         })
     }
