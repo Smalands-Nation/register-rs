@@ -164,10 +164,10 @@ impl Application for App {
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
                             self.tab.as_menu()
                         )
-                        //.push(
-                        //    TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                        //    self.transactions.view(),
-                        //)
+                        .push(
+                            TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
+                            self.tab.as_transactions(),
+                        )
                         //.push(
                         //    TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
                         //    self.sales.view(),

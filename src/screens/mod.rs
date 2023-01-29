@@ -2,14 +2,16 @@ pub mod info;
 //pub mod manager;
 pub mod menu;
 //pub mod sales;
-//pub mod transactions;
+pub mod transactions;
 
 use {
     crate::{
         error::{Error, Result},
         item::{kind::Sales, Item},
+        payment::Payment,
         Element,
     },
+    chrono::{DateTime, Local},
     futures::{future::BoxFuture, FutureExt},
     giftwrap::Wrap,
     iced::Command,
@@ -20,8 +22,7 @@ use {
     },
 };
 
-use {info::Info, menu::Menu};
-//pub use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
+use {info::Info, menu::Menu, transactions::Transactions};
 
 #[macro_export]
 macro_rules! sql {
@@ -42,6 +43,7 @@ macro_rules! sql {
 #[derive(Clone, Debug)]
 pub enum Tab {
     Menu(Vec<Item<Sales>>),
+    Transactions(Vec<(DateTime<Local>, Item<Sales>, Payment)>),
     Info(self_update::Status),
 }
 
@@ -49,7 +51,8 @@ impl From<&Tab> for usize {
     fn from(value: &Tab) -> Self {
         match value {
             Tab::Menu(_) => 0,
-            Tab::Info(_) => 1,
+            Tab::Transactions(_) => 1,
+            Tab::Info(_) => 2,
         }
     }
 }
@@ -58,7 +61,8 @@ impl From<usize> for Tab {
     fn from(value: usize) -> Self {
         match value {
             0 => Self::Menu(vec![]),
-            1 => Self::Info(self_update::Status::UpToDate("".into())),
+            1 => Self::Transactions(vec![]),
+            2 => Self::Info(self_update::Status::UpToDate("".into())),
             n => unreachable!("Tab {} does not exist", n),
         }
     }
@@ -68,6 +72,14 @@ impl Tab {
     pub fn as_menu(&self) -> Element<Message> {
         if let Self::Menu(menu) = self {
             Menu::new(menu.clone(), Message::Sideffect).into()
+        } else {
+            iced::widget::Text::new("Empty").into()
+        }
+    }
+
+    pub fn as_transactions(&self) -> Element<Message> {
+        if let Self::Transactions(transactions) = self {
+            Transactions::new(transactions.clone(), Message::Sideffect).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -99,6 +111,20 @@ impl Tab {
                         name DESC",
                     params![],
                     Item::new_menu,
+                    Vec<_>
+                )),
+
+                Self::Transactions(_) => Self::Transactions(sql!(
+                    "SELECT * FROM receipts_view \
+                    WHERE time > date('now','-1 day') ORDER BY time DESC",
+                    params![],
+                    |row| {
+                        Ok((
+                            row.get::<_, DateTime<Local>>("time")?,
+                            Item::new_sales(row)?,
+                            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
+                        ))
+                    },
                     Vec<_>
                 )),
 
@@ -134,13 +160,6 @@ impl std::fmt::Debug for Sideffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Sideffect(_)")
     }
-}
-
-#[macro_export]
-macro_rules! sideffect {
-    ($self:ident, $fn:expr) => {
-        ($self.sideffect)($crate::screens::Sideffect::new($fn))
-    };
 }
 
 #[derive(Clone, Debug)]

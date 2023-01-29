@@ -37,6 +37,11 @@ impl<M> Receipt<M> {
         }
     }
 
+    pub fn on_press(mut self, msg: M) -> Self {
+        self.msg = Some(msg);
+        self
+    }
+
     pub fn add(&mut self, item: Item<Sales>) {
         self.sum += item.price_total();
         let it = self.items.get(&item).cloned();
@@ -63,30 +68,7 @@ impl<M> Receipt<M> {
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
-
-    //pub fn as_widget<M>(&self) -> ReceiptWidget<M> {
-    //    ReceiptWidget {
-    //        message: None,
-    //        inner: self,
-    //    }
-    //}
 }
-
-//#[derive(Debug)]
-//pub struct ReceiptWidget<'a, M> {
-//    message: Option<M>,
-//    inner: &'a Receipt,
-//}
-
-//impl<'a, M> ReceiptWidget<'a, M>
-//where
-//    M: Clone + 'a,
-//{
-//    pub fn on_press(mut self, msg: M) -> Self {
-//        self.message = Some(msg);
-//        self
-//    }
-//}
 
 impl<'a, M> Component<M, Renderer> for Receipt<M>
 where

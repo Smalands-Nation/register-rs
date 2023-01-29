@@ -1,13 +1,11 @@
 use {
     super::Sideffect,
     crate::{
-        command,
         icons::Icon,
         item::{kind::Sales, Item},
         payment::Payment,
         print,
         receipt::Receipt,
-        sideffect, sql,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
         Element, Renderer,
@@ -15,7 +13,7 @@ use {
     chrono::Local,
     iced::{
         widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
-        Alignment, Command, Length,
+        Alignment, Length,
     },
     iced_lazy::Component,
     rusqlite::params,
@@ -89,7 +87,7 @@ impl<M> Component<M, Renderer> for Menu<M> {
                     let mut receipt = Receipt::new(Payment::Swish);
                     std::mem::swap(&mut receipt, &mut state.receipt);
                     let should_print = state.print;
-                    return Some(sideffect!(self, || async move {
+                    return Some((self.sideffect)(Sideffect::new(|| async move {
                         let time = Local::now();
                         if should_print {
                             print::print(&receipt, time).await?;
@@ -117,7 +115,7 @@ impl<M> Component<M, Renderer> for Menu<M> {
                         }
 
                         Ok(())
-                    }));
+                    })));
                 }
             }
         };
