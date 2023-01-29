@@ -1,17 +1,17 @@
 pub mod info;
 //pub mod manager;
 pub mod menu;
-//pub mod sales;
+pub mod sales;
 pub mod transactions;
 
 use {
     crate::{
         error::{Error, Result},
-        item::{kind::Sales, Item},
+        item::{kind, Item},
         payment::Payment,
         Element,
     },
-    chrono::{DateTime, Local},
+    chrono::{Date, DateTime, Local},
     futures::{future::BoxFuture, FutureExt},
     giftwrap::Wrap,
     iced::Command,
@@ -22,7 +22,7 @@ use {
     },
 };
 
-use {info::Info, menu::Menu, transactions::Transactions};
+use {info::Info, menu::Menu, sales::Sales, transactions::Transactions};
 
 #[macro_export]
 macro_rules! sql {
@@ -42,8 +42,13 @@ macro_rules! sql {
 
 #[derive(Clone, Debug)]
 pub enum Tab {
-    Menu(Vec<Item<Sales>>),
-    Transactions(Vec<(DateTime<Local>, Item<Sales>, Payment)>),
+    Menu(Vec<Item<kind::Sales>>),
+    Transactions(Vec<(DateTime<Local>, Item<kind::Sales>, Payment)>),
+    Sales {
+        from: Date<Local>,
+        to: Date<Local>,
+        data: Vec<(Item<kind::Sales>, Payment)>,
+    },
     Info(self_update::Status),
 }
 
@@ -52,7 +57,8 @@ impl From<&Tab> for usize {
         match value {
             Tab::Menu(_) => 0,
             Tab::Transactions(_) => 1,
-            Tab::Info(_) => 2,
+            Tab::Sales { .. } => 2,
+            Tab::Info(_) => 3,
         }
     }
 }
@@ -62,7 +68,12 @@ impl From<usize> for Tab {
         match value {
             0 => Self::Menu(vec![]),
             1 => Self::Transactions(vec![]),
-            2 => Self::Info(self_update::Status::UpToDate("".into())),
+            2 => Self::Sales {
+                from: Local::today(),
+                to: Local::today(),
+                data: vec![],
+            },
+            3 => Self::Info(self_update::Status::UpToDate("".into())),
             n => unreachable!("Tab {} does not exist", n),
         }
     }
@@ -85,6 +96,14 @@ impl Tab {
         }
     }
 
+    pub fn as_sales(&self) -> Element<Message> {
+        if let Self::Sales { from, to, data } = self {
+            Sales::new(*from, *to, data.clone(), Message::Sideffect).into()
+        } else {
+            iced::widget::Text::new("Empty").into()
+        }
+    }
+
     pub fn as_info(&self) -> Element<Message> {
         if let Self::Info(ver) = self {
             Info::new(ver.clone()).into()
@@ -93,11 +112,10 @@ impl Tab {
         }
     }
 
-    pub fn load(self) -> Command<Message> {
-        crate::command!({
-            Ok(Message::LoadTab(match self {
-                Self::Menu(_) => Self::Menu(sql!(
-                    "SELECT name, price, special, category FROM menu
+    pub async fn load(self) -> Result<Message> {
+        Ok(Message::LoadTab(match self {
+            Self::Menu(_) => Self::Menu(sql!(
+                "SELECT name, price, special, category FROM menu
                     WHERE available=true
                     ORDER BY
                         special ASC,
@@ -109,67 +127,98 @@ impl Tab {
                             ELSE 5
                         END,
                         name DESC",
-                    params![],
-                    Item::new_menu,
-                    Vec<_>
-                )),
+                params![],
+                Item::new_menu,
+                Vec<_>
+            )),
 
-                Self::Transactions(_) => Self::Transactions(sql!(
-                    "SELECT * FROM receipts_view \
+            Self::Transactions(_) => Self::Transactions(sql!(
+                "SELECT * FROM receipts_view \
                     WHERE time > date('now','-1 day') ORDER BY time DESC",
-                    params![],
-                    |row| {
-                        Ok((
-                            row.get::<_, DateTime<Local>>("time")?,
-                            Item::new_sales(row)?,
-                            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
-                        ))
-                    },
-                    Vec<_>
-                )),
+                params![],
+                |row| {
+                    Ok((
+                        row.get::<_, DateTime<Local>>("time")?,
+                        Item::new_sales(row)?,
+                        Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
+                    ))
+                },
+                Vec<_>
+            )),
 
-                Self::Info(_) => Self::Info(crate::config::update()?),
-            }))
-        })
+            Self::Sales { from, to, data } => {
+                let from_time = from.and_hms(0, 0, 0);
+                let to_time = to.and_hms(23, 59, 59);
+                Self::Sales {
+                    from,
+                    to,
+                    data: sql!(
+                        "SELECT item, amount, price, special, method FROM receipts_view \
+                            WHERE time BETWEEN ?1 AND ?2",
+                        params![from_time, to_time],
+                        |row| {
+                            Ok((
+                                Item::new_sales(row)?,
+                                //method
+                                Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
+                            ))
+                        },
+                        Vec<(Item<_>, Payment)>
+                    ),
+                }
+            }
+
+            Self::Info(_) => Self::Info(crate::config::update()?),
+        }))
     }
 }
 
 #[derive(Clone)]
-pub struct Sideffect(futures::future::Shared<BoxFuture<'static, Result<()>>>);
+pub struct Sideffect<M>(futures::future::Shared<BoxFuture<'static, Result<M>>>);
 
-impl Sideffect {
+impl<M> Sideffect<M>
+where
+    M: Clone,
+{
     pub fn new<F, Fut>(f: F) -> Self
     where
         F: FnOnce() -> Fut,
-        Fut: Future<Output = Result<()>> + Send + 'static,
+        Fut: Future<Output = Result<M>> + Send + 'static,
     {
         Self(f().boxed().shared())
     }
 }
 
-impl IntoFuture for Sideffect {
-    type Output = Result<()>;
-    type IntoFuture = futures::future::Shared<BoxFuture<'static, Result<()>>>;
+impl<M> IntoFuture for Sideffect<M>
+where
+    M: Clone,
+{
+    type Output = Result<M>;
+    type IntoFuture = futures::future::Shared<BoxFuture<'static, Result<M>>>;
 
     fn into_future(self) -> Self::IntoFuture {
         self.0
     }
 }
 
-impl std::fmt::Debug for Sideffect {
+impl<M> std::fmt::Debug for Sideffect<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Sideffect(_)")
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum Message {
+    #[default]
     None,
     SwapTab(Tab),
     LoadTab(Tab),
     CloseModal,
-    Error(Error),
-    Sideffect(Sideffect),
+    OpenModal {
+        title: &'static str,
+        content: String,
+    },
+    Sideffect(Sideffect<Self>),
 }
 
 impl From<()> for Message {
@@ -185,7 +234,17 @@ where
     fn from(r: Result<T>) -> Self {
         match r {
             Ok(t) => t.into(),
-            Err(e) => Self::Error(e),
+            Err(e) => Self::OpenModal {
+                title: "Error",
+                content: format!("{e:#?}"),
+            },
         }
+    }
+}
+
+//Allow data to trickle back down, only really used in sales
+impl From<Tab> for Message {
+    fn from(value: Tab) -> Self {
+        Self::LoadTab(value)
     }
 }

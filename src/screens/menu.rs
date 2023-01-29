@@ -19,9 +19,9 @@ use {
     rusqlite::params,
 };
 
-pub struct Menu<M> {
+pub struct Menu<S, M> {
     menu: Vec<Item<Sales>>,
-    sideffect: Box<dyn Fn(Sideffect) -> M>,
+    sideffect: Box<dyn Fn(Sideffect<S>) -> M>,
 }
 
 #[derive(Clone)]
@@ -50,10 +50,10 @@ pub enum Event {
     Sell(Payment),
 }
 
-impl<M> Menu<M> {
+impl<S, M> Menu<S, M> {
     pub fn new<F>(menu: Vec<Item<Sales>>, sideffect: F) -> Self
     where
-        F: Fn(Sideffect) -> M + 'static,
+        F: Fn(Sideffect<S>) -> M + 'static,
     {
         Self {
             menu,
@@ -62,7 +62,10 @@ impl<M> Menu<M> {
     }
 }
 
-impl<M> Component<M, Renderer> for Menu<M> {
+impl<S, M> Component<M, Renderer> for Menu<S, M>
+where
+    S: Into<M> + Default + Clone,
+{
     type State = State;
     type Event = Event;
 
@@ -114,7 +117,7 @@ impl<M> Component<M, Renderer> for Menu<M> {
                             ])?;
                         }
 
-                        Ok(())
+                        Ok(S::default())
                     })));
                 }
             }
@@ -182,11 +185,12 @@ impl<M> Component<M, Renderer> for Menu<M> {
     }
 }
 
-impl<'a, M> From<Menu<M>> for Element<'a, M>
+impl<'a, S, M> From<Menu<S, M>> for Element<'a, M>
 where
+    S: Into<M> + Default + Clone + 'a,
     M: 'a,
 {
-    fn from(menu: Menu<M>) -> Self {
+    fn from(menu: Menu<S, M>) -> Self {
         iced_lazy::component(menu)
     }
 }

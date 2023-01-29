@@ -20,9 +20,9 @@ use {
     indexmap::IndexMap,
 };
 
-pub struct Transactions<M> {
+pub struct Transactions<S, M> {
     receipts: IndexMap<DateTime<Local>, Receipt<Event>>,
-    sideffect: Box<dyn Fn(Sideffect) -> M>,
+    sideffect: Box<dyn Fn(Sideffect<S>) -> M>,
 }
 
 #[derive(Default)]
@@ -40,10 +40,10 @@ pub enum Event {
     Print,
 }
 
-impl<M> Transactions<M> {
+impl<S, M> Transactions<S, M> {
     pub fn new<F>(receipts: Vec<(DateTime<Local>, Item<Sales>, Payment)>, sideffect: F) -> Self
     where
-        F: Fn(Sideffect) -> M + 'static,
+        F: Fn(Sideffect<S>) -> M + 'static,
     {
         Self {
             receipts: receipts.into_iter().fold(
@@ -65,7 +65,10 @@ impl<M> Transactions<M> {
     }
 }
 
-impl<M> Component<M, Renderer> for Transactions<M> {
+impl<S, M> Component<M, Renderer> for Transactions<S, M>
+where
+    S: Into<M> + Default + Clone,
+{
     type State = State;
     type Event = Event;
 
@@ -89,7 +92,8 @@ impl<M> Component<M, Renderer> for Transactions<M> {
                     let receipt = receipt.clone();
                     let time = *time;
                     return Some((self.sideffect)(Sideffect::new(|| async move {
-                        print::print(&receipt, time).await
+                        print::print(&receipt, time).await?;
+                        Ok(S::default())
                     })));
                 }
             }
@@ -153,11 +157,12 @@ impl<M> Component<M, Renderer> for Transactions<M> {
     }
 }
 
-impl<'a, M> From<Transactions<M>> for Element<'a, M>
+impl<'a, S, M> From<Transactions<S, M>> for Element<'a, M>
 where
+    S: Into<M> + Default + Clone + 'a,
     M: 'a,
 {
-    fn from(transactions: Transactions<M>) -> Self {
+    fn from(transactions: Transactions<S, M>) -> Self {
         iced_lazy::component(transactions)
     }
 }

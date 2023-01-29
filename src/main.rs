@@ -75,7 +75,7 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    err: Option<Error>,
+    modal: Option<(&'static str, String)>,
     tab: Tab,
     //menu: Menu,
     //transactions: Transactions,
@@ -110,7 +110,7 @@ impl Application for App {
 
         (
             Self {
-                err: None,
+                modal: None,
                 tab: Tab::Menu(Vec::new()),
                 //menu,
                 //transactions,
@@ -118,7 +118,7 @@ impl Application for App {
                 //sales,
                 //info,
             },
-            Tab::Menu(vec![]).load(),
+            command!(Tab::Menu(vec![]).load().await),
         )
     }
 
@@ -129,19 +129,21 @@ impl Application for App {
     fn update(&mut self, msg: Self::Message) -> Command<Self::Message> {
         match msg {
             Message::None => Command::none(),
-            Message::SwapTab(tab) => tab.load(),
+            Message::SwapTab(tab) => command!(tab.load().await),
             Message::LoadTab(tab) => {
                 self.tab = tab;
                 Command::none()
             }
             Message::CloseModal => {
-                self.err = None;
+                self.modal = None;
                 Command::none()
             }
-            Message::Error(e) => {
-                println!("Message::Error({:#?})", e);
-                self.err = Some(e);
-                //TODO add logging here
+            Message::OpenModal { title, content } => {
+                if title == "Error" {
+                    //TODO add logging here
+                    println!("Message::Error({:#?})", content);
+                }
+                self.modal = Some((title, content));
                 Command::none()
             }
             Message::Sideffect(f) => command! {
@@ -151,9 +153,9 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<Self::Message> {
-        let err = self.err.clone();
+        let modal = self.modal.clone();
         Modal::new(
-            self.err.is_some(),
+            self.modal.is_some(),
             column![
                 #nopad
                 Container::new(
@@ -168,10 +170,10 @@ impl Application for App {
                             TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
                             self.tab.as_transactions(),
                         )
-                        //.push(
-                        //    TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                        //    self.sales.view(),
-                        //)
+                        .push(
+                            TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                            self.tab.as_sales(),
+                        )
                         //.push(
                         //    TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
                         //    self.manager.view(),
@@ -184,17 +186,12 @@ impl Application for App {
                 .padding(BORDER_WIDTH as u16),
             ],
             move || {
-                Card::new(
-                    Text::new("Error"),
-                    SMALL_TEXT::new(match &err {
-                        Some(e) => format!("{:#?}", e),
-                        None => String::new(),
-                    }),
-                )
-                .max_width(650)
-                .padding(DEF_PADDING.into())
-                .on_close(Message::CloseModal)
-                .into()
+                let (title, content) = modal.clone().unwrap_or_default();
+                Card::new(Text::new(title), SMALL_TEXT::new(content))
+                    .max_width(650)
+                    .padding(DEF_PADDING.into())
+                    .on_close(Message::CloseModal)
+                    .into()
             },
         )
         .backdrop(Message::CloseModal)
