@@ -8,9 +8,9 @@ use {
     std::{io::Cursor, path::PathBuf},
 };
 
-fn create_pdf(
+fn create_pdf<M>(
     path: impl Into<PathBuf>,
-    receipt: &Receipt,
+    receipt: &Receipt<M>,
     time: DateTime<Local>,
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
@@ -113,7 +113,7 @@ fn receipt_path() -> Result<PathBuf> {
 }
 
 #[cfg(target_os = "windows")]
-pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
+pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
     let filename = create_pdf(
         receipt_path().map_err(|e| format!("receipt_path: {e:#?}"))?,
         &receipt,
@@ -130,14 +130,14 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
         .status
         .success()
     {
-        Ok(receipt)
+        Ok(())
     } else {
         Err("Print failed")?
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
+pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
     let filename = create_pdf(receipt_path()?, &receipt, time)?;
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
@@ -146,7 +146,7 @@ pub async fn print(receipt: Receipt, time: DateTime<Local>) -> Result<Receipt> {
         .status
         .success()
     {
-        Ok(receipt)
+        Ok(())
     } else {
         Err("Print failed".into())
     }

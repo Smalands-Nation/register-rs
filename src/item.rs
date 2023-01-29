@@ -342,26 +342,27 @@ where
     }
 }
 
-use crate::screens::manager::Message;
-impl From<ItemWidget<Stock, Message>> for Element<'_, Message> {
-    fn from(i: ItemWidget<Stock, Message>) -> Self {
-        let w = item_widget![
-            i;
-            Text::new(i.name.to_string()),
-            row![#nopad
-                SMALL_TEXT::new(format!("{} kr", i.price))
-                .width(Length::Fill)
-                .horizontal_alignment(Horizontal::Left),
-            ],
-            Checkbox::new(i.kind.available, "I Lager", move |b| {
-                Message::ToggleItem(i.kind.idx, b)
-            })
-        ];
-
-        match i.msg {
-            Some(msg) => w.on_press(msg),
-            None => w,
-        }
-        .into()
-    }
-}
+//TODO
+//use crate::screens::manager::Message;
+//impl From<ItemWidget<Stock, Message>> for Element<'_, Message> {
+//    fn from(i: ItemWidget<Stock, Message>) -> Self {
+//        let w = item_widget![
+//            i;
+//            Text::new(i.name.to_string()),
+//            row![#nopad
+//                SMALL_TEXT::new(format!("{} kr", i.price))
+//                .width(Length::Fill)
+//                .horizontal_alignment(Horizontal::Left),
+//            ],
+//            Checkbox::new(i.kind.available, "I Lager", move |b| {
+//                Message::ToggleItem(i.kind.idx, b)
+//            })
+//        ];
+//
+//        match i.msg {
+//            Some(msg) => w.on_press(msg),
+//            None => w,
+//        }
+//        .into()
+//    }
+//}

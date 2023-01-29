@@ -4,24 +4,26 @@ use {
         payment::Payment,
         theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
-        Element,
+        Element, Renderer,
     },
     frost::clickable::Clickable,
     iced::{
         widget::{Column, Scrollable, Text},
         Length,
     },
+    iced_lazy::Component,
     indexmap::IndexSet,
 };
 
 #[derive(Debug, Clone)]
-pub struct Receipt {
+pub struct Receipt<M> {
     pub items: IndexSet<Item<Sales>>,
     pub sum: i32,
     pub payment: Payment,
+    msg: Option<M>,
 }
 
-impl Receipt {
+impl<M> Receipt<M> {
     pub fn new(payment: Payment) -> Self {
         Self::new_from(IndexSet::new(), 0, payment)
     }
@@ -31,6 +33,7 @@ impl Receipt {
             items,
             sum,
             payment,
+            msg: None,
         }
     }
 
@@ -61,41 +64,52 @@ impl Receipt {
         self.items.is_empty()
     }
 
-    pub fn as_widget<M>(&self) -> ReceiptWidget<M> {
-        ReceiptWidget {
-            message: None,
-            inner: self,
+    //pub fn as_widget<M>(&self) -> ReceiptWidget<M> {
+    //    ReceiptWidget {
+    //        message: None,
+    //        inner: self,
+    //    }
+    //}
+}
+
+//#[derive(Debug)]
+//pub struct ReceiptWidget<'a, M> {
+//    message: Option<M>,
+//    inner: &'a Receipt,
+//}
+
+//impl<'a, M> ReceiptWidget<'a, M>
+//where
+//    M: Clone + 'a,
+//{
+//    pub fn on_press(mut self, msg: M) -> Self {
+//        self.message = Some(msg);
+//        self
+//    }
+//}
+
+impl<'a, M> Component<M, Renderer> for Receipt<M>
+where
+    M: Clone + 'a,
+{
+    type Event = bool;
+    type State = ();
+
+    fn update(&mut self, _state: &mut Self::State, event: Self::Event) -> Option<M> {
+        if event {
+            self.msg.clone()
+        } else {
+            None
         }
     }
-}
 
-#[derive(Debug)]
-pub struct ReceiptWidget<'a, M> {
-    message: Option<M>,
-    inner: &'a Receipt,
-}
-
-impl<'a, M> ReceiptWidget<'a, M>
-where
-    M: Clone + 'a,
-{
-    pub fn on_press(mut self, msg: M) -> Self {
-        self.message = Some(msg);
-        self
-    }
-}
-
-impl<'a, M> From<ReceiptWidget<'a, M>> for Element<'a, M>
-where
-    M: Clone + 'a,
-{
-    fn from(r: ReceiptWidget<'a, M>) -> Self {
-        let body = Clickable::new(
+    fn view(&self, _state: &Self::State) -> Element<Self::Event> {
+        Clickable::new(
             column![
                 #nopad
                 Scrollable::new(
                     Column::with_children(
-                        r.inner
+                        self
                             .items
                             .iter()
                             .map(|item| item.as_widget(false).into())
@@ -105,17 +119,23 @@ where
                 )
                 .scrollbar_width(10)
                 .height(Length::Fill),
-                Text::new(format!("Total: {}kr", r.inner.sum)),
+                Text::new(format!("Total: {}kr", self.sum)),
             ]
             .width(Length::Units(RECEIPT_WIDTH))
             .spacing(DEF_PADDING),
         )
         .padding(0)
-        .height(Length::Fill);
-        match &r.message {
-            Some(msg) => body.on_press(msg.clone()),
-            None => body,
-        }
+        .height(Length::Fill)
+        .on_press(true)
         .into()
+    }
+}
+
+impl<'a, M> From<Receipt<M>> for Element<'a, M>
+where
+    M: Clone + 'a,
+{
+    fn from(value: Receipt<M>) -> Self {
+        iced_lazy::component(value)
     }
 }

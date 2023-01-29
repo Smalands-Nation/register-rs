@@ -3,12 +3,13 @@ use {
         error::Error,
         icons::Icon,
         screens::{
-            info::Info,
-            manager::{self, Manager},
-            menu::{self, Menu},
-            sales::{self, Sales},
-            transactions::{self, Transactions},
-            Message, Screen,
+            //info::Info,
+            //manager::{self, Manager},
+            //menu::{self, Menu},
+            //sales::{self, Sales},
+            //transactions::{self, Transactions},
+            Message,
+            Tab,
         },
         theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
@@ -75,12 +76,12 @@ pub fn main() -> iced::Result {
 
 struct App {
     err: Option<Error>,
-    tab: usize,
-    menu: Menu,
-    transactions: Transactions,
-    manager: Manager,
-    sales: Sales,
-    info: Info,
+    tab: Tab,
+    //menu: Menu,
+    //transactions: Transactions,
+    //manager: Manager,
+    //sales: Sales,
+    //info: Info,
 }
 
 impl Application for App {
@@ -90,34 +91,34 @@ impl Application for App {
     type Theme = theme::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = vec![];
+        //let mut cmds = vec![];
 
-        let (menu, mcmd) = Menu::new();
-        cmds.push(mcmd);
+        //let (menu, mcmd) = Menu::new();
+        //cmds.push(mcmd);
 
-        let (transactions, mcmd) = Transactions::new();
-        cmds.push(mcmd);
+        //let (transactions, mcmd) = Transactions::new();
+        //cmds.push(mcmd);
 
-        let (manager, mcmd) = Manager::new();
-        cmds.push(mcmd);
+        //let (manager, mcmd) = Manager::new();
+        //cmds.push(mcmd);
 
-        let (sales, mcmd) = Sales::new();
-        cmds.push(mcmd);
+        //let (sales, mcmd) = Sales::new();
+        //cmds.push(mcmd);
 
-        let (info, mcmd) = Info::new();
-        cmds.push(mcmd);
+        //let (info, mcmd) = Info::new();
+        //cmds.push(mcmd);
 
         (
             Self {
                 err: None,
-                tab: 0,
-                menu,
-                transactions,
-                manager,
-                sales,
-                info,
+                tab: Tab::Menu(Vec::new()),
+                //menu,
+                //transactions,
+                //manager,
+                //sales,
+                //info,
             },
-            Command::batch(cmds),
+            Tab::Menu(vec![]).load(),
         )
     }
 
@@ -128,17 +129,11 @@ impl Application for App {
     fn update(&mut self, msg: Self::Message) -> Command<Self::Message> {
         match msg {
             Message::None => Command::none(),
-            Message::SwapTab(n) => {
-                self.tab = n;
-                match n {
-                    //info doesn't refresh
-                    3 => self.manager.update(manager::Message::Refresh(true)),
-                    2 => self.sales.update(sales::Message::Refresh),
-                    1 => self.transactions.update(transactions::Message::Refresh),
-                    _ => self.menu.update(menu::Message::Refresh),
-                }
+            Message::SwapTab(tab) => tab.load(),
+            Message::LoadTab(tab) => {
+                self.tab = tab;
+                Command::none()
             }
-            //Message::DB(f) => f(self.con.clone()),
             Message::CloseModal => {
                 self.err = None;
                 Command::none()
@@ -149,11 +144,9 @@ impl Application for App {
                 //TODO add logging here
                 Command::none()
             }
-            Message::Menu(msg) => self.menu.update(msg),
-            Message::Transactions(msg) => self.transactions.update(msg),
-            Message::Manager(msg) => self.manager.update(msg),
-            Message::Sales(msg) => self.sales.update(msg),
-            Message::Info(msg) => self.info.update(msg),
+            Message::Sideffect(f) => command! {
+                Message::from(f.await)
+            },
         }
     }
 
@@ -164,29 +157,29 @@ impl Application for App {
             column![
                 #nopad
                 Container::new(
-                    Tabs::new(self.tab, Message::SwapTab)
+                    Tabs::new((&self.tab).into(), |n| Message::SwapTab(Tab::from(n)))
                         .icon_font(icons::ICON_FONT)
                         .height(Length::Shrink)
                         .push(
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
-                            self.menu.view(),
+                            self.tab.as_menu()
                         )
-                        .push(
-                            TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                            self.transactions.view(),
-                        )
-                        .push(
-                            TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                            self.sales.view(),
-                        )
-                        .push(
-                            TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                            self.manager.view(),
-                        )
-                        .push(
-                            TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
-                            self.info.view(),
-                        ),
+                        //.push(
+                        //    TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
+                        //    self.transactions.view(),
+                        //)
+                        //.push(
+                        //    TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                        //    self.sales.view(),
+                        //)
+                        //.push(
+                        //    TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                        //    self.manager.view(),
+                        //)
+                        //.push(
+                        //    TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
+                        //    self.info.view(),
+                        //),
                 )
                 .padding(BORDER_WIDTH as u16),
             ],

@@ -12,6 +12,8 @@ pub enum Error {
     IO(std::io::ErrorKind),
     #[giftwrap(wrapDepth = 0)]
     SelfUpdate(Arc<self_update::errors::Error>),
+    #[giftwrap(wrapDepth = 0)]
+    Tokio(Arc<tokio::task::JoinError>),
     Other(String),
 }
 
