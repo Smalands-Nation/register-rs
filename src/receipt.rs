@@ -1,6 +1,6 @@
 use {
     crate::{
-        item::{kind::Sales, Item},
+        item::Item,
         payment::Payment,
         theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
@@ -17,18 +17,21 @@ use {
 
 #[derive(Debug, Clone)]
 pub struct Receipt<M> {
-    pub items: IndexSet<Item<Sales>>,
+    pub items: IndexSet<Item>,
     pub sum: i32,
     pub payment: Payment,
     msg: Option<M>,
 }
 
-impl<M> Receipt<M> {
+impl<M> Receipt<M>
+where
+    M: Clone + std::fmt::Debug,
+{
     pub fn new(payment: Payment) -> Self {
         Self::new_from(IndexSet::new(), 0, payment)
     }
 
-    pub fn new_from(items: IndexSet<Item<Sales>>, sum: i32, payment: Payment) -> Self {
+    pub fn new_from(items: IndexSet<Item>, sum: i32, payment: Payment) -> Self {
         Self {
             items,
             sum,
@@ -42,7 +45,7 @@ impl<M> Receipt<M> {
         self
     }
 
-    pub fn add(&mut self, item: Item<Sales>) {
+    pub fn add(&mut self, item: Item) {
         self.sum += item.price_total();
         let it = self.items.get(&item).cloned();
         match it {
@@ -72,7 +75,7 @@ impl<M> Receipt<M> {
 
 impl<'a, M> Component<M, Renderer> for Receipt<M>
 where
-    M: Clone + 'a,
+    M: Clone + std::fmt::Debug + 'a,
 {
     type Event = bool;
     type State = ();
@@ -94,7 +97,7 @@ where
                         self
                             .items
                             .iter()
-                            .map(|item| item.as_widget(false).into())
+                            .map(|item| Element::from(item.clone()))
                             .collect(),
                     )
                     .spacing(DEF_PADDING),
@@ -115,7 +118,7 @@ where
 
 impl<'a, M> From<Receipt<M>> for Element<'a, M>
 where
-    M: Clone + 'a,
+    M: Clone + std::fmt::Debug + 'a,
 {
     fn from(value: Receipt<M>) -> Self {
         iced_lazy::component(value)

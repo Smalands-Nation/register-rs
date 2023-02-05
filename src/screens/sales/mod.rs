@@ -3,7 +3,7 @@ use {
     crate::{
         command,
         error::{Error, Result},
-        item::{kind, Item},
+        item::Item,
         payment::Payment,
         receipt::Receipt,
         sql,
@@ -49,7 +49,7 @@ impl Sales {
     pub fn new<F>(
         from: Date<Local>,
         to: Date<Local>,
-        sales: Vec<(Item<kind::Sales>, Payment)>,
+        sales: Vec<(Item, Payment)>,
         sideffect: F,
     ) -> Self
     where

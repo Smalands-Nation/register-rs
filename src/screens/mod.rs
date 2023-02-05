@@ -1,5 +1,5 @@
 pub mod info;
-//pub mod manager;
+pub mod manager;
 pub mod menu;
 pub mod sales;
 pub mod transactions;
@@ -7,7 +7,7 @@ pub mod transactions;
 use {
     crate::{
         error::{Error, Result},
-        item::{kind, Item},
+        item::Item,
         payment::Payment,
         Element,
     },
@@ -22,7 +22,7 @@ use {
     },
 };
 
-use {info::Info, menu::Menu, sales::Sales, transactions::Transactions};
+use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
 #[macro_export]
 macro_rules! sql {
@@ -42,13 +42,14 @@ macro_rules! sql {
 
 #[derive(Clone, Debug)]
 pub enum Tab {
-    Menu(Vec<Item<kind::Sales>>),
-    Transactions(Vec<(DateTime<Local>, Item<kind::Sales>, Payment)>),
+    Menu(Vec<Item>),
+    Transactions(Vec<(DateTime<Local>, Item, Payment)>),
     Sales {
         from: Date<Local>,
         to: Date<Local>,
-        data: Vec<(Item<kind::Sales>, Payment)>,
+        data: Vec<(Item, Payment)>,
     },
+    Manager(Vec<Item>),
     Info(self_update::Status),
 }
 
@@ -58,7 +59,8 @@ impl From<&Tab> for usize {
             Tab::Menu(_) => 0,
             Tab::Transactions(_) => 1,
             Tab::Sales { .. } => 2,
-            Tab::Info(_) => 3,
+            Tab::Manager(_) => 3,
+            Tab::Info(_) => 4,
         }
     }
 }
@@ -73,7 +75,8 @@ impl From<usize> for Tab {
                 to: Local::today(),
                 data: vec![],
             },
-            3 => Self::Info(self_update::Status::UpToDate("".into())),
+            3 => Self::Manager(vec![]),
+            4 => Self::Info(self_update::Status::UpToDate("".into())),
             n => unreachable!("Tab {} does not exist", n),
         }
     }
@@ -99,6 +102,14 @@ impl Tab {
     pub fn as_sales(&self) -> Element<Message> {
         if let Self::Sales { from, to, data } = self {
             Sales::new(*from, *to, data.clone(), Message::Sideffect).into()
+        } else {
+            iced::widget::Text::new("Empty").into()
+        }
+    }
+
+    pub fn as_manager(&self) -> Element<Message> {
+        if let Self::Manager(menu) = self {
+            Manager::new(menu.clone(), Message::Sideffect).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -163,10 +174,27 @@ impl Tab {
                                 Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
                             ))
                         },
-                        Vec<(Item<_>, Payment)>
+                        Vec<(Item, Payment)>
                     ),
                 }
             }
+
+            Self::Manager(_) => Self::Manager(sql!(
+                "SELECT name, price, available, category FROM menu \
+                    WHERE special = 0 
+                    ORDER BY 
+                        CASE category 
+                            WHEN 'alcohol' THEN 1
+                            WHEN 'drink' THEN 2
+                            WHEN 'food' THEN 3
+                            WHEN 'other' THEN 4
+                            ELSE 5
+                        END,
+                        name DESC",
+                params![],
+                Item::new_stock,
+                Vec<_>
+            )),
 
             Self::Info(_) => Self::Info(crate::config::update()?),
         }))

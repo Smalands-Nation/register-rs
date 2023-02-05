@@ -2,7 +2,7 @@ use {
     super::Sideffect,
     crate::{
         icons::Icon,
-        item::{kind::Sales, Item},
+        item::Item,
         payment::Payment,
         print,
         receipt::Receipt,
@@ -20,7 +20,7 @@ use {
 };
 
 pub struct Menu<S, M> {
-    menu: Vec<Item<Sales>>,
+    menu: Vec<Item>,
     sideffect: Box<dyn Fn(Sideffect<S>) -> M>,
 }
 
@@ -44,14 +44,14 @@ impl Default for State {
 #[derive(Debug, Clone)]
 pub enum Event {
     Multiplier(u32),
-    SellItem(Item<Sales>),
+    SellItem(usize),
     ClearReceipt,
     TogglePrint(bool),
     Sell(Payment),
 }
 
 impl<S, M> Menu<S, M> {
-    pub fn new<F>(menu: Vec<Item<Sales>>, sideffect: F) -> Self
+    pub fn new<F>(menu: Vec<Item>, sideffect: F) -> Self
     where
         F: Fn(Sideffect<S>) -> M + 'static,
     {
@@ -77,11 +77,12 @@ where
             Event::ClearReceipt => {
                 state.receipt = Receipt::new(Payment::Swish);
             }
-            Event::SellItem(mut i) => {
-                if let Some(0) = i.has_amount() {
-                    i.set_amount(state.multiplier as i32);
+            Event::SellItem(i) => {
+                let mut item = self.menu[i].clone();
+                if let Some(0) = item.has_amount() {
+                    item.set_amount(state.multiplier as i32);
                 }
-                state.receipt.add(i);
+                state.receipt.add(item);
                 state.multiplier = 1;
             }
             Event::TogglePrint(b) => state.print = b,
@@ -146,7 +147,9 @@ where
                     3,
                     self.menu
                         .iter()
-                        .map(|i| i.as_widget(true).on_press(Event::SellItem).into())
+                        .cloned()
+                        .enumerate()
+                        .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
                         .collect(),
                 )
                 .width(Length::Fill)

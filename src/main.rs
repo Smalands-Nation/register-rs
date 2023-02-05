@@ -1,3 +1,7 @@
+//TODO Screen components do not need to be generic over parent message
+//TODO With above screen componens do not need a Box<dyn Sideffect> instead let Sideffect
+//impl Into<Message>
+
 use {
     crate::{
         error::Error,
@@ -174,10 +178,10 @@ impl Application for App {
                             TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
                             self.tab.as_sales(),
                         )
-                        //.push(
-                        //    TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                        //    self.manager.view(),
-                        //)
+                        .push(
+                            TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                            self.tab.as_manager(),
+                        )
                         .push(
                             TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
                             self.tab.as_info(),

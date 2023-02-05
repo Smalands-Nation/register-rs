@@ -1,10 +1,5 @@
 use {
-    crate::{
-        error::Result,
-        item::{kind::Sales, Item},
-        payment::Payment,
-        receipt::Receipt,
-    },
+    crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
     chrono::{Date, Local},
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
@@ -18,7 +13,7 @@ use {
 
 fn create_pdf(
     path: impl Into<PathBuf>,
-    stats: IndexSet<(Payment, Item<Sales>)>,
+    stats: IndexSet<(Payment, Item)>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
@@ -196,7 +191,7 @@ fn create_pdf(
     Ok(path)
 }
 
-fn make_stats<M>(data: IndexMap<Payment, Receipt<M>>) -> IndexSet<(Payment, Item<Sales>)> {
+fn make_stats<M>(data: IndexMap<Payment, Receipt<M>>) -> IndexSet<(Payment, Item)> {
     data.into_values().fold(IndexSet::new(), |hm, r| {
         r.items.into_iter().fold(hm, |mut hm, item| {
             hm.insert((r.payment, item));
@@ -208,7 +203,7 @@ fn make_stats<M>(data: IndexMap<Payment, Receipt<M>>) -> IndexSet<(Payment, Item
 #[cfg(not(debug_assertions))]
 use chrono::Datelike;
 #[cfg(not(debug_assertions))]
-pub async fn save<M>(
+pub async fn save<M: Clone>(
     data: IndexMap<Payment, Receipt<M>>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
@@ -228,7 +223,7 @@ pub async fn save<M>(
 }
 
 #[cfg(debug_assertions)]
-pub async fn save<M>(
+pub async fn save<M: Clone>(
     data: IndexMap<Payment, Receipt<M>>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {

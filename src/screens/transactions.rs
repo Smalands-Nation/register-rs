@@ -2,7 +2,7 @@ use {
     super::Sideffect,
     crate::{
         icons::Icon,
-        item::{kind::Sales, Item},
+        item::Item,
         payment::Payment,
         print,
         receipt::Receipt,
@@ -41,7 +41,7 @@ pub enum Event {
 }
 
 impl<S, M> Transactions<S, M> {
-    pub fn new<F>(receipts: Vec<(DateTime<Local>, Item<Sales>, Payment)>, sideffect: F) -> Self
+    pub fn new<F>(receipts: Vec<(DateTime<Local>, Item, Payment)>, sideffect: F) -> Self
     where
         F: Fn(Sideffect<S>) -> M + 'static,
     {

@@ -8,16 +8,18 @@ use {
 pub struct NumberInput<'a, N, M> {
     on_change: Box<dyn Fn(N) -> M + 'a>,
     range: RangeInclusive<N>,
+    initial_value: Option<N>,
 }
 
 impl<'a, N, M> NumberInput<'a, N, M> {
-    pub fn new<F>(range: RangeInclusive<N>, on_change: F) -> Self
+    pub fn new<F>(range: RangeInclusive<N>, on_change: F, initial_value: Option<N>) -> Self
     where
         F: Fn(N) -> M + 'a,
     {
         Self {
             on_change: Box::new(on_change),
             range,
+            initial_value,
         }
     }
 }
@@ -36,6 +38,7 @@ where
     type Event = Event;
 
     fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
+        self.initial_value = None;
         match event {
             Event::Input(s) => {
                 if s.is_empty() {
@@ -55,7 +58,10 @@ where
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         TextInput::new(
             "",
-            &state.map(|s| s.to_string()).unwrap_or_default(),
+            &state
+                .map(|s| s.to_string())
+                .or(self.initial_value.map(|n| n.to_string()))
+                .unwrap_or_default(),
             Event::Input,
         )
         .padding(DEF_PADDING)
