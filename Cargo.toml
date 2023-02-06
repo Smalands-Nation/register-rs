@@ -14,20 +14,20 @@ update = []
 giftwrap = "0.5"
 chrono = "0.4"
 dirs = "4.0"
-iced_native = "0.7"
-iced_lazy = "0.3"
+iced_native = "0.8"
+iced_lazy = "0.4"
 lazy_static = "1.4"
 rusqlite_migration = "1.0"
 futures = "0.3"
 
-frost = {git = "https://github.com/Strosel/frost", tag="v0.2.0"}
+frost = {git = "https://github.com/Strosel/frost", tag="v0.3.0"}
 
 [dependencies.self_update]
 version = "0.27"
 features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]
 
 [dependencies.iced]
-version = "0.6"
+version = "0.7"
 features = [
     # "glow", 
     "canvas", 
@@ -41,7 +41,7 @@ features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
 git = "https://github.com/iced-rs/iced_aw"
-ref = "193e3bd"
+tag = "v0.3.0"
 default-features = false
 features = [
     "tab_bar", 
@@ -51,7 +51,6 @@ features = [
     "number_input", 
     "date_picker",
     "badge",
-    "colors"
 ]
 
 [dependencies.genpdf]

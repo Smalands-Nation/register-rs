@@ -159,7 +159,7 @@ impl Component<Message, Renderer> for Menu {
                 ]
                 .align_items(Alignment::Center),
                 receipt,
-                Checkbox::new(print, "Printa kvitto", Event::TogglePrint),
+                Checkbox::new("Printa kvitto", print, Event::TogglePrint),
                 row![
                     #nopad
                     Button::new(Payment::Swish)

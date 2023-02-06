@@ -97,8 +97,8 @@ where
                     column![
                         #nopad
                         Checkbox::new(
-                            stock,
                             "I Lager",
+                            stock,
                             Event::Toggle,
                         ),
                     ]

@@ -8,7 +8,7 @@ use {
     },
     frost::clickable::Clickable,
     iced::{
-        widget::{Column, Scrollable, Text},
+        widget::{scrollable, Column, Scrollable, Text},
         Length,
     },
     iced_lazy::Component,
@@ -102,7 +102,7 @@ where
                     )
                     .spacing(DEF_PADDING),
                 )
-                .scrollbar_width(10)
+                .vertical_scroll(scrollable::Properties::new())
                 .height(Length::Fill),
                 Text::new(format!("Total: {}kr", self.sum)),
             ]
