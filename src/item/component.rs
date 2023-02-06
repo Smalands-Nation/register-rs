@@ -111,7 +111,6 @@ where
         .padding(DEF_PADDING)
         .width(Length::Fill)
         .style(if self.on_press.is_some() {
-            //HACK
             self.category.into()
         } else {
             Container::Border

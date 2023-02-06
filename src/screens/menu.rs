@@ -1,5 +1,5 @@
 use {
-    super::Sideffect,
+    super::{Message, Sideffect},
     crate::{
         icons::Icon,
         item::Item,
@@ -19,9 +19,8 @@ use {
     rusqlite::params,
 };
 
-pub struct Menu<S, M> {
+pub struct Menu {
     menu: Vec<Item>,
-    sideffect: Box<dyn Fn(Sideffect<S>) -> M>,
 }
 
 #[derive(Clone)]
@@ -50,26 +49,17 @@ pub enum Event {
     Sell(Payment),
 }
 
-impl<S, M> Menu<S, M> {
-    pub fn new<F>(menu: Vec<Item>, sideffect: F) -> Self
-    where
-        F: Fn(Sideffect<S>) -> M + 'static,
-    {
-        Self {
-            menu,
-            sideffect: Box::new(sideffect),
-        }
+impl Menu {
+    pub fn new(menu: Vec<Item>) -> Self {
+        Self { menu }
     }
 }
 
-impl<S, M> Component<M, Renderer> for Menu<S, M>
-where
-    S: Into<M> + Default + Clone,
-{
+impl Component<Message, Renderer> for Menu {
     type State = State;
     type Event = Event;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
             Event::Multiplier(m) => {
                 state.multiplier = m;
@@ -91,35 +81,38 @@ where
                     let mut receipt = Receipt::new(Payment::Swish);
                     std::mem::swap(&mut receipt, &mut state.receipt);
                     let should_print = state.print;
-                    return Some((self.sideffect)(Sideffect::new(|| async move {
-                        let time = Local::now();
-                        if should_print {
-                            print::print(&receipt, time).await?;
-                        }
+                    return Some(
+                        Sideffect::new(|| async move {
+                            let time = Local::now();
+                            if should_print {
+                                print::print(&receipt, time).await?;
+                            }
 
-                        let con = crate::DB.lock().await;
+                            let con = crate::DB.lock().await;
 
-                        con.execute(
-                            "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
-                            params![time, String::from(p)],
-                        )?;
+                            con.execute(
+                                "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+                                params![time, String::from(p)],
+                            )?;
 
-                        let mut stmt = con.prepare(
-                            "INSERT INTO receipt_item (receipt, item, amount, price) \
+                            let mut stmt = con.prepare(
+                                "INSERT INTO receipt_item (receipt, item, amount, price) \
                                             VALUES (?1, ?2, ?3, ?4)",
-                        )?;
+                            )?;
 
-                        for item in receipt.items.iter() {
-                            stmt.execute(params![
-                                time,
-                                item.name,
-                                item.has_amount().unwrap_or(0), //Special item has no ammount
-                                item.price,
-                            ])?;
-                        }
+                            for item in receipt.items.iter() {
+                                stmt.execute(params![
+                                    time,
+                                    item.name,
+                                    item.has_amount().unwrap_or(0), //Special item has no ammount
+                                    item.price,
+                                ])?;
+                            }
 
-                        Ok(S::default())
-                    })));
+                            Ok(().into())
+                        })
+                        .into(),
+                    );
                 }
             }
         };
@@ -188,12 +181,8 @@ where
     }
 }
 
-impl<'a, S, M> From<Menu<S, M>> for Element<'a, M>
-where
-    S: Into<M> + Default + Clone + 'a,
-    M: 'a,
-{
-    fn from(menu: Menu<S, M>) -> Self {
+impl<'a> From<Menu> for Element<'a, Message> {
+    fn from(menu: Menu) -> Self {
         iced_lazy::component(menu)
     }
 }

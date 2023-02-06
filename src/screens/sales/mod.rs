@@ -1,25 +1,22 @@
 use {
     super::{Message, Sideffect, Tab},
     crate::{
-        command,
-        error::{Error, Result},
+        error::Error,
         item::Item,
         payment::Payment,
         receipt::Receipt,
-        sql,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, BIG_TEXT, SMALL_TEXT},
         Element, Renderer,
     },
-    chrono::{Date, DateTime, Local, TimeZone},
+    chrono::{Date, Local, TimeZone},
     iced::{
         widget::{Button, Container, Row, Rule, Space, Text},
-        Alignment, Command, Length,
+        Alignment, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
     iced_lazy::Component,
     indexmap::IndexMap,
-    rusqlite::params,
 };
 
 mod save;
@@ -34,7 +31,6 @@ pub struct Sales {
     from: Date<Local>,
     to: Date<Local>,
     receipts: IndexMap<Payment, Receipt<Event>>,
-    sideffect: Box<dyn Fn(Sideffect<Message>) -> Message>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,15 +42,7 @@ pub enum Event {
 }
 
 impl Sales {
-    pub fn new<F>(
-        from: Date<Local>,
-        to: Date<Local>,
-        sales: Vec<(Item, Payment)>,
-        sideffect: F,
-    ) -> Self
-    where
-        F: Fn(Sideffect<Message>) -> Message + 'static,
-    {
+    pub fn new(from: Date<Local>, to: Date<Local>, sales: Vec<(Item, Payment)>) -> Self {
         Self {
             from,
             to,
@@ -72,7 +60,6 @@ impl Sales {
                     hm
                 },
             ),
-            sideffect: Box::new(sideffect),
         }
     }
 }
@@ -88,17 +75,20 @@ impl Component<Message, Renderer> for Sales {
                 let to = self.to;
                 let stats = self.receipts.clone();
                 //Always return error to give info via modal
-                return Some((self.sideffect)(Sideffect::new(|| async move {
-                    if !stats.is_empty() {
-                        let path = save::save(stats, (from, to)).await?;
-                        Ok(Message::OpenModal {
-                            title: "Sparad",
-                            content: format!("Sparad till {}", path.to_string_lossy()),
-                        })
-                    } else {
-                        Err(Error::Other("Ingen försäljning att spara".into()))
-                    }
-                })));
+                return Some(
+                    Sideffect::new(|| async move {
+                        if !stats.is_empty() {
+                            let path = save::save(stats, (from, to)).await?;
+                            Ok(Message::OpenModal {
+                                title: "Sparad",
+                                content: format!("Sparad till {}", path.to_string_lossy()),
+                            })
+                        } else {
+                            Err(Error::Other("Ingen försäljning att spara".into()))
+                        }
+                    })
+                    .into(),
+                );
             }
             Event::OpenDate(p) => {
                 *state = Some(p);
@@ -113,7 +103,7 @@ impl Component<Message, Renderer> for Sales {
                     Some(Picker::To) => {
                         self.to = date;
                     }
-                    None => (), //TODO logging here?
+                    None => (),
                 };
                 *state = None;
             }
@@ -122,17 +112,20 @@ impl Component<Message, Renderer> for Sales {
             }
         }
 
-        let from = self.from.clone();
-        let to = self.to.clone();
-        Some((self.sideffect)(Sideffect::new(|| async move {
-            Tab::Sales {
-                from,
-                to,
-                data: vec![],
-            }
-            .load()
-            .await
-        })))
+        let from = self.from;
+        let to = self.to;
+        Some(
+            Sideffect::new(|| async move {
+                Tab::Sales {
+                    from,
+                    to,
+                    data: vec![],
+                }
+                .load()
+                .await
+            })
+            .into(),
+        )
     }
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {

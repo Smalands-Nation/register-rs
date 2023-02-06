@@ -10,12 +10,6 @@ pub type BIG_TEXT = frost::text::Text<45>;
 #[allow(non_camel_case_types)]
 pub type SMALL_TEXT = frost::text::Text<20>;
 
-macro_rules! spacing {
-    () => {};
-    (padding = 0, $($m:meta),*) => {.padding(0)};
-    (spacing = 0, $($m:meta),*) => {.spacing(0)};
-}
-
 macro_rules! _column {
     (#nopad $($elem:expr),+ $(,)?) => {
         ::iced::widget::Column::with_children(vec![$($elem.into()),*])
@@ -39,4 +33,4 @@ macro_rules! _row {
 }
 
 //NOTE reexport with renames to avoid conflict with std
-pub(crate) use {_column as column, _row as row, spacing};
+pub(crate) use {_column as column, _row as row};

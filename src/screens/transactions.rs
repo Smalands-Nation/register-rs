@@ -1,5 +1,5 @@
 use {
-    super::Sideffect,
+    super::{Message, Sideffect},
     crate::{
         icons::Icon,
         item::Item,
@@ -20,9 +20,8 @@ use {
     indexmap::IndexMap,
 };
 
-pub struct Transactions<S, M> {
+pub struct Transactions {
     receipts: IndexMap<DateTime<Local>, Receipt<Event>>,
-    sideffect: Box<dyn Fn(Sideffect<S>) -> M>,
 }
 
 #[derive(Default)]
@@ -40,11 +39,8 @@ pub enum Event {
     Print,
 }
 
-impl<S, M> Transactions<S, M> {
-    pub fn new<F>(receipts: Vec<(DateTime<Local>, Item, Payment)>, sideffect: F) -> Self
-    where
-        F: Fn(Sideffect<S>) -> M + 'static,
-    {
+impl Transactions {
+    pub fn new(receipts: Vec<(DateTime<Local>, Item, Payment)>) -> Self {
         Self {
             receipts: receipts.into_iter().fold(
                 IndexMap::<_, Receipt<Event>, _>::new(),
@@ -60,19 +56,15 @@ impl<S, M> Transactions<S, M> {
                     hm
                 },
             ),
-            sideffect: Box::new(sideffect),
         }
     }
 }
 
-impl<S, M> Component<M, Renderer> for Transactions<S, M>
-where
-    S: Into<M> + Default + Clone,
-{
+impl Component<Message, Renderer> for Transactions {
     type State = State;
     type Event = Event;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
             Event::ScrollLeft if state.offset > 0 => state.offset -= 1,
             Event::ScrollRight
@@ -91,10 +83,13 @@ where
                 if let Some((time, receipt)) = &state.selected {
                     let receipt = receipt.clone();
                     let time = *time;
-                    return Some((self.sideffect)(Sideffect::new(|| async move {
-                        print::print(&receipt, time).await?;
-                        Ok(S::default())
-                    })));
+                    return Some(
+                        Sideffect::new(|| async move {
+                            print::print(&receipt, time).await?;
+                            Ok(().into())
+                        })
+                        .into(),
+                    );
                 }
             }
             _ => (),
@@ -157,12 +152,8 @@ where
     }
 }
 
-impl<'a, S, M> From<Transactions<S, M>> for Element<'a, M>
-where
-    S: Into<M> + Default + Clone + 'a,
-    M: 'a,
-{
-    fn from(transactions: Transactions<S, M>) -> Self {
+impl<'a> From<Transactions> for Element<'a, Message> {
+    fn from(transactions: Transactions) -> Self {
         iced_lazy::component(transactions)
     }
 }

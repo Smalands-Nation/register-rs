@@ -5,7 +5,6 @@ use {
         widget::Text,
         Element, Font,
     },
-    std::borrow::Cow,
 };
 
 pub const ICON_FONT: Font = Font::External {

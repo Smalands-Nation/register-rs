@@ -1,20 +1,7 @@
-//TODO Screen components do not need to be generic over parent message
-//TODO With above screen componens do not need a Box<dyn Sideffect> instead let Sideffect
-//impl Into<Message>
-
 use {
     crate::{
-        error::Error,
         icons::Icon,
-        screens::{
-            //info::Info,
-            //manager::{self, Manager},
-            //menu::{self, Menu},
-            //sales::{self, Sales},
-            //transactions::{self, Transactions},
-            Message,
-            Tab,
-        },
+        screens::{Message, Tab},
         theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
@@ -36,12 +23,9 @@ pub mod item;
 pub mod payment;
 pub mod print;
 pub mod receipt;
-#[allow(clippy::new_without_default)]
 pub mod screens;
-#[allow(clippy::new_ret_no_self, clippy::new_without_default)]
-pub mod widgets;
-
 pub mod theme;
+pub mod widgets;
 
 pub type Renderer = iced::Renderer<theme::Theme>;
 pub type Element<'a, M> = iced::Element<'a, M, Renderer>;
@@ -144,8 +128,8 @@ impl Application for App {
             }
             Message::OpenModal { title, content } => {
                 if title == "Error" {
-                    //TODO add logging here
-                    println!("Message::Error({:#?})", content);
+                    //TODO structured logging??
+                    println!("Message::Error({content:#?})");
                 }
                 self.modal = Some((title, content));
                 Command::none()

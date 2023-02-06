@@ -138,7 +138,7 @@ pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()>
 
 #[cfg(not(target_os = "windows"))]
 pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
-    let filename = create_pdf(receipt_path()?, &receipt, time)?;
+    let filename = create_pdf(receipt_path()?, receipt, time)?;
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()

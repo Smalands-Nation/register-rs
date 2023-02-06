@@ -135,7 +135,7 @@ fn create_pdf(
                         tot += price;
 
                         Paragraph::new(match item.has_amount() {
-                            Some(n) => format!("{}st", n),
+                            Some(n) => format!("{n}st"),
                             None => format!("{}kr", item.price_total()),
                         })
                     }
@@ -148,7 +148,7 @@ fn create_pdf(
         }
 
         row.element(
-            Paragraph::new(format!("{}kr", tot))
+            Paragraph::new(format!("{tot}kr"))
                 .aligned(Alignment::Right)
                 .padded(3)
                 .framed(),

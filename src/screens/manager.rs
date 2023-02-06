@@ -3,7 +3,6 @@ use {
     crate::{
         icons::Icon,
         item::{category::Category, Item},
-        sql,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
         Element, Renderer,
@@ -17,10 +16,8 @@ use {
     rusqlite::params,
 };
 
-//TODO sideffects
 pub struct Manager {
     menu: Vec<Item>,
-    sideffect: Box<dyn Fn(Sideffect<Message>) -> Message>,
 }
 
 #[derive(Debug, Clone)]
@@ -69,14 +66,8 @@ pub enum Event {
 }
 
 impl Manager {
-    pub fn new<F>(menu: Vec<Item>, sideffect: F) -> Self
-    where
-        F: Fn(Sideffect<Message>) -> Message + 'static,
-    {
-        Self {
-            menu,
-            sideffect: Box::new(sideffect),
-        }
+    pub fn new(menu: Vec<Item>) -> Self {
+        Self { menu }
     }
 }
 
@@ -90,14 +81,17 @@ impl Component<Message, Renderer> for Manager {
                 if let Some(i) = self.menu.get(i) {
                     //Non breaking space gang
                     let name = i.name.replace(' ', "\u{00A0}");
-                    return Some((self.sideffect)(Sideffect::new(|| async move {
-                        crate::DB.lock().await.execute(
-                            "UPDATE menu SET available=?1 WHERE name=?2",
-                            params![a, name],
-                        )?;
+                    return Some(
+                        Sideffect::new(|| async move {
+                            crate::DB.lock().await.execute(
+                                "UPDATE menu SET available=?1 WHERE name=?2",
+                                params![a, name],
+                            )?;
 
-                        Tab::Manager(vec![]).load().await
-                    })));
+                            Tab::Manager(vec![]).load().await
+                        })
+                        .into(),
+                    );
                 }
             }
             Event::EditItem(i) => {
@@ -122,24 +116,30 @@ impl Component<Message, Renderer> for Manager {
                 let category = state.category;
                 if !name.is_empty() {
                     return match &state.mode {
-                        Mode::New => Some((self.sideffect)(Sideffect::new(|| async move {
-                            crate::DB.lock().await.execute(
+                        Mode::New => Some(
+                            Sideffect::new(|| async move {
+                                crate::DB.lock().await.execute(
                                 "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
                                 params![name, price],
                             )?;
 
-                            Tab::Manager(vec![]).load().await
-                        }))),
+                                Tab::Manager(vec![]).load().await
+                            })
+                            .into(),
+                        ),
                         Mode::Update(old_name) => {
                             let old_name = old_name.clone();
-                            Some((self.sideffect)(Sideffect::new(|| async move {
-                                crate::DB.lock().await.execute(
+                            Some(
+                                Sideffect::new(|| async move {
+                                    crate::DB.lock().await.execute(
                                     "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
                                     params![name, price, category, old_name],
                                 )?;
 
-                                Tab::Manager(vec![]).load().await
-                            })))
+                                    Tab::Manager(vec![]).load().await
+                                })
+                                .into(),
+                            )
                         }
                     };
                 }
@@ -198,7 +198,7 @@ impl Component<Message, Renderer> for Manager {
                         BIG_TEXT::new(match &state.mode {
                             Mode::New => String::from("Ny"),
                             Mode::Update(v) => {
-                                format!("Ändrar {}", v)
+                                format!("Ändrar {v}")
                             }
                         }),
                         Space::with_width(Length::Fill),
@@ -218,6 +218,7 @@ impl Component<Message, Renderer> for Manager {
                         Button::new(BIG_TEXT::new("Spara"))
                             .on_press(Event::Save)
                             .padding(DEF_PADDING)
+                            .style(theme::Container::Border)
                             .width(Length::Fill)
                     } else {
                         Button::new(row![

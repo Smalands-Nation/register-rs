@@ -76,7 +76,7 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
                 Text::new(format!("{:>3}x", self.multi)).horizontal_alignment(Horizontal::Left),
                 Rule::vertical(DEF_PADDING),
                 Text::new(if *state != 0 {
-                    format!("{}", state)
+                    format!("{state}")
                 } else {
                     String::new()
                 })

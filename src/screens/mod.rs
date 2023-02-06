@@ -5,21 +5,11 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::{
-        error::{Error, Result},
-        item::Item,
-        payment::Payment,
-        Element,
-    },
+    crate::{error::Result, item::Item, payment::Payment, Element},
     chrono::{Date, DateTime, Local},
     futures::{future::BoxFuture, FutureExt},
-    giftwrap::Wrap,
-    iced::Command,
     rusqlite::params,
-    std::{
-        future::{Future, IntoFuture},
-        sync::Arc,
-    },
+    std::future::{Future, IntoFuture},
 };
 
 use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
@@ -85,7 +75,7 @@ impl From<usize> for Tab {
 impl Tab {
     pub fn as_menu(&self) -> Element<Message> {
         if let Self::Menu(menu) = self {
-            Menu::new(menu.clone(), Message::Sideffect).into()
+            Menu::new(menu.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -93,7 +83,7 @@ impl Tab {
 
     pub fn as_transactions(&self) -> Element<Message> {
         if let Self::Transactions(transactions) = self {
-            Transactions::new(transactions.clone(), Message::Sideffect).into()
+            Transactions::new(transactions.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -101,7 +91,7 @@ impl Tab {
 
     pub fn as_sales(&self) -> Element<Message> {
         if let Self::Sales { from, to, data } = self {
-            Sales::new(*from, *to, data.clone(), Message::Sideffect).into()
+            Sales::new(*from, *to, data.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -109,7 +99,7 @@ impl Tab {
 
     pub fn as_manager(&self) -> Element<Message> {
         if let Self::Manager(menu) = self {
-            Manager::new(menu.clone(), Message::Sideffect).into()
+            Manager::new(menu.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -157,7 +147,7 @@ impl Tab {
                 Vec<_>
             )),
 
-            Self::Sales { from, to, data } => {
+            Self::Sales { from, to, .. } => {
                 let from_time = from.and_hms(0, 0, 0);
                 let to_time = to.and_hms(23, 59, 59);
                 Self::Sales {
@@ -202,34 +192,28 @@ impl Tab {
 }
 
 #[derive(Clone)]
-pub struct Sideffect<M>(futures::future::Shared<BoxFuture<'static, Result<M>>>);
+pub struct Sideffect(futures::future::Shared<BoxFuture<'static, Result<Message>>>);
 
-impl<M> Sideffect<M>
-where
-    M: Clone,
-{
+impl Sideffect {
     pub fn new<F, Fut>(f: F) -> Self
     where
         F: FnOnce() -> Fut,
-        Fut: Future<Output = Result<M>> + Send + 'static,
+        Fut: Future<Output = Result<Message>> + Send + 'static,
     {
         Self(f().boxed().shared())
     }
 }
 
-impl<M> IntoFuture for Sideffect<M>
-where
-    M: Clone,
-{
-    type Output = Result<M>;
-    type IntoFuture = futures::future::Shared<BoxFuture<'static, Result<M>>>;
+impl IntoFuture for Sideffect {
+    type Output = Result<Message>;
+    type IntoFuture = futures::future::Shared<BoxFuture<'static, Result<Message>>>;
 
     fn into_future(self) -> Self::IntoFuture {
         self.0
     }
 }
 
-impl<M> std::fmt::Debug for Sideffect<M> {
+impl std::fmt::Debug for Sideffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Sideffect(_)")
     }
@@ -246,7 +230,7 @@ pub enum Message {
         title: &'static str,
         content: String,
     },
-    Sideffect(Sideffect<Self>),
+    Sideffect(Sideffect),
 }
 
 impl From<()> for Message {
@@ -274,5 +258,11 @@ where
 impl From<Tab> for Message {
     fn from(value: Tab) -> Self {
         Self::LoadTab(value)
+    }
+}
+
+impl From<Sideffect> for Message {
+    fn from(value: Sideffect) -> Self {
+        Self::Sideffect(value)
     }
 }
