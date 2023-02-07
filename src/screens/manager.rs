@@ -158,7 +158,7 @@ impl Component<Message, Renderer> for Manager {
             //Use env for password
             #[cfg(not(debug_assertions))]
             Event::Login => {
-                state.locked = self.password != env!("SMALANDS_PASSWORD");
+                state.locked = state.password != env!("SMALANDS_PASSWORD");
                 state.login_modal = false;
             }
         }
