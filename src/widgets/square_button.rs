@@ -1,17 +1,22 @@
 use {
     super::BIG_TEXT,
-    crate::{icons::Icon, styles::SQUARE_BUTTON},
+    crate::{
+        icons::Icon,
+        theme::{Container, SQUARE_BUTTON},
+        Renderer,
+    },
     iced::{
         alignment::{Horizontal, Vertical},
-        pure::widget::Button,
+        widget::Button,
         Length,
     },
+    std::borrow::Cow,
 };
 
 pub struct SquareButton;
 
 impl SquareButton {
-    pub fn text<'a, M>(txt: impl Into<String>) -> Button<'a, M>
+    pub fn text<'a, M>(txt: impl Into<Cow<'a, str>>) -> Button<'a, M, Renderer>
     where
         M: Clone,
     {
@@ -20,15 +25,17 @@ impl SquareButton {
                 .horizontal_alignment(Horizontal::Center)
                 .vertical_alignment(Vertical::Center),
         )
+        .style(Container::Border)
         .width(Length::Units(SQUARE_BUTTON))
         .height(Length::Units(SQUARE_BUTTON))
     }
 
-    pub fn icon<'a, M>(icon: Icon) -> Button<'a, M>
+    pub fn icon<'a, M>(icon: Icon) -> Button<'a, M, Renderer>
     where
-        M: Clone,
+        M: Clone + 'a,
     {
         Button::new(icon)
+            .style(Container::Border)
             .width(Length::Units(SQUARE_BUTTON))
             .height(Length::Units(SQUARE_BUTTON))
     }

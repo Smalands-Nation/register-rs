@@ -1,34 +1,37 @@
 use {
-    super::Screen,
+    super::{Message, Sideffect},
     crate::{
-        command,
         icons::Icon,
-        item::{kind::Sales, Item},
+        item::Item,
         payment::Payment,
         print,
         receipt::Receipt,
-        sql,
-        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, SquareButton},
+        Element, Renderer,
     },
     chrono::{DateTime, Local},
-    frost::pure::Clickable,
+    frost::clickable::Clickable,
     iced::{
-        pure::{
-            widget::{Container, Row, Rule, Space},
-            Element,
-        },
-        Command, Length,
+        widget::{Container, Row, Rule, Space},
+        Length,
     },
+    iced_lazy::Component,
     indexmap::IndexMap,
-    rusqlite::params,
 };
 
+pub struct Transactions {
+    receipts: IndexMap<DateTime<Local>, Receipt<Event>>,
+}
+
+#[derive(Default)]
+pub struct State {
+    selected: Option<(DateTime<Local>, Receipt<Event>)>,
+    offset: usize,
+}
+
 #[derive(Debug, Clone)]
-pub enum Message {
-    Refresh,
-    Init(Vec<(DateTime<Local>, Item<Sales>, Payment)>),
-    Append(IndexMap<DateTime<Local>, Receipt>),
+pub enum Event {
     ScrollLeft,
     ScrollRight,
     Select(DateTime<Local>),
@@ -36,100 +39,66 @@ pub enum Message {
     Print,
 }
 
-pub struct Transactions {
-    receipts: IndexMap<DateTime<Local>, Receipt>,
-    selected: Option<(DateTime<Local>, Receipt)>,
-    offset: usize,
+impl Transactions {
+    pub fn new(receipts: Vec<(DateTime<Local>, Item, Payment)>) -> Self {
+        Self {
+            receipts: receipts.into_iter().fold(
+                IndexMap::<_, Receipt<Event>, _>::new(),
+                |mut hm, (time, item, method)| {
+                    match hm.get_mut(&time) {
+                        Some(receipt) => (*receipt).add(item),
+                        None => {
+                            let mut receipt = Receipt::new(method);
+                            receipt.add(item);
+                            hm.insert(time, receipt);
+                        }
+                    }
+                    hm
+                },
+            ),
+        }
+    }
 }
 
-impl Screen for Transactions {
-    type InMessage = Message;
-    type ExMessage = super::Message;
+impl Component<Message, Renderer> for Transactions {
+    type State = State;
+    type Event = Event;
 
-    fn new() -> (Self, Command<Self::ExMessage>) {
-        (
-            Self {
-                receipts: IndexMap::new(),
-                selected: None,
-                offset: 0,
-            },
-            command!(Message::Refresh),
-        )
-    }
-
-    fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
-        match msg {
-            Message::Refresh => {
-                return sql!(
-                    "SELECT * FROM receipts_view \
-                    WHERE time > date('now','-1 day') ORDER BY time DESC",
-                    params![],
-                    |row| {
-                        Ok((
-                            row.get::<_, DateTime<Local>>("time")?,
-                            Item {
-                                name: row.get("item")?,
-                                price: row.get("price")?,
-                                category: crate::item::Category::Other, //not relevant here
-                                kind: if row.get("special")? {
-                                    Sales::Special
-                                } else {
-                                    Sales::Regular {
-                                        num: row.get("amount")?,
-                                    }
-                                },
-                            },
-                            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
-                        ))
-                    },
-                    Vec<_>,
-                    Message::Init
-                );
-            }
-            Message::Init(map) => {
-                self.receipts = map.into_iter().fold(
-                    IndexMap::<_, Receipt, _>::new(),
-                    |mut hm, (time, item, method)| {
-                        match hm.get_mut(&time) {
-                            Some(receipt) => (*receipt).add(item),
-                            None => {
-                                let mut receipt = Receipt::new(method);
-                                receipt.add(item);
-                                hm.insert(time, receipt);
-                            }
-                        }
-                        hm
-                    },
-                );
-            }
-            Message::Append(map) => self.receipts.extend(map),
-            Message::ScrollLeft if self.offset > 0 => self.offset -= 1,
-            Message::ScrollRight
-                if !self.receipts.is_empty() && self.offset < (self.receipts.len() - 1) / 3 =>
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+        match event {
+            Event::ScrollLeft if state.offset > 0 => state.offset -= 1,
+            Event::ScrollRight
+                if !self.receipts.is_empty() && state.offset < (self.receipts.len() - 1) / 3 =>
             {
-                self.offset += 1
+                state.offset += 1
             }
-            Message::Select(time) => {
-                self.selected = self
+            Event::Select(time) => {
+                state.selected = self
                     .receipts
                     .get_key_value(&time)
                     .map(|(k, v)| (*k, v.clone()));
             }
-            Message::Deselect => self.selected = None,
-            Message::Print => {
-                if let Some((time, receipt)) = &self.selected {
+            Event::Deselect => state.selected = None,
+            Event::Print => {
+                if let Some((time, receipt)) = &state.selected {
                     let receipt = receipt.clone();
                     let time = *time;
-                    return command!(print::print(receipt, time).await.map(|_| Message::Deselect));
+                    return Some(
+                        Sideffect::new(|| async move {
+                            print::print(&receipt, time).await?;
+                            Ok(().into())
+                        })
+                        .into(),
+                    );
                 }
             }
             _ => (),
         }
-        Command::none()
+        None
     }
 
-    fn view(&self) -> Element<Self::ExMessage> {
-        Into::<Element<Self::InMessage>>::into(row![
+    fn view(&self, state: &Self::State) -> Element<Self::Event> {
+        row![
             #nopad
             Container::new(row![
                 #nopad
@@ -138,16 +107,16 @@ impl Screen for Transactions {
                     .height(Length::Fill)
                     .center_x()
                     .center_y()
-                    .on_press(Message::ScrollLeft),
+                    .on_press(Event::ScrollLeft),
                 Row::with_children(
                     self.receipts
                         .iter()
-                        .skip(self.offset * 3)
+                        .skip(state.offset * 3)
                         .take(3)
                         .map(|(t, rec)| {
-                            Container::new(rec.as_widget().on_press(Message::Select(*t)))
+                            Container::new(rec.clone().on_press(Event::Select(*t)))
                                 .padding(DEF_PADDING)
-                                .style(Bordered::default())
+                                .style(theme::Container::Border)
                                 .into()
                         },)
                         .collect()
@@ -159,26 +128,32 @@ impl Screen for Transactions {
                     .height(Length::Fill)
                     .center_x()
                     .center_y()
-                    .on_press(Message::ScrollRight),
+                    .on_press(Event::ScrollRight),
             ])
             .center_x()
             .width(Length::Fill),
             Rule::vertical(DEF_PADDING),
             column![
-                match &self.selected {
-                    Some((_, rec)) => Element::from(rec.as_widget()),
+                match state.selected {
+                    Some((_, ref rec)) => Element::from(rec.clone()),
                     None => Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill).into(),
                 },
                 row![
                     #nopad
-                    SquareButton::icon(Icon::Cross).on_press(Message::Deselect),
+                    SquareButton::icon(Icon::Cross).on_press(Event::Deselect),
                     Space::with_width(Length::Fill),
-                    SquareButton::icon(Icon::Print).on_press(Message::Print),
+                    SquareButton::icon(Icon::Print).on_press(Event::Print),
                 ]
                 .spacing(DEF_PADDING)
             ]
             .width(Length::Units(RECEIPT_WIDTH)),
-        ])
-        .map(Self::ExMessage::Transactions)
+        ]
+        .into()
+    }
+}
+
+impl<'a> From<Transactions> for Element<'a, Message> {
+    fn from(transactions: Transactions) -> Self {
+        iced_lazy::component(transactions)
     }
 }

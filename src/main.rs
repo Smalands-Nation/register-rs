@@ -1,26 +1,15 @@
 use {
     crate::{
-        error::Error,
         icons::Icon,
-        screens::{
-            info::Info,
-            manager::{self, Manager},
-            menu::{self, Menu},
-            sales::{self, Sales},
-            transactions::{self, Transactions},
-            Message, Screen,
-        },
-        styles::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT, TABS},
+        screens::{Message, Tab},
+        theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
     iced::{
-        pure::{
-            widget::{Container, Text},
-            Application, Element,
-        },
-        window, Command, Font, Length, Settings,
+        widget::{Container, Text},
+        window, Application, Command, Font, Length, Settings,
     },
-    iced_aw::pure::{Card, Modal, TabLabel, Tabs},
+    iced_aw::{Card, Modal, TabLabel, Tabs},
     lazy_static::lazy_static,
     rusqlite::Connection,
     std::sync::Arc,
@@ -34,11 +23,12 @@ pub mod item;
 pub mod payment;
 pub mod print;
 pub mod receipt;
-#[allow(clippy::new_without_default)]
 pub mod screens;
-pub mod styles;
-#[allow(clippy::new_ret_no_self, clippy::new_without_default)]
+pub mod theme;
 pub mod widgets;
+
+pub type Renderer = iced::Renderer<theme::Theme>;
+pub type Element<'a, M> = iced::Element<'a, M, Renderer>;
 
 #[macro_export]
 macro_rules! command {
@@ -73,49 +63,50 @@ pub fn main() -> iced::Result {
 }
 
 struct App {
-    err: Option<Error>,
-    tab: usize,
-    menu: Menu,
-    transactions: Transactions,
-    manager: Manager,
-    sales: Sales,
-    info: Info,
+    modal: Option<(&'static str, String)>,
+    tab: Tab,
+    //menu: Menu,
+    //transactions: Transactions,
+    //manager: Manager,
+    //sales: Sales,
+    //info: Info,
 }
 
 impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Flags = ();
+    type Theme = theme::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut cmds = vec![];
+        //let mut cmds = vec![];
 
-        let (menu, mcmd) = Menu::new();
-        cmds.push(mcmd);
+        //let (menu, mcmd) = Menu::new();
+        //cmds.push(mcmd);
 
-        let (transactions, mcmd) = Transactions::new();
-        cmds.push(mcmd);
+        //let (transactions, mcmd) = Transactions::new();
+        //cmds.push(mcmd);
 
-        let (manager, mcmd) = Manager::new();
-        cmds.push(mcmd);
+        //let (manager, mcmd) = Manager::new();
+        //cmds.push(mcmd);
 
-        let (sales, mcmd) = Sales::new();
-        cmds.push(mcmd);
+        //let (sales, mcmd) = Sales::new();
+        //cmds.push(mcmd);
 
-        let (info, mcmd) = Info::new();
-        cmds.push(mcmd);
+        //let (info, mcmd) = Info::new();
+        //cmds.push(mcmd);
 
         (
             Self {
-                err: None,
-                tab: 0,
-                menu,
-                transactions,
-                manager,
-                sales,
-                info,
+                modal: None,
+                tab: Tab::Menu(Vec::new()),
+                //menu,
+                //transactions,
+                //manager,
+                //sales,
+                //info,
             },
-            Command::batch(cmds),
+            command!(Tab::Menu(vec![]).load().await),
         )
     }
 
@@ -126,82 +117,69 @@ impl Application for App {
     fn update(&mut self, msg: Self::Message) -> Command<Self::Message> {
         match msg {
             Message::None => Command::none(),
-            Message::SwapTab(n) => {
-                self.tab = n;
-                match n {
-                    //info doesn't refresh
-                    3 => self.manager.update(manager::Message::Refresh(true)),
-                    2 => self.sales.update(sales::Message::Refresh),
-                    1 => self.transactions.update(transactions::Message::Refresh),
-                    _ => self.menu.update(menu::Message::Refresh),
-                }
+            Message::SwapTab(tab) => command!(tab.load().await),
+            Message::LoadTab(tab) => {
+                self.tab = tab;
+                Command::none()
             }
-            //Message::DB(f) => f(self.con.clone()),
             Message::CloseModal => {
-                self.err = None;
+                self.modal = None;
                 Command::none()
             }
-            Message::Error(e) => {
-                println!("Message::Error({:#?})", e);
-                self.err = Some(e);
-                //TODO add logging here
+            Message::OpenModal { title, content } => {
+                if title == "Error" {
+                    //TODO structured logging??
+                    println!("Message::Error({content:#?})");
+                }
+                self.modal = Some((title, content));
                 Command::none()
             }
-            Message::Menu(msg) => self.menu.update(msg),
-            Message::Transactions(msg) => self.transactions.update(msg),
-            Message::Manager(msg) => self.manager.update(msg),
-            Message::Sales(msg) => self.sales.update(msg),
-            Message::Info(msg) => self.info.update(msg),
+            Message::Sideffect(f) => command! {
+                Message::from(f.await)
+            },
         }
     }
 
     fn view(&self) -> Element<Self::Message> {
-        let err = self.err.clone();
+        let modal = self.modal.clone();
         Modal::new(
-            self.err.is_some(),
+            self.modal.is_some(),
             column![
                 #nopad
                 Container::new(
-                    Tabs::new(self.tab, Message::SwapTab)
+                    Tabs::new((&self.tab).into(), |n| Message::SwapTab(Tab::from(n)))
                         .icon_font(icons::ICON_FONT)
                         .height(Length::Shrink)
-                        .tab_bar_style(TABS)
                         .push(
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
-                            self.menu.view(),
+                            self.tab.as_menu()
                         )
                         .push(
                             TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                            self.transactions.view(),
+                            self.tab.as_transactions(),
                         )
                         .push(
                             TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                            self.sales.view(),
+                            self.tab.as_sales(),
                         )
                         .push(
                             TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                            self.manager.view(),
+                            self.tab.as_manager(),
                         )
                         .push(
                             TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
-                            self.info.view(),
+                            self.tab.as_info(),
                         ),
                 )
-                .style(TABS)
                 .padding(BORDER_WIDTH as u16),
             ],
             move || {
-                Card::new(
-                    Text::new("Error"),
-                    SMALL_TEXT::new(match &err {
-                        Some(e) => format!("{:#?}", e),
-                        None => String::new(),
-                    }),
-                )
-                .max_width(650)
-                .padding(DEF_PADDING.into())
-                .on_close(Message::CloseModal)
-                .into()
+                let (title, content) = modal.clone().unwrap_or_default();
+                Card::new(Text::new(title), SMALL_TEXT::new(content))
+                    .max_width(650)
+                    .padding(DEF_PADDING.into())
+                    .on_close(Message::CloseModal)
+                    .into()
             },
         )
         .backdrop(Message::CloseModal)

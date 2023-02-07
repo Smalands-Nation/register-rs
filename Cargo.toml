@@ -11,28 +11,27 @@ update = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-giftwrap = "0.3"
-num-traits = "0.2"
+giftwrap = "0.5"
 chrono = "0.4"
 dirs = "4.0"
-iced_native = "0.5"
-iced_pure = "0.2"
+iced_native = "0.8"
+iced_lazy = "0.4"
 lazy_static = "1.4"
 rusqlite_migration = "1.0"
+futures = "0.3"
 
-frost = {git = "https://github.com/Strosel/frost", features = ["pure"]}
+frost = {git = "https://github.com/Strosel/frost", tag="v0.3.0"}
 
 [dependencies.self_update]
 version = "0.27"
 features = ["archive-zip", "archive-tar", "compression-flate2", "compression-zip-deflate", "compression-zip-bzip2"]
 
 [dependencies.iced]
-version = "0.4"
+version = "0.7"
 features = [
     # "glow", 
     "canvas", 
     "tokio", 
-    "pure", 
     "image"
 ]
 
@@ -41,10 +40,10 @@ version  = "0.26"
 features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
-version = "0.2"
+git = "https://github.com/iced-rs/iced_aw"
+tag = "v0.3.0"
 default-features = false
 features = [
-    "pure",
     "tab_bar", 
     "tabs", 
     "modal", 
@@ -52,7 +51,6 @@ features = [
     "number_input", 
     "date_picker",
     "badge",
-    "colors"
 ]
 
 [dependencies.genpdf]

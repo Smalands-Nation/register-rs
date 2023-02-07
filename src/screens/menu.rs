@@ -1,126 +1,92 @@
 use {
-    super::Screen,
+    super::{Message, Sideffect},
     crate::{
-        command,
         icons::Icon,
-        item::{kind::Sales, Item},
+        item::Item,
         payment::Payment,
         print,
         receipt::Receipt,
-        sql,
-        styles::{DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{
-            calc::{self, Calc},
-            column, row, Grid, SquareButton, BIG_TEXT,
-        },
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
+        widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
+        Element, Renderer,
     },
     chrono::Local,
     iced::{
-        pure::{
-            widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
-            Element,
-        },
-        Alignment, Command, Length,
+        widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
+        Alignment, Length,
     },
+    iced_lazy::Component,
     rusqlite::params,
 };
 
 pub struct Menu {
-    calc: Calc,
-    menu: Vec<Item<Sales>>,
-    receipt: Receipt,
+    menu: Vec<Item>,
+}
+
+#[derive(Clone)]
+pub struct State {
+    multiplier: u32,
+    receipt: Receipt<Event>,
     print: bool,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            multiplier: 1,
+            receipt: Receipt::new(Payment::Swish),
+            print: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub enum Message {
-    Refresh,
-    Calc(calc::Message),
-    SellItem(Item<Sales>),
+pub enum Event {
+    Multiplier(u32),
+    SellItem(usize),
     ClearReceipt,
     TogglePrint(bool),
     Sell(Payment),
-    LoadMenu(Vec<Item<Sales>>),
 }
 
-impl Screen for Menu {
-    type ExMessage = super::Message;
-    type InMessage = Message;
-
-    fn new() -> (Self, Command<Self::ExMessage>) {
-        (
-            Self {
-                calc: Calc::new(),
-                menu: vec![],
-                receipt: Receipt::new(Payment::Swish),
-                print: false,
-            },
-            command!(Message::Refresh),
-        )
+impl Menu {
+    pub fn new(menu: Vec<Item>) -> Self {
+        Self { menu }
     }
+}
 
-    fn update(&mut self, message: Self::InMessage) -> Command<Self::ExMessage> {
-        match message {
-            Message::Refresh => {
-                return sql!(
-                    "SELECT name, price, special, category FROM menu \
-                    WHERE available=true 
-                    ORDER BY 
-                        special ASC, 
-                        CASE category 
-                            WHEN 'alcohol' THEN 1
-                            WHEN 'drink' THEN 2
-                            WHEN 'food' THEN 3
-                            WHEN 'other' THEN 4
-                            ELSE 5
-                        END,
-                        name DESC",
-                    params![],
-                    |row| {
-                        Ok(Item {
-                            name: row.get("name")?,
-                            price: row.get("price")?,
-                            category: row.get("category")?,
-                            kind: if row.get("special")? {
-                                Sales::Special
-                            } else {
-                                Sales::Regular { num: 0 }
-                            },
-                        })
-                    },
-                    Vec<_>,
-                    Message::LoadMenu
-                );
+impl Component<Message, Renderer> for Menu {
+    type State = State;
+    type Event = Event;
+
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+        match event {
+            Event::Multiplier(m) => {
+                state.multiplier = m;
             }
-            Message::Calc(m) => self.calc.update(m),
-            Message::ClearReceipt => {
-                self.receipt = Receipt::new(Payment::Swish);
+            Event::ClearReceipt => {
+                state.receipt = Receipt::new(Payment::Swish);
             }
-            Message::SellItem(mut i) => {
-                if let Some(0) = i.has_amount() {
-                    i.set_amount(self.calc.0 as i32);
+            Event::SellItem(i) => {
+                let mut item = self.menu[i].clone();
+                if let Some(0) = item.has_amount() {
+                    item.set_amount(state.multiplier as i32);
                 }
-                self.receipt.add(i);
-                self.calc.update(calc::Message::Clear);
+                state.receipt.add(item);
+                state.multiplier = 1;
             }
-            Message::TogglePrint(b) => self.print = b,
-            Message::Sell(p) => {
-                let receipt1 = self.receipt.clone();
-                let receipt2 = self.receipt.clone();
-                let should_print = self.print;
-                if !self.receipt.is_empty() {
-                    return Command::batch([
-                        command!({
-                            if should_print {
-                                print::print(receipt1, Local::now())
-                                    .await
-                                    .map(|_| Message::Refresh)
-                            } else {
-                                Ok(Message::Refresh)
-                            }
-                        }),
-                        command!({
+            Event::TogglePrint(b) => state.print = b,
+            Event::Sell(p) => {
+                if !state.receipt.is_empty() {
+                    let mut receipt = Receipt::new(Payment::Swish);
+                    std::mem::swap(&mut receipt, &mut state.receipt);
+                    let should_print = state.print;
+                    return Some(
+                        Sideffect::new(|| async move {
                             let time = Local::now();
+                            if should_print {
+                                print::print(&receipt, time).await?;
+                            }
 
                             let con = crate::DB.lock().await;
 
@@ -134,7 +100,7 @@ impl Screen for Menu {
                                             VALUES (?1, ?2, ?3, ?4)",
                             )?;
 
-                            for item in receipt2.items.iter() {
+                            for item in receipt.items.iter() {
                                 stmt.execute(params![
                                     time,
                                     item.name,
@@ -143,22 +109,25 @@ impl Screen for Menu {
                                 ])?;
                             }
 
-                            Ok(Message::ClearReceipt)
-                        }),
-                    ]);
+                            Ok(().into())
+                        })
+                        .into(),
+                    );
                 }
             }
-            Message::LoadMenu(menu) => {
-                self.menu = menu;
-            }
         };
-        Command::none()
+        None
     }
 
-    fn view(&self) -> Element<Self::ExMessage> {
-        Into::<Element<Self::InMessage>>::into(row![
+    fn view(&self, state: &Self::State) -> Element<Self::Event> {
+        let State {
+            multiplier,
+            receipt,
+            print,
+        } = state.clone();
+        row![
             #nopad
-            Container::new(self.calc.view().map(Message::Calc))
+            Container::new(Calc::new(multiplier ,Event::Multiplier))
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
@@ -171,7 +140,9 @@ impl Screen for Menu {
                     3,
                     self.menu
                         .iter()
-                        .map(|i| i.as_widget(true).on_press(Message::SellItem).into())
+                        .cloned()
+                        .enumerate()
+                        .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
                         .collect(),
                 )
                 .width(Length::Fill)
@@ -184,26 +155,34 @@ impl Screen for Menu {
                     #nopad
                     BIG_TEXT::new("Kvitto"),
                     Space::with_width(Length::Fill),
-                    SquareButton::icon(Icon::Cross).on_press(Message::ClearReceipt),
+                    SquareButton::icon(Icon::Cross).on_press(Event::ClearReceipt),
                 ]
                 .align_items(Alignment::Center),
-                self.receipt.as_widget(),
-                Checkbox::new(self.print, "Printa kvitto", Message::TogglePrint),
+                receipt,
+                Checkbox::new("Printa kvitto", print, Event::TogglePrint),
                 row![
                     #nopad
                     Button::new(Payment::Swish)
-                        .on_press(Message::Sell(Payment::Swish))
+                        .on_press(Event::Sell(Payment::Swish))
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                     Button::new(Payment::Paypal)
-                        .on_press(Message::Sell(Payment::Paypal))
+                        .on_press(Event::Sell(Payment::Paypal))
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                 ]
                 .spacing(DEF_PADDING)
             ]
             .width(Length::Units(RECEIPT_WIDTH)),
-        ])
-        .map(Self::ExMessage::Menu)
+        ]
+        .into()
+    }
+}
+
+impl<'a> From<Menu> for Element<'a, Message> {
+    fn from(menu: Menu) -> Self {
+        iced_lazy::component(menu)
     }
 }

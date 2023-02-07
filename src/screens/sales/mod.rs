@@ -1,26 +1,22 @@
 use {
-    super::Screen,
+    super::{Message, Sideffect, Tab},
     crate::{
-        command,
         error::Error,
-        item::{kind, Item},
+        item::Item,
         payment::Payment,
         receipt::Receipt,
-        sql,
-        styles::{Bordered, DEF_PADDING, RECEIPT_WIDTH},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, BIG_TEXT, SMALL_TEXT},
+        Element, Renderer,
     },
     chrono::{Date, Local, TimeZone},
     iced::{
-        pure::{
-            widget::{Button, Container, Row, Rule, Space, Text},
-            Element,
-        },
-        Alignment, Command, Length,
+        widget::{Button, Container, Row, Rule, Space, Text},
+        Alignment, Length,
     },
-    iced_aw::pure::date_picker::{self, DatePicker},
+    iced_aw::date_picker::{self, DatePicker},
+    iced_lazy::Component,
     indexmap::IndexMap,
-    rusqlite::params,
 };
 
 mod save;
@@ -31,131 +27,110 @@ pub enum Picker {
     To,
 }
 
+pub struct Sales {
+    from: Date<Local>,
+    to: Date<Local>,
+    receipts: IndexMap<Payment, Receipt<Event>>,
+}
+
 #[derive(Debug, Clone)]
-pub enum Message {
-    Refresh,
-    Load(Vec<(Item<kind::Sales>, Payment)>),
+pub enum Event {
     Save,
     OpenDate(Picker),
     UpdateDate(date_picker::Date),
     CloseDate,
 }
 
-pub struct Sales {
-    show_date: Option<Picker>,
-    from: Date<Local>,
-    to: Date<Local>,
-    receipts: IndexMap<Payment, Receipt>,
+impl Sales {
+    pub fn new(from: Date<Local>, to: Date<Local>, sales: Vec<(Item, Payment)>) -> Self {
+        Self {
+            from,
+            to,
+            receipts: sales.into_iter().fold(
+                IndexMap::<_, Receipt<Event>, _>::new(),
+                |mut hm, (item, method)| {
+                    match hm.get_mut(&method) {
+                        Some(summary) => summary.add(item),
+                        None => {
+                            let mut summary = Receipt::new(method);
+                            summary.add(item);
+                            hm.insert(method, summary);
+                        }
+                    }
+                    hm
+                },
+            ),
+        }
+    }
 }
 
-impl Screen for Sales {
-    type InMessage = Message;
-    type ExMessage = super::Message;
+impl Component<Message, Renderer> for Sales {
+    type State = Option<Picker>;
+    type Event = Event;
 
-    fn new() -> (Self, Command<Self::ExMessage>) {
-        (
-            Self {
-                show_date: None,
-                from: Local::today(),
-                to: Local::today(),
-                receipts: IndexMap::new(),
-            },
-            command!(Message::Refresh),
-        )
-    }
-
-    fn update(&mut self, msg: Message) -> Command<Self::ExMessage> {
-        match msg {
-            Message::Refresh => {
-                let from = self.from.and_hms(0, 0, 0);
-                let to = self.to.and_hms(23, 59, 59);
-                return sql!(
-                    "SELECT item, amount, price, special, method FROM receipts_view \
-                    WHERE time BETWEEN ?1 AND ?2",
-                    params![from, to],
-                    |row| {
-                        Ok((
-                            Item {
-                                name: row.get("item")?,
-                                price: row.get("price")?,
-                                category: crate::item::Category::Other, //not relevant here
-                                kind: if row.get("special")? {
-                                    kind::Sales::Special
-                                } else {
-                                    kind::Sales::Regular {
-                                        num: row.get("amount")?,
-                                    }
-                                },
-                            },
-                            //method
-                            Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-                        ))
-                    },
-                    Vec<(Item<_>, Payment)>,
-                    Message::Load
-                );
-            }
-            Message::Load(map) => {
-                self.receipts = map.into_iter().fold(
-                    IndexMap::<_, Receipt, _>::new(),
-                    |mut hm, (item, method)| {
-                        match hm.get_mut(&method) {
-                            Some(summary) => summary.add(item),
-                            None => {
-                                let mut summary = Receipt::new(method);
-                                summary.add(item);
-                                hm.insert(method, summary);
-                            }
-                        }
-                        hm
-                    },
-                );
-            }
-            Message::Save => {
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+        match event {
+            Event::Save => {
                 let from = self.from;
                 let to = self.to;
                 let stats = self.receipts.clone();
                 //Always return error to give info via modal
-                return command!(if !stats.is_empty() {
-                    match save::save(stats, (from, to)).await {
-                        Ok(e) => Result::<(), Error>::Err(Error::Other(format!(
-                            "Sparad till {}",
-                            e.to_string_lossy()
-                        ))),
-                        Err(e) => Err(e),
-                    }
-                } else {
-                    Err(Error::Other("Ingen försäljning att spara".into()))
-                });
+                return Some(
+                    Sideffect::new(|| async move {
+                        if !stats.is_empty() {
+                            let path = save::save(stats, (from, to)).await?;
+                            Ok(Message::OpenModal {
+                                title: "Sparad",
+                                content: format!("Sparad till {}", path.to_string_lossy()),
+                            })
+                        } else {
+                            Err(Error::Other("Ingen försäljning att spara".into()))
+                        }
+                    })
+                    .into(),
+                );
             }
-            Message::OpenDate(p) => {
-                self.show_date = Some(p);
+            Event::OpenDate(p) => {
+                *state = Some(p);
+                return None;
             }
-            Message::UpdateDate(d) => {
+            Event::UpdateDate(d) => {
                 let date = Local.from_local_date(&d.into()).unwrap();
-                match self.show_date {
+                match state {
                     Some(Picker::From) => {
                         self.from = date;
                     }
                     Some(Picker::To) => {
                         self.to = date;
                     }
-                    None => (), //TODO logging here?
+                    None => (),
                 };
-                self.show_date = None;
-                return command!(Message::Refresh);
+                *state = None;
             }
-            Message::CloseDate => {
-                self.show_date = None;
-                return command!(Message::Refresh);
+            Event::CloseDate => {
+                *state = None;
             }
         }
-        Command::none()
+
+        let from = self.from;
+        let to = self.to;
+        Some(
+            Sideffect::new(|| async move {
+                Tab::Sales {
+                    from,
+                    to,
+                    data: vec![],
+                }
+                .load()
+                .await
+            })
+            .into(),
+        )
     }
 
-    fn view(&self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(DatePicker::new(
-            self.show_date.is_some(),
+    fn view(&self, state: &Self::State) -> Element<Self::Event> {
+        DatePicker::new(
+            state.is_some(),
             self.from.naive_local(),
             row![
                 #nopad
@@ -167,17 +142,17 @@ impl Screen for Sales {
                                 Container::new(
                                     column![
                                         #nopad
-                                        BIG_TEXT::new(*payment),
+                                        BIG_TEXT::new(String::from(*payment)),
                                         Space::new(
                                             Length::Fill,
                                             Length::Units(SMALL_TEXT::size()),
                                         ),
-                                        rec.as_widget(),
+                                        rec.clone(),
                                     ]
                                     .width(Length::Units(RECEIPT_WIDTH))
                                     .padding(DEF_PADDING),
                                 )
-                                .style(Bordered::default())
+                                .style(theme::Container::Border)
                                 .into()
                             })
                             .collect(),
@@ -202,21 +177,32 @@ impl Screen for Sales {
                     Space::with_height(Length::Fill),
                     Text::new("Fr.o.m."),
                     Button::new(Text::new(self.from.to_string()))
-                        .on_press(Message::OpenDate(Picker::From)),
+                        .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
+                        .on_press(Event::OpenDate(Picker::From)),
                     Text::new("T.o.m."),
                     Button::new(Text::new(self.to.to_string()))
-                        .on_press(Message::OpenDate(Picker::To)),
+                        .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
+                        .on_press(Event::OpenDate(Picker::To)),
                     Space::with_height(Length::Fill),
                     Button::new(BIG_TEXT::new("Exportera"))
-                        .on_press(Message::Save)
+                        .on_press(Event::Save)
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill),
                 ]
                 .width(Length::Units(RECEIPT_WIDTH)),
             ],
-            Message::CloseDate,
-            Message::UpdateDate,
-        ))
-        .map(Self::ExMessage::Sales)
+            Event::CloseDate,
+            Event::UpdateDate,
+        )
+        .into()
+    }
+}
+
+impl<'a> From<Sales> for Element<'a, Message> {
+    fn from(sales: Sales) -> Self {
+        iced_lazy::component(sales)
     }
 }

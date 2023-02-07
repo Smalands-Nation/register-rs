@@ -1,23 +1,24 @@
 use {
-    super::Screen,
+    super::{Message, Sideffect, Tab},
     crate::{
-        command,
         icons::Icon,
-        item::{kind::Stock, Category, Item},
-        sql,
-        styles::{DEF_PADDING, RECEIPT_WIDTH},
+        item::{category::Category, Item},
+        theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
+        Element, Renderer,
     },
     iced::{
-        pure::{
-            widget::{Button, PickList, Rule, Scrollable, Text, TextInput},
-            Element,
-        },
-        Alignment, Command, Length, Space,
+        widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
+        Alignment, Length,
     },
-    iced_aw::pure::{Card, Modal},
+    iced_aw::{Card, Modal},
+    iced_lazy::Component,
     rusqlite::params,
 };
+
+pub struct Manager {
+    menu: Vec<Item>,
+}
 
 #[derive(Debug, Clone)]
 pub enum Mode {
@@ -25,25 +26,36 @@ pub enum Mode {
     Update(String),
 }
 
-pub struct Manager {
+pub struct State {
     locked: bool,
     login_modal: bool,
     password: String,
-    menu: Vec<Item<Stock>>,
     mode: Mode,
     name: String,
-    price: NumberInput<i32>,
+    price: i32,
     category: Option<Category>,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            locked: true,
+            login_modal: false,
+            password: String::new(),
+            mode: Mode::New,
+            name: String::new(),
+            price: 0,
+            category: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub enum Message {
-    Refresh(bool),
+pub enum Event {
     ToggleItem(usize, bool),
-    LoadMenu(Vec<Item<Stock>>),
-    EditItem(Item<Stock>),
+    EditItem(usize),
     UpdateName(String),
-    UpdatePrice(Option<i32>),
+    UpdatePrice(i32),
     UpdateCategory(Category),
     Cancel,
     Save,
@@ -51,164 +63,112 @@ pub enum Message {
     CloseLogin,
     UpdatePassword(String),
     Login,
-    Lock,
-    Unlock,
 }
 
-impl<'a, 's> Screen for Manager
-where
-    Self: 's,
-    's: 'a,
-{
-    type ExMessage = super::Message;
-    type InMessage = Message;
-
-    fn new() -> (Self, Command<Self::ExMessage>) {
-        (
-            Self {
-                locked: true,
-                login_modal: false,
-                password: String::new(),
-                menu: Vec::new(),
-                mode: Mode::New,
-                name: String::new(),
-                price: NumberInput::new(),
-                category: None,
-            },
-            command!(Message::Refresh(true)),
-        )
+impl Manager {
+    pub fn new(menu: Vec<Item>) -> Self {
+        Self { menu }
     }
+}
 
-    fn update(&mut self, msg: Self::InMessage) -> Command<Self::ExMessage> {
-        match msg {
-            Message::Refresh(lock) => {
-                return Command::batch(
-                    [
-                        sql!(
-                            "SELECT name, price, available, category FROM menu \
-                            WHERE special = 0 
-                            ORDER BY 
-                                CASE category 
-                                    WHEN 'alcohol' THEN 1
-                                    WHEN 'drink' THEN 2
-                                    WHEN 'food' THEN 3
-                                    WHEN 'other' THEN 4
-                                    ELSE 5
-                                END,
-                                name DESC",
-                            params![],
-                            |row| {
-                                Ok(Item {
-                                    name: row.get("name")?,
-                                    price: row.get("price")?,
-                                    category: row.get("category")?,
-                                    kind: Stock {
-                                        idx: 0,
-                                        available: row.get("available")?,
-                                    },
-                                })
-                            },
-                            Vec<_>,
-                            Message::LoadMenu
-                        ),
-                        command!(Message::Cancel),
-                        command!(Message::Lock),
-                    ]
-                    .into_iter()
-                    .take(if lock { 3 } else { 2 }),
-                );
-            }
-            Message::ToggleItem(i, a) => {
-                if let Some(i) = self.menu.get_mut(i) {
-                    i.in_stock(a);
-                    let clone = i.clone();
-                    return sql!(
-                        "UPDATE menu SET available=?1 WHERE name=?2",
-                        //Non breaking space gang
-                        params![a, clone.name.replace(' ', "\u{00A0}")],
-                        Message::Refresh(false)
+impl Component<Message, Renderer> for Manager {
+    type State = State;
+    type Event = Event;
+
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
+        match event {
+            Event::ToggleItem(i, a) => {
+                if let Some(i) = self.menu.get(i) {
+                    //Non breaking space gang
+                    let name = i.name.replace(' ', "\u{00A0}");
+                    return Some(
+                        Sideffect::new(|| async move {
+                            crate::DB.lock().await.execute(
+                                "UPDATE menu SET available=?1 WHERE name=?2",
+                                params![a, name],
+                            )?;
+
+                            Tab::Manager(vec![]).load().await
+                        })
+                        .into(),
                     );
                 }
             }
-            Message::LoadMenu(m) => {
-                self.menu.clear();
-                for (i, item) in m.into_iter().enumerate() {
-                    self.menu.push(item.with_index(i));
-                }
+            Event::EditItem(i) => {
+                let item = &self.menu[i];
+                state.mode = Mode::Update(item.name.clone());
+                state.name = item.name.clone();
+                state.price = item.price;
+                state.category = Some(item.category);
             }
-            Message::EditItem(i) => {
-                self.mode = Mode::Update(i.name.clone());
-                self.name = i.name;
-                self.price.update(Some(i.price));
-                self.category = Some(i.category);
+            Event::UpdateName(s) => state.name = s,
+            Event::UpdatePrice(n) => state.price = n,
+            Event::UpdateCategory(c) => state.category = Some(c),
+            Event::Cancel => {
+                state.mode = Mode::New;
+                state.name.clear();
+                state.price = 0;
             }
-            Message::UpdateName(s) => self.name = s,
-            Message::UpdatePrice(n) => self.price.update(n),
-            Message::UpdateCategory(c) => self.category = Some(c),
-            Message::Cancel => {
-                self.mode = Mode::New;
-                self.name.clear();
-                self.price.update(None);
-            }
-            Message::Save => {
-                let name = self.name.clone();
-                let price = self.price.value().unwrap_or(0);
-                let category = self.category;
+            Event::Save => {
+                //Non breaking space gang
+                let name = state.name.replace(' ', "\u{00A0}");
+                let price = state.price;
+                let category = state.category;
                 if !name.is_empty() {
-                    return match &self.mode {
-                        Mode::New => sql!(
-                            "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
-                            //Non breaking space gang
-                            params![name.replace(' ', "\u{00A0}"), price],
-                            Message::Refresh(false)
+                    return match &state.mode {
+                        Mode::New => Some(
+                            Sideffect::new(|| async move {
+                                crate::DB.lock().await.execute(
+                                "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
+                                params![name, price],
+                            )?;
+
+                                Tab::Manager(vec![]).load().await
+                            })
+                            .into(),
                         ),
                         Mode::Update(old_name) => {
                             let old_name = old_name.clone();
-                            sql!(
-                                "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
-                                //Non breaking space gang
-                                params![name.replace(' ', "\u{00A0}"), price, category, old_name],
-                                Message::Refresh(false)
+                            Some(
+                                Sideffect::new(|| async move {
+                                    crate::DB.lock().await.execute(
+                                    "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
+                                    params![name, price, category, old_name],
+                                )?;
+
+                                    Tab::Manager(vec![]).load().await
+                                })
+                                .into(),
                             )
                         }
                     };
                 }
             }
-            Message::OpenLogin => self.login_modal = true,
-            Message::CloseLogin => self.login_modal = false,
-            Message::UpdatePassword(password) => {
-                self.password = password;
+            Event::OpenLogin => state.login_modal = true,
+            Event::CloseLogin => state.login_modal = false,
+            Event::UpdatePassword(password) => {
+                state.password = password;
             }
             //No password in debug mode
             #[cfg(debug_assertions)]
-            Message::Login => {
-                return command!(Message::Unlock);
+            Event::Login => {
+                state.locked = false;
+                state.login_modal = false;
             }
             //Use env for password
             #[cfg(not(debug_assertions))]
-            Message::Login => {
-                let password_ok = self.password == env!("SMALANDS_PASSWORD");
-                return command!(if password_ok {
-                    Message::Unlock
-                } else {
-                    Message::Lock
-                });
-            }
-            Message::Lock => {
-                self.locked = true;
-                return command!(Message::CloseLogin);
-            }
-            Message::Unlock => {
-                self.locked = false;
-                return command!(Message::CloseLogin);
+            Event::Login => {
+                state.locked = state.password != env!("SMALANDS_PASSWORD");
+                state.login_modal = false;
             }
         }
-        Command::none()
+        None
     }
 
-    fn view(&self) -> Element<Self::ExMessage> {
-        Element::<Self::InMessage>::from(Modal::new(
-            self.login_modal,
+    fn view(&self, state: &Self::State) -> Element<Self::Event> {
+        let password = state.password.clone();
+        Modal::new(
+            state.login_modal,
             row![
                 #nopad
                 Scrollable::new(
@@ -217,7 +177,14 @@ where
                         3,
                         self.menu
                             .iter()
-                            .map(|item| item.as_widget(true).on_press(Message::EditItem).into())
+                            .cloned()
+                            .enumerate()
+                            .map(|(i ,item)| {
+                                item
+                                .on_press(Event::EditItem(i))
+                                .on_toggle(move |b| Event::ToggleItem(i, b))
+                                .into()
+                            })
                             .collect(),
                     )
                     .width(Length::Fill)
@@ -228,32 +195,30 @@ where
                 column![
                     row![
                         #nopad
-                        BIG_TEXT::new(match &self.mode {
+                        BIG_TEXT::new(match &state.mode {
                             Mode::New => String::from("Ny"),
                             Mode::Update(v) => {
-                                format!("Ändrar {}", v)
+                                format!("Ändrar {v}")
                             }
                         }),
                         Space::with_width(Length::Fill),
-                        SquareButton::icon(Icon::Cross).on_press(Message::Cancel),
+                        SquareButton::icon(Icon::Cross).on_press(Event::Cancel),
                     ]
                     .align_items(Alignment::Center),
                     Space::with_height(Length::FillPortion(1)),
                     Text::new("Namn"),
-                    TextInput::new("", self.name.as_str(), Message::UpdateName)
+                    TextInput::new("", state.name.as_str(), Event::UpdateName)
                         .padding(DEF_PADDING),
                     Text::new("Pris (kr)"),
-                    self.price
-                        .build(1..=1000, Message::UpdatePrice)
-                        .padding(DEF_PADDING)
-                        .width(Length::Fill),
-                        Text::new("Typ"),
-                    PickList::new(&Category::ALL[..], self.category, Message::UpdateCategory),
+                    NumberInput::new(1..=1000, Event::UpdatePrice, Some(state.price)),
+                    Text::new("Typ"),
+                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory),
                     Space::with_height(Length::FillPortion(5)),
-                    if !self.locked {
+                    if !state.locked {
                         Button::new(BIG_TEXT::new("Spara"))
-                            .on_press(Message::Save)
+                            .on_press(Event::Save)
                             .padding(DEF_PADDING)
+                            .style(theme::Container::Border)
                             .width(Length::Fill)
                     } else {
                         Button::new(row![
@@ -262,30 +227,39 @@ where
                             Space::with_width(Length::Fill),
                             Icon::Lock,
                         ])
-                        .on_press(Message::OpenLogin)
+                        .on_press(Event::OpenLogin)
                         .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
                         .width(Length::Fill)
                     },
                 ]
                 .width(Length::Units(RECEIPT_WIDTH)),
             ],
-            || {
+            move || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
                     column![
                         Text::new("Lösendord"),
-                        TextInput::new("", &self.password, Message::UpdatePassword)
+                        TextInput::new("", &password, Event::UpdatePassword)
                             .password()
                             .padding(DEF_PADDING)
-                            .on_submit(Message::Login),
-                        Button::new(Text::new("Logga In")).on_press(Message::Login),
+                            .on_submit(Event::Login),
+                        Button::new(Text::new("Logga In"))
+                            .style(theme::Container::Border)
+                            .on_press(Event::Login),
                     ],
                 )
                 .max_width(650)
-                .on_close(Message::CloseLogin)
+                .on_close(Event::CloseLogin)
                 .into()
             },
-        ))
-        .map(Self::ExMessage::Manager)
+        )
+        .into()
+    }
+}
+
+impl<'a> From<Manager> for Element<'a, Message> {
+    fn from(manager: Manager) -> Self {
+        iced_lazy::component(manager)
     }
 }

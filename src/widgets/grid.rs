@@ -1,10 +1,10 @@
 use iced::{
-    pure::{column, row, Element},
-    Alignment, Length, Space,
+    widget::{Column, Row, Space},
+    Alignment, Element, Length,
 };
 //TODO rewrite like row or column pr into iced_native
 
-pub struct Grid<'a, Message> {
+pub struct Grid<'a, Message, Renderer> {
     rows: u32,
     cols: u32,
     width: Length,
@@ -13,15 +13,19 @@ pub struct Grid<'a, Message> {
     padding: u16,
     max_height: u32,
     max_width: u32,
-    children: Vec<Element<'a, Message>>,
+    children: Vec<Element<'a, Message, Renderer>>,
 }
 
-impl<'a, Message> Grid<'a, Message> {
+impl<'a, Message, Renderer> Grid<'a, Message, Renderer> {
     pub fn new(rows: u32, cols: u32) -> Self {
         Self::with_children(rows, cols, Vec::new())
     }
 
-    pub fn with_children(rows: u32, cols: u32, children: Vec<Element<'a, Message>>) -> Self {
+    pub fn with_children(
+        rows: u32,
+        cols: u32,
+        children: Vec<Element<'a, Message, Renderer>>,
+    ) -> Self {
         Self {
             rows,
             cols,
@@ -67,24 +71,27 @@ impl<'a, Message> Grid<'a, Message> {
 
     pub fn push<E>(mut self, child: E) -> Self
     where
-        E: Into<Element<'a, Message>>,
+        E: Into<Element<'a, Message, Renderer>>,
     {
         self.children.push(child.into());
         self
     }
 }
 
-impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
-    fn from(g: Grid<'a, Message>) -> Self {
-        let mut col = column()
+impl<'a, Message, Renderer> From<Grid<'a, Message, Renderer>> for Element<'a, Message, Renderer>
+where
+    Message: 'a,
+    Renderer: iced_native::Renderer + 'a,
+{
+    fn from(g: Grid<'a, Message, Renderer>) -> Self {
+        let mut col = Column::new()
             .align_items(Alignment::Center)
             .width(g.width)
             .height(g.height)
             .padding(g.padding)
             .spacing(g.spacing)
-            //TODO .max_height(g.max_height)
             .max_width(g.max_width);
-        let mut r = row().spacing(g.spacing);
+        let mut r = Row::new().spacing(g.spacing);
         //.max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
         let mut i = 0;
         for child in g.children {
@@ -92,7 +99,7 @@ impl<'a, Message: 'a> From<Grid<'a, Message>> for Element<'a, Message> {
             i += 1;
             if i == g.cols {
                 col = col.push(r);
-                r = row().spacing(g.spacing);
+                r = Row::new().spacing(g.spacing);
                 //.max_height(g.max_height / if g.rows != 0 { g.rows } else { 1 });
                 i = 0;
             }

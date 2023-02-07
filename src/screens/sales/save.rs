@@ -1,10 +1,5 @@
 use {
-    crate::{
-        error::Result,
-        item::{kind::Sales, Item},
-        payment::Payment,
-        receipt::Receipt,
-    },
+    crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
     chrono::{Date, Local},
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
@@ -18,7 +13,7 @@ use {
 
 fn create_pdf(
     path: impl Into<PathBuf>,
-    stats: IndexSet<(Payment, Item<Sales>)>,
+    stats: IndexSet<(Payment, Item)>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
@@ -140,7 +135,7 @@ fn create_pdf(
                         tot += price;
 
                         Paragraph::new(match item.has_amount() {
-                            Some(n) => format!("{}st", n),
+                            Some(n) => format!("{n}st"),
                             None => format!("{}kr", item.price_total()),
                         })
                     }
@@ -153,7 +148,7 @@ fn create_pdf(
         }
 
         row.element(
-            Paragraph::new(format!("{}kr", tot))
+            Paragraph::new(format!("{tot}kr"))
                 .aligned(Alignment::Right)
                 .padded(3)
                 .framed(),
@@ -196,7 +191,7 @@ fn create_pdf(
     Ok(path)
 }
 
-fn make_stats(data: IndexMap<Payment, Receipt>) -> IndexSet<(Payment, Item<Sales>)> {
+fn make_stats<M>(data: IndexMap<Payment, Receipt<M>>) -> IndexSet<(Payment, Item)> {
     data.into_values().fold(IndexSet::new(), |hm, r| {
         r.items.into_iter().fold(hm, |mut hm, item| {
             hm.insert((r.payment, item));
@@ -208,8 +203,8 @@ fn make_stats(data: IndexMap<Payment, Receipt>) -> IndexSet<(Payment, Item<Sales
 #[cfg(not(debug_assertions))]
 use chrono::Datelike;
 #[cfg(not(debug_assertions))]
-pub async fn save(
-    data: IndexMap<Payment, Receipt>,
+pub async fn save<M: Clone>(
+    data: IndexMap<Payment, Receipt<M>>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
     let mut path = dirs::document_dir().ok_or("No document path")?;
@@ -228,8 +223,8 @@ pub async fn save(
 }
 
 #[cfg(debug_assertions)]
-pub async fn save(
-    data: IndexMap<Payment, Receipt>,
+pub async fn save<M: Clone>(
+    data: IndexMap<Payment, Receipt<M>>,
     (from, to): (Date<Local>, Date<Local>),
 ) -> Result<PathBuf> {
     let stats = make_stats(data);
