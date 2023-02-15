@@ -7,10 +7,11 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{calc::Calc, column, row, Grid, SquareButton, BIG_TEXT},
+        widgets::{calc::Calc, column, row, SquareButton, BIG_TEXT},
         Element, Renderer,
     },
     chrono::Local,
+    frost::wrap::{Direction, Wrap},
     iced::{
         widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
         Alignment, Length,
@@ -135,14 +136,19 @@ impl Component<Message, Renderer> for Menu {
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
             Scrollable::new(
-                Grid::with_children(
-                    self.menu.len() as u32 / 3,
-                    3,
+                Wrap::with_children(
+                    Direction::Row(3),
                     self.menu
                         .iter()
                         .cloned()
                         .enumerate()
                         .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
+                        .chain(
+                            std::iter::repeat_with(|| {
+                                Space::with_width(Length::FillPortion(1)).into()
+                            })
+                            .take(3 - self.menu.len() % 3)
+                        )
                         .collect(),
                 )
                 .width(Length::Fill)

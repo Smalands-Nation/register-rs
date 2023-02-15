@@ -4,9 +4,10 @@ use {
         icons::Icon,
         item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, Grid, NumberInput, SquareButton, BIG_TEXT},
+        widgets::{column, row, NumberInput, SquareButton, BIG_TEXT},
         Element, Renderer,
     },
+    frost::wrap::{Direction, Wrap},
     iced::{
         widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
         Alignment, Length,
@@ -172,9 +173,8 @@ impl Component<Message, Renderer> for Manager {
             row![
                 #nopad
                 Scrollable::new(
-                    Grid::with_children(
-                        self.menu.len() as u32 / 3,
-                        3,
+                    Wrap::with_children(
+                        Direction::Row(3),
                         self.menu
                             .iter()
                             .cloned()
@@ -185,6 +185,12 @@ impl Component<Message, Renderer> for Manager {
                                 .on_toggle(move |b| Event::ToggleItem(i, b))
                                 .into()
                             })
+                            .chain(
+                                std::iter::repeat_with(|| {
+                                    Space::with_width(Length::FillPortion(1)).into()
+                                })
+                                .take(3 - self.menu.len() % 3)
+                            )
                             .collect(),
                     )
                     .width(Length::Fill)

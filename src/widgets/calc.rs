@@ -1,10 +1,11 @@
 use {
-    super::{column, row, Grid, SquareButton},
+    super::{column, row, SquareButton},
     crate::{
         icons::Icon,
         theme::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
         Element, Renderer,
     },
+    frost::wrap::{Direction, Wrap},
     iced::{
         alignment::{Alignment, Horizontal},
         widget::{Rule, Space, Text},
@@ -86,9 +87,8 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
             .height(Length::Units(DEF_TEXT))
             .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
             Space::with_height(Length::Units(DEF_PADDING)),
-            Grid::with_children(
-                4,
-                3,
+            Wrap::with_children(
+                Direction::Row(3),
                 (0..12)
                     .map(|i| {
                         match i {
