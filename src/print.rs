@@ -100,6 +100,7 @@ fn create_pdf<M>(
 }
 
 fn receipt_path() -> Result<PathBuf> {
+    //FIXME dbg path
     let mut conf_path = dirs::config_dir().ok_or("No config path")?;
     conf_path.push("smaland_register");
     conf_path.push("receipts");
@@ -139,6 +140,7 @@ pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()>
 #[cfg(not(target_os = "windows"))]
 pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
     let filename = create_pdf(receipt_path()?, receipt, time)?;
+    println!("{:?}", filename.display());
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()
