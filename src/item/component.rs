@@ -8,10 +8,9 @@ use {
     frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
-        widget::{Checkbox, Column, Text},
+        widget::{Checkbox, Column, Component, Text},
         Length,
     },
-    iced_lazy::Component,
 };
 
 pub struct Item<'a, M> {
@@ -125,6 +124,6 @@ where
     M: Clone + 'a,
 {
     fn from(value: Item<'a, M>) -> Self {
-        iced_lazy::component(value)
+        iced::widget::component(value)
     }
 }

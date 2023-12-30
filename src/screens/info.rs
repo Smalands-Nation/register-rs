@@ -5,11 +5,10 @@ use {
         Element, Renderer,
     },
     iced::{
-        widget::{Container, Text},
+        widget::{Component, Container, Text},
         Alignment, Length,
     },
     iced_aw::{style::badge::BadgeStyles, Badge},
-    iced_lazy::Component,
     self_update::{cargo_crate_version, Status},
 };
 
@@ -83,6 +82,6 @@ where
     M: 'a,
 {
     fn from(info: Info) -> Self {
-        iced_lazy::component(info)
+        iced::widget::component(info)
     }
 }

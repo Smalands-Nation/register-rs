@@ -13,10 +13,9 @@ use {
     chrono::Local,
     frost::wrap::{Direction, Wrap},
     iced::{
-        widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
+        widget::{Button, Checkbox, Component, Container, Rule, Scrollable, Space},
         Alignment, Length,
     },
-    iced_lazy::Component,
     rusqlite::params,
 };
 
@@ -132,7 +131,7 @@ impl Component<Message, Renderer> for Menu {
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
-                .width(Length::Units(RECEIPT_WIDTH))
+                .width(Length::Fixed(RECEIPT_WIDTH))
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
             Scrollable::new(
@@ -181,7 +180,7 @@ impl Component<Message, Renderer> for Menu {
                 ]
                 .spacing(DEF_PADDING)
             ]
-            .width(Length::Units(RECEIPT_WIDTH)),
+            .width(Length::Fixed(RECEIPT_WIDTH)),
         ]
         .into()
     }
@@ -189,6 +188,6 @@ impl Component<Message, Renderer> for Menu {
 
 impl<'a> From<Menu> for Element<'a, Message> {
     fn from(menu: Menu) -> Self {
-        iced_lazy::component(menu)
+        iced::widget::component(menu)
     }
 }

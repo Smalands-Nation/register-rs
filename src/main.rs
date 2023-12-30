@@ -1,11 +1,13 @@
 use {
     crate::{
         icons::Icon,
-        screens::{Message, Tab},
+        screens::{Message, Tab, TabId},
         theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
+    chrono::Local,
     iced::{
+        font,
         widget::{Container, Text},
         window, Application, Command, Font, Length, Settings,
     },
@@ -37,10 +39,7 @@ macro_rules! command {
     };
 }
 
-pub const FONT: Font = Font::External {
-    name: "IBM Plex Mono",
-    bytes: include_bytes!("../resources/IBMPlexMono-Regular.ttf"),
-};
+pub const FONT: Font = Font::with_name("IBM Plex Mono");
 
 lazy_static! {
     pub static ref DB: Arc<Mutex<Connection>> =
@@ -53,10 +52,7 @@ pub fn main() -> iced::Result {
             min_size: Some((1360, 600)),
             ..window::Settings::default()
         },
-        default_font: match FONT {
-            Font::External { bytes, .. } => Some(bytes),
-            _ => None,
-        },
+        default_font: FONT,
         default_text_size: DEF_TEXT,
         ..Settings::default()
     })
@@ -65,11 +61,6 @@ pub fn main() -> iced::Result {
 struct App {
     modal: Option<(&'static str, String)>,
     tab: Tab,
-    //menu: Menu,
-    //transactions: Transactions,
-    //manager: Manager,
-    //sales: Sales,
-    //info: Info,
 }
 
 impl Application for App {
@@ -79,34 +70,18 @@ impl Application for App {
     type Theme = theme::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
-        //let mut cmds = vec![];
-
-        //let (menu, mcmd) = Menu::new();
-        //cmds.push(mcmd);
-
-        //let (transactions, mcmd) = Transactions::new();
-        //cmds.push(mcmd);
-
-        //let (manager, mcmd) = Manager::new();
-        //cmds.push(mcmd);
-
-        //let (sales, mcmd) = Sales::new();
-        //cmds.push(mcmd);
-
-        //let (info, mcmd) = Info::new();
-        //cmds.push(mcmd);
-
         (
             Self {
                 modal: None,
                 tab: Tab::Menu(Vec::new()),
-                //menu,
-                //transactions,
-                //manager,
-                //sales,
-                //info,
             },
-            command!(Tab::Menu(vec![]).load().await),
+            Command::batch([
+                font::load(include_bytes!("../resources/IBMPlexMono-Regular.ttf").as_slice())
+                    .map(Message::from),
+                font::load(include_bytes!("../resources/google-fonts-icons.ttf").as_slice())
+                    .map(Message::from),
+                command!(TabId::Menu.load().await),
+            ]),
         )
     }
 
@@ -141,46 +116,48 @@ impl Application for App {
     }
 
     fn view(&self) -> Element<Self::Message> {
-        let modal = self.modal.clone();
         Modal::new(
-            self.modal.is_some(),
             column![
                 #nopad
                 Container::new(
-                    Tabs::new((&self.tab).into(), |n| Message::SwapTab(Tab::from(n)))
+                    Tabs::new(|id| Message::SwapTab(id))
                         .icon_font(icons::ICON_FONT)
                         .height(Length::Shrink)
                         .push(
+                            TabId::Menu,
                             TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
                             self.tab.as_menu()
                         )
                         .push(
+                            TabId::Transactions,
                             TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
                             self.tab.as_transactions(),
                         )
                         .push(
+                            TabId::Sales {from: Local::today(), to: Local::today()},
                             TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
                             self.tab.as_sales(),
                         )
                         .push(
+                            TabId::Manager,
                             TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
                             self.tab.as_manager(),
                         )
                         .push(
+                            TabId::Info,
                             TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
                             self.tab.as_info(),
-                        ),
+                        )
+                        .set_active_tab(&self.tab.id()),
                 )
                 .padding(BORDER_WIDTH as u16),
             ],
-            move || {
-                let (title, content) = modal.clone().unwrap_or_default();
+            self.modal.clone().map(move |(title, content)| {
                 Card::new(Text::new(title), SMALL_TEXT::new(content))
-                    .max_width(650)
+                    .max_width(650.0)
                     .padding(DEF_PADDING.into())
                     .on_close(Message::CloseModal)
-                    .into()
-            },
+            }),
         )
         .backdrop(Message::CloseModal)
         .into()

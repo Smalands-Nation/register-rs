@@ -1,5 +1,5 @@
 use {
-    super::{Message, Sideffect, Tab},
+    super::{Message, Sideffect, TabId},
     crate::{
         error::Error,
         item::Item,
@@ -11,11 +11,10 @@ use {
     },
     chrono::{Date, Local, TimeZone},
     iced::{
-        widget::{Button, Container, Row, Rule, Space, Text},
+        widget::{Button, Component, Container, Row, Rule, Space, Text},
         Alignment, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
-    iced_lazy::Component,
     indexmap::IndexMap,
 };
 
@@ -114,18 +113,7 @@ impl Component<Message, Renderer> for Sales {
 
         let from = self.from;
         let to = self.to;
-        Some(
-            Sideffect::new(|| async move {
-                Tab::Sales {
-                    from,
-                    to,
-                    data: vec![],
-                }
-                .load()
-                .await
-            })
-            .into(),
-        )
+        Some(Sideffect::new(|| async move { TabId::Sales { from, to }.load().await }).into())
     }
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
@@ -145,11 +133,11 @@ impl Component<Message, Renderer> for Sales {
                                         BIG_TEXT::new(String::from(*payment)),
                                         Space::new(
                                             Length::Fill,
-                                            Length::Units(SMALL_TEXT::size()),
+                                            Length::Fixed(SMALL_TEXT::size() as f32),
                                         ),
                                         rec.clone(),
                                     ]
-                                    .width(Length::Units(RECEIPT_WIDTH))
+                                    .width(Length::Fixed(RECEIPT_WIDTH))
                                     .padding(DEF_PADDING),
                                 )
                                 .style(theme::Container::Border)
@@ -192,7 +180,7 @@ impl Component<Message, Renderer> for Sales {
                         .style(theme::Container::Border)
                         .width(Length::Fill),
                 ]
-                .width(Length::Units(RECEIPT_WIDTH)),
+                .width(Length::Fixed(RECEIPT_WIDTH)),
             ],
             Event::CloseDate,
             Event::UpdateDate,
@@ -203,6 +191,6 @@ impl Component<Message, Renderer> for Sales {
 
 impl<'a> From<Sales> for Element<'a, Message> {
     fn from(sales: Sales) -> Self {
-        iced_lazy::component(sales)
+        iced::widget::component(sales)
     }
 }

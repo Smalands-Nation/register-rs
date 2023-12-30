@@ -1,7 +1,6 @@
 use {
     crate::{theme::DEF_PADDING, Element, Renderer},
-    iced::widget::TextInput,
-    iced_lazy::Component,
+    iced::widget::{Component, TextInput},
     std::{cmp::PartialOrd, fmt::Display, ops::RangeInclusive, str::FromStr},
 };
 
@@ -62,8 +61,8 @@ where
                 .map(|s| s.to_string())
                 .or(self.initial_value.map(|n| n.to_string()))
                 .unwrap_or_default(),
-            Event::Input,
         )
+        .on_input(Event::Input)
         .padding(DEF_PADDING)
         .into()
     }
@@ -75,6 +74,6 @@ where
     M: Clone + 'a,
 {
     fn from(calc: NumberInput<'a, N, M>) -> Self {
-        iced_lazy::component(calc)
+        iced::widget::component(calc)
     }
 }

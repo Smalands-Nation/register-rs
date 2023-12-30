@@ -26,8 +26,8 @@ impl SquareButton {
                 .vertical_alignment(Vertical::Center),
         )
         .style(Container::Border)
-        .width(Length::Units(SQUARE_BUTTON))
-        .height(Length::Units(SQUARE_BUTTON))
+        .width(Length::Fixed(SQUARE_BUTTON))
+        .height(Length::Fixed(SQUARE_BUTTON))
     }
 
     pub fn icon<'a, M>(icon: Icon) -> Button<'a, M, Renderer>
@@ -36,7 +36,7 @@ impl SquareButton {
     {
         Button::new(icon)
             .style(Container::Border)
-            .width(Length::Units(SQUARE_BUTTON))
-            .height(Length::Units(SQUARE_BUTTON))
+            .width(Length::Fixed(SQUARE_BUTTON))
+            .height(Length::Fixed(SQUARE_BUTTON))
     }
 }

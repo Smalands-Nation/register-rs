@@ -164,6 +164,6 @@ where
     M: Clone + 'a,
 {
     fn from(value: Item) -> Self {
-        iced_lazy::component(component::Item::from(value))
+        iced::widget::component(component::Item::from(value))
     }
 }

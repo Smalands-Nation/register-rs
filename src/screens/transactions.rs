@@ -13,10 +13,9 @@ use {
     chrono::{DateTime, Local},
     frost::clickable::Clickable,
     iced::{
-        widget::{Container, Row, Rule, Space},
+        widget::{Component, Container, Row, Rule, Space},
         Length,
     },
-    iced_lazy::Component,
     indexmap::IndexMap,
 };
 
@@ -136,7 +135,7 @@ impl Component<Message, Renderer> for Transactions {
             column![
                 match state.selected {
                     Some((_, ref rec)) => Element::from(rec.clone()),
-                    None => Space::new(Length::Units(RECEIPT_WIDTH), Length::Fill).into(),
+                    None => Space::new(Length::Fixed(RECEIPT_WIDTH), Length::Fill).into(),
                 },
                 row![
                     #nopad
@@ -146,7 +145,7 @@ impl Component<Message, Renderer> for Transactions {
                 ]
                 .spacing(DEF_PADDING)
             ]
-            .width(Length::Units(RECEIPT_WIDTH)),
+            .width(Length::Fixed(RECEIPT_WIDTH)),
         ]
         .into()
     }
@@ -154,6 +153,6 @@ impl Component<Message, Renderer> for Transactions {
 
 impl<'a> From<Transactions> for Element<'a, Message> {
     fn from(transactions: Transactions) -> Self {
-        iced_lazy::component(transactions)
+        iced::widget::component(transactions)
     }
 }

@@ -1,5 +1,5 @@
 use {
-    super::{Message, Sideffect, Tab},
+    super::{Message, Sideffect, Tab, TabId},
     crate::{
         icons::Icon,
         item::{category::Category, Item},
@@ -9,11 +9,10 @@ use {
     },
     frost::wrap::{Direction, Wrap},
     iced::{
-        widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
+        widget::{Button, Component, PickList, Rule, Scrollable, Space, Text, TextInput},
         Alignment, Length,
     },
     iced_aw::{Card, Modal},
-    iced_lazy::Component,
     rusqlite::params,
 };
 
@@ -89,7 +88,7 @@ impl Component<Message, Renderer> for Manager {
                                 params![a, name],
                             )?;
 
-                            Tab::Manager(vec![]).load().await
+                            TabId::Manager.load().await
                         })
                         .into(),
                     );
@@ -124,7 +123,7 @@ impl Component<Message, Renderer> for Manager {
                                 params![name, price],
                             )?;
 
-                                Tab::Manager(vec![]).load().await
+                                TabId::Manager.load().await
                             })
                             .into(),
                         ),
@@ -137,7 +136,7 @@ impl Component<Message, Renderer> for Manager {
                                     params![name, price, category, old_name],
                                 )?;
 
-                                    Tab::Manager(vec![]).load().await
+                                    TabId::Manager.load().await
                                 })
                                 .into(),
                             )
@@ -169,7 +168,6 @@ impl Component<Message, Renderer> for Manager {
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         let password = state.password.clone();
         Modal::new(
-            state.login_modal,
             row![
                 #nopad
                 Scrollable::new(
@@ -213,7 +211,8 @@ impl Component<Message, Renderer> for Manager {
                     .align_items(Alignment::Center),
                     Space::with_height(Length::FillPortion(1)),
                     Text::new("Namn"),
-                    TextInput::new("", state.name.as_str(), Event::UpdateName)
+                    TextInput::new("", state.name.as_str())
+                        .on_input(Event::UpdateName)
                         .padding(DEF_PADDING),
                     Text::new("Pris (kr)"),
                     NumberInput::new(1..=1000, Event::UpdatePrice, Some(state.price)),
@@ -239,14 +238,15 @@ impl Component<Message, Renderer> for Manager {
                         .width(Length::Fill)
                     },
                 ]
-                .width(Length::Units(RECEIPT_WIDTH)),
+                .width(Length::Fixed(RECEIPT_WIDTH)),
             ],
-            move || {
+            state.login_modal.then(move || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
                     column![
                         Text::new("Lösendord"),
-                        TextInput::new("", &password, Event::UpdatePassword)
+                        TextInput::new("", &password)
+                            .on_input(Event::UpdatePassword)
                             .password()
                             .padding(DEF_PADDING)
                             .on_submit(Event::Login),
@@ -255,10 +255,9 @@ impl Component<Message, Renderer> for Manager {
                             .on_press(Event::Login),
                     ],
                 )
-                .max_width(650)
+                .max_width(650.0)
                 .on_close(Event::CloseLogin)
-                .into()
-            },
+            }),
         )
         .into()
     }
@@ -266,6 +265,6 @@ impl Component<Message, Renderer> for Manager {
 
 impl<'a> From<Manager> for Element<'a, Message> {
     fn from(manager: Manager) -> Self {
-        iced_lazy::component(manager)
+        iced::widget::component(manager)
     }
 }

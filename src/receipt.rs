@@ -8,10 +8,9 @@ use {
     },
     frost::clickable::Clickable,
     iced::{
-        widget::{scrollable, Column, Scrollable, Text},
+        widget::{scrollable, Column, Component, Scrollable, Text},
         Length,
     },
-    iced_lazy::Component,
     indexmap::IndexSet,
 };
 
@@ -102,11 +101,11 @@ where
                     )
                     .spacing(DEF_PADDING),
                 )
-                .vertical_scroll(scrollable::Properties::new())
+                .direction(scrollable::Direction::Vertical(scrollable::Properties::new()))
                 .height(Length::Fill),
                 Text::new(format!("Total: {}kr", self.sum)),
             ]
-            .width(Length::Units(RECEIPT_WIDTH))
+            .width(Length::Fixed(RECEIPT_WIDTH))
             .spacing(DEF_PADDING),
         )
         .padding(0)
@@ -121,6 +120,6 @@ where
     M: Clone + std::fmt::Debug + 'a,
 {
     fn from(value: Receipt<M>) -> Self {
-        iced_lazy::component(value)
+        iced::widget::component(value)
     }
 }

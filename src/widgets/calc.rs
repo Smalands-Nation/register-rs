@@ -8,10 +8,9 @@ use {
     frost::wrap::{Direction, Wrap},
     iced::{
         alignment::{Alignment, Horizontal},
-        widget::{Rule, Space, Text},
+        widget::{Component, Rule, Space, Text},
         Length,
     },
-    iced_lazy::Component,
 };
 
 pub struct Calc<'a, M> {
@@ -84,9 +83,9 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
                 .width(Length::Fill)
                 .horizontal_alignment(Horizontal::Right),
             ]
-            .height(Length::Units(DEF_TEXT))
-            .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
-            Space::with_height(Length::Units(DEF_PADDING)),
+            .height(Length::Fixed(DEF_TEXT))
+            .width(Length::Fixed(SQUARE_BUTTON * 3.0 + DEF_PADDING as f32 * 2.0)),
+            Space::with_height(Length::Fixed(DEF_PADDING as f32)),
             Wrap::with_children(
                 Direction::Row(3),
                 (0..12)
@@ -114,6 +113,6 @@ where
     M: 'a,
 {
     fn from(calc: Calc<'a, M>) -> Self {
-        iced_lazy::component(calc)
+        iced::widget::component(calc)
     }
 }
