@@ -7,7 +7,7 @@ use {
     },
 };
 
-pub const ICON_FONT: Font = Font::with_name("icofont");
+pub const ICON_FONT: Font = Font::with_name("Material Symbols Outlined 48pt");
 
 pub enum Icon {
     Trash,
