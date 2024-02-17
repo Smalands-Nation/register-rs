@@ -47,13 +47,8 @@ impl From<Icon> for String {
     }
 }
 
-impl<'a, R> From<Icon> for Text<'a, R>
-where
-    R: iced_core::text::Renderer,
-    R::Theme: iced::widget::text::StyleSheet,
-    iced::Font: Into<R::Font>,
-{
-    fn from(i: Icon) -> Text<'a, R> {
+impl<'a> From<Icon> for Text<'a> {
+    fn from(i: Icon) -> Text<'a> {
         BIG_TEXT::new(String::from(i))
             .font(ICON_FONT)
             .horizontal_alignment(Horizontal::Center)
@@ -61,12 +56,9 @@ where
     }
 }
 
-impl<'a, M, R> From<Icon> for Element<'a, M, R>
+impl<'a, M> From<Icon> for Element<'a, M>
 where
     M: 'a,
-    R: iced_core::text::Renderer + 'a,
-    R::Theme: iced::widget::text::StyleSheet,
-    iced::Font: Into<R::Font>,
 {
     fn from(i: Icon) -> Self {
         Text::from(i).into()

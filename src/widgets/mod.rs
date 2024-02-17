@@ -21,8 +21,7 @@ macro_rules! _column {
 }
 macro_rules! _row {
     (#nopad $($elem:expr),+ $(,)?) => {
-        //::iced::widget::Row::with_children(vec![$($elem.into()),*])
-        ::iced::widget::Row::with_children(vec![$($crate::Element::from($elem)),*])
+        ::iced::widget::Row::with_children(vec![$($elem.into()),*])
     };
     ($($elem:expr),+ $(,)?) => {
         $crate::widgets::row!(#nopad $($elem),*)

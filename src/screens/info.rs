@@ -2,11 +2,10 @@ use {
     crate::{
         theme::DEF_PADDING,
         widgets::{column, row, SMALL_TEXT},
-        Element, Renderer,
     },
     iced::{
         widget::{Component, Container, Text},
-        Alignment, Length,
+        Alignment, Element, Length,
     },
     iced_aw::{style::badge::BadgeStyles, Badge},
     self_update::{cargo_crate_version, Status},
@@ -26,7 +25,7 @@ impl Info {
     }
 }
 
-impl<M> Component<M, Renderer> for Info {
+impl<M> Component<M> for Info {
     type State = ();
     type Event = ();
 

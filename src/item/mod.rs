@@ -1,4 +1,4 @@
-use {crate::Element, category::*};
+use {category::*, iced::Element};
 
 pub mod category;
 pub mod component;

@@ -3,13 +3,12 @@ use {
     crate::{
         icons::Icon,
         theme::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
-        Element, Renderer,
     },
     frost::wrap::{Direction, Wrap},
     iced::{
         alignment::{Alignment, Horizontal},
         widget::{Component, Rule, Space, Text},
-        Length,
+        Element, Length,
     },
 };
 
@@ -37,7 +36,7 @@ impl<'a, M> Calc<'a, M> {
     }
 }
 
-impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
+impl<'a, M> Component<M> for Calc<'a, M> {
     type State = u32;
     type Event = Event;
 

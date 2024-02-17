@@ -7,12 +7,11 @@ use {
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, BIG_TEXT, SMALL_TEXT},
-        Element, Renderer,
     },
     chrono::{Date, Local, TimeZone},
     iced::{
         widget::{Button, Component, Container, Row, Rule, Space, Text},
-        Alignment, Length,
+        Alignment, Element, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
     indexmap::IndexMap,
@@ -63,7 +62,7 @@ impl Sales {
     }
 }
 
-impl Component<Message, Renderer> for Sales {
+impl Component<Message> for Sales {
     type State = Option<Picker>;
     type Event = Event;
 

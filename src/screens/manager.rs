@@ -1,16 +1,15 @@
 use {
-    super::{Message, Sideffect, Tab, TabId},
+    super::{Message, Sideffect, TabId},
     crate::{
         icons::Icon,
         item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, NumberInput, SquareButton, BIG_TEXT},
-        Element, Renderer,
     },
     frost::wrap::{Direction, Wrap},
     iced::{
         widget::{Button, Component, PickList, Rule, Scrollable, Space, Text, TextInput},
-        Alignment, Length,
+        Alignment, Element, Length,
     },
     iced_aw::{Card, Modal},
     rusqlite::params,
@@ -71,7 +70,7 @@ impl Manager {
     }
 }
 
-impl Component<Message, Renderer> for Manager {
+impl Component<Message> for Manager {
     type State = State;
     type Event = Event;
 
@@ -247,7 +246,7 @@ impl Component<Message, Renderer> for Manager {
                         Text::new("Lösendord"),
                         TextInput::new("", &password)
                             .on_input(Event::UpdatePassword)
-                            .password()
+                            .secure(true)
                             .padding(DEF_PADDING)
                             .on_submit(Event::Login),
                         Button::new(Text::new("Logga In"))
