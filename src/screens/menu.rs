@@ -12,7 +12,7 @@ use {
     chrono::Local,
     iced::{
         widget::{Button, Checkbox, Component, Container, Responsive, Rule, Scrollable, Space},
-        Alignment, Element, Length,
+        Alignment, Element, Length, Size,
     },
     iced_aw::Wrap,
     rusqlite::params,
@@ -132,14 +132,18 @@ impl Component<Message> for Menu {
                 .width(Length::Fixed(RECEIPT_WIDTH))
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
-            Responsive::new(|_| {
+            Responsive::new(|Size { width, .. }| {
                 Scrollable::new(
                     Wrap::with_elements(
                         self.menu
                             .iter()
                             .cloned()
                             .enumerate()
-                            .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
+                            .map(|(i, item)| {
+                                item.on_press(Event::SellItem(i))
+                                    .width(Length::Fixed(width / 3.0 - 2.0 * DEF_PADDING as f32))
+                                    .into()
+                            })
                             .chain(
                                 std::iter::repeat_with(|| {
                                     Space::with_width(Length::FillPortion(1)).into()

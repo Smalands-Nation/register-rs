@@ -100,6 +100,7 @@ impl<'a, M> Component<M> for Calc<'a, M> {
             )
             .spacing(DEF_PADDING),
         ]
+        .height(Length::Shrink)
         .align_items(Alignment::Center)
         .into()
     }

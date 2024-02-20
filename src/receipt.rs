@@ -2,10 +2,9 @@ use {
     crate::{
         item::Item,
         payment::Payment,
-        theme::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{Container, DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
     },
-    frost::clickable::Clickable,
     iced::{
         widget::{scrollable, Button, Column, Component, Scrollable, Text},
         Element, Length,
@@ -98,13 +97,15 @@ where
                 .direction(scrollable::Direction::Vertical(
                     scrollable::Properties::new()
                 ))
-                .height(Length::Fill),
+                .height(Length::Fill)
+                .width(Length::Fill),
                 Text::new(format!("Total: {}kr", self.sum)),
             ]
             .width(Length::Fixed(RECEIPT_WIDTH))
             .spacing(DEF_PADDING),
         )
         .padding(0)
+        .style(Container::Empty)
         .height(Length::Fill)
         .on_press(true)
         .into()

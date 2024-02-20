@@ -1,7 +1,7 @@
 use {
     super::{Category, ItemKind},
     crate::{
-        theme::{Container, DEF_PADDING, ITEM_WIDTH, SMALL_PADDING},
+        theme::{Container, DEF_PADDING, RECEIPT_WIDTH, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
     },
     iced::{
@@ -18,6 +18,7 @@ pub struct Item<'a, M> {
     kind: ItemKind,
     on_press: Option<M>,
     on_toggle: Option<Box<dyn Fn(bool) -> M + 'a>>,
+    width: Length,
 }
 
 impl<'a, M> Item<'a, M> {
@@ -33,6 +34,11 @@ impl<'a, M> Item<'a, M> {
         self.on_toggle = Some(Box::new(msg));
         self
     }
+
+    pub fn width(mut self, width: Length) -> Self {
+        self.width = width;
+        self
+    }
 }
 
 impl<M> From<super::Item> for Item<'_, M> {
@@ -44,6 +50,7 @@ impl<M> From<super::Item> for Item<'_, M> {
             kind: value.kind,
             on_press: None,
             on_toggle: None,
+            width: Length::Fixed(RECEIPT_WIDTH),
         }
     }
 }
@@ -90,10 +97,11 @@ where
                     column![]
                 }
             ]
+            .height(Length::Shrink)
             .spacing(SMALL_PADDING),
         )
         .padding(DEF_PADDING)
-        .width(Length::Fixed(ITEM_WIDTH))
+        .width(self.width)
         .style(if self.on_press.is_some() {
             self.category.into()
         } else {
