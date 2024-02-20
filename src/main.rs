@@ -2,14 +2,14 @@ use {
     crate::{
         icons::Icon,
         screens::{Message, Tab, TabId},
-        theme::{BORDER_WIDTH, DEF_PADDING, DEF_TEXT},
+        theme::{DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
     chrono::Local,
     iced::{
         font,
         widget::{Container, Text},
-        window, Application, Command, Font, Length, Settings,
+        window, Application, Command, Element, Font, Length, Pixels, Settings, Size,
     },
     iced_aw::{Card, Modal, TabLabel, Tabs},
     lazy_static::lazy_static,
@@ -29,9 +29,6 @@ pub mod screens;
 pub mod theme;
 pub mod widgets;
 
-pub type Renderer = iced::Renderer<theme::Theme>;
-pub type Element<'a, M> = iced::Element<'a, M, Renderer>;
-
 #[macro_export]
 macro_rules! command {
     ($msg:expr) => {
@@ -49,11 +46,14 @@ lazy_static! {
 pub fn main() -> iced::Result {
     App::run(Settings {
         window: window::Settings {
-            min_size: Some((1360, 600)),
+            min_size: Some(Size {
+                width: 1360.0,
+                height: 600.0,
+            }),
             ..window::Settings::default()
         },
         default_font: FONT,
-        default_text_size: DEF_TEXT,
+        default_text_size: Pixels(DEF_TEXT),
         ..Settings::default()
     })
 }
@@ -67,7 +67,7 @@ impl Application for App {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Flags = ();
-    type Theme = theme::Theme;
+    type Theme = iced::Theme;
 
     fn new(_: Self::Flags) -> (Self, Command<Self::Message>) {
         (
@@ -150,7 +150,7 @@ impl Application for App {
                         )
                         .set_active_tab(&self.tab.id()),
                 )
-                .padding(BORDER_WIDTH as u16),
+                .padding(2),
             ],
             self.modal.clone().map(move |(title, content)| {
                 Card::new(Text::new(title), SMALL_TEXT::new(content))

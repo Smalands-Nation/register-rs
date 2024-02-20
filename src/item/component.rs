@@ -3,13 +3,12 @@ use {
     crate::{
         theme::{Container, DEF_PADDING, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
-        Element, Renderer,
     },
     frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
         widget::{Checkbox, Column, Component, Text},
-        Length,
+        Element, Length,
     },
 };
 
@@ -56,7 +55,7 @@ pub enum Event {
     Toggle(bool),
 }
 
-impl<M> Component<M, Renderer> for Item<'_, M>
+impl<M> Component<M> for Item<'_, M>
 where
     M: Clone,
 {
@@ -98,6 +97,7 @@ where
                         Checkbox::new(
                             "I Lager",
                             stock,
+                        ).on_toggle(
                             Event::Toggle,
                         ),
                     ]

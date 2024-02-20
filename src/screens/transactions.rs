@@ -8,13 +8,12 @@ use {
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, row, SquareButton},
-        Element, Renderer,
     },
     chrono::{DateTime, Local},
     frost::clickable::Clickable,
     iced::{
         widget::{Component, Container, Row, Rule, Space},
-        Length,
+        Element, Length,
     },
     indexmap::IndexMap,
 };
@@ -59,7 +58,7 @@ impl Transactions {
     }
 }
 
-impl Component<Message, Renderer> for Transactions {
+impl Component<Message> for Transactions {
     type State = State;
     type Event = Event;
 
@@ -117,8 +116,7 @@ impl Component<Message, Renderer> for Transactions {
                                 .padding(DEF_PADDING)
                                 .style(theme::Container::Border)
                                 .into()
-                        },)
-                        .collect()
+                        })
                 )
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING),

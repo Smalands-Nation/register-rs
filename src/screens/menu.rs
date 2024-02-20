@@ -8,13 +8,12 @@ use {
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, column, row, SquareButton, BIG_TEXT},
-        Element, Renderer,
     },
     chrono::Local,
     frost::wrap::{Direction, Wrap},
     iced::{
         widget::{Button, Checkbox, Component, Container, Rule, Scrollable, Space},
-        Alignment, Length,
+        Alignment, Element, Length,
     },
     rusqlite::params,
 };
@@ -55,7 +54,7 @@ impl Menu {
     }
 }
 
-impl Component<Message, Renderer> for Menu {
+impl Component<Message> for Menu {
     type State = State;
     type Event = Event;
 
@@ -164,7 +163,7 @@ impl Component<Message, Renderer> for Menu {
                 ]
                 .align_items(Alignment::Center),
                 receipt,
-                Checkbox::new("Printa kvitto", print, Event::TogglePrint),
+                Checkbox::new("Printa kvitto", print).on_toggle(Event::TogglePrint),
                 row![
                     #nopad
                     Button::new(Payment::Swish)

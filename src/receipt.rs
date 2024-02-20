@@ -4,12 +4,11 @@ use {
         payment::Payment,
         theme::{DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
-        Element, Renderer,
     },
     frost::clickable::Clickable,
     iced::{
         widget::{scrollable, Column, Component, Scrollable, Text},
-        Length,
+        Element, Length,
     },
     indexmap::IndexSet,
 };
@@ -72,7 +71,7 @@ where
     }
 }
 
-impl<'a, M> Component<M, Renderer> for Receipt<M>
+impl<'a, M> Component<M> for Receipt<M>
 where
     M: Clone + std::fmt::Debug + 'a,
 {
@@ -97,7 +96,6 @@ where
                             .items
                             .iter()
                             .map(|item| Element::from(item.clone()))
-                            .collect(),
                     )
                     .spacing(DEF_PADDING),
                 )

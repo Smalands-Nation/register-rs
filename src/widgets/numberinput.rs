@@ -1,6 +1,9 @@
 use {
-    crate::{theme::DEF_PADDING, Element, Renderer},
-    iced::widget::{Component, TextInput},
+    crate::theme::DEF_PADDING,
+    iced::{
+        widget::{Component, TextInput},
+        Element,
+    },
     std::{cmp::PartialOrd, fmt::Display, ops::RangeInclusive, str::FromStr},
 };
 
@@ -28,7 +31,7 @@ pub enum Event {
     Input(String),
 }
 
-impl<'a, N, M> Component<M, Renderer> for NumberInput<'a, N, M>
+impl<'a, N, M> Component<M> for NumberInput<'a, N, M>
 where
     N: Display + FromStr + Default + PartialOrd + Copy,
     M: Clone,
