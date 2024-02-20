@@ -1,7 +1,7 @@
 use {
     crate::{
         theme::DEF_PADDING,
-        widgets::{column, row, SMALL_TEXT},
+        widgets::{column, padded_column, padded_row, row, SMALL_TEXT},
     },
     iced::{
         widget::{Component, Container, Text},
@@ -35,10 +35,9 @@ impl<M> Component<M> for Info {
 
     fn view(&self, _: &Self::State) -> Element<Self::Event> {
         column![
-            #nopad
             Container::new(
-                column![
-                    row![
+                padded_column![
+                    padded_row![
                         Text::new("Smålands_register version"),
                         Badge::new(Text::new(self.current))
                             .style(BadgeStyles::Info)
@@ -46,14 +45,14 @@ impl<M> Component<M> for Info {
                     ]
                     .align_items(Alignment::Center),
                     match &self.status {
-                        Status::Updated(ver) => row![
+                        Status::Updated(ver) => padded_row![
                             Text::new("Ny version"),
                             Badge::new(Text::new(ver))
                                 .style(BadgeStyles::Warning)
                                 .padding(DEF_PADDING),
                             Text::new("installeras vid omstart."),
                         ],
-                        Status::UpToDate(_) => row![
+                        Status::UpToDate(_) => padded_row![
                             Text::new("Detta är"),
                             Badge::new(Text::new("Senaste versionen."))
                                 .style(BadgeStyles::Success)

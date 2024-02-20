@@ -7,7 +7,7 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{calc::Calc, column, row, SquareButton, BIG_TEXT},
+        widgets::{calc::Calc, column, padded_column, row, SquareButton, BIG_TEXT},
     },
     chrono::Local,
     iced::{
@@ -125,7 +125,6 @@ impl Component<Message> for Menu {
             print,
         } = state.clone();
         row![
-            #nopad
             Container::new(Calc::new(multiplier, Event::Multiplier))
                 .padding(DEF_PADDING)
                 .center_x()
@@ -134,30 +133,30 @@ impl Component<Message> for Menu {
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
             Responsive::new(|_| {
-            Scrollable::new(
-                Wrap::with_elements(
-                    self.menu
-                        .iter()
-                        .cloned()
-                        .enumerate()
-                        .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
-                        .chain(
-                            std::iter::repeat_with(|| {
-                                Space::with_width(Length::FillPortion(1)).into()
-                            })
-                            .take(3 - self.menu.len() % 3)
-                        )
-                        .collect(),
+                Scrollable::new(
+                    Wrap::with_elements(
+                        self.menu
+                            .iter()
+                            .cloned()
+                            .enumerate()
+                            .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
+                            .chain(
+                                std::iter::repeat_with(|| {
+                                    Space::with_width(Length::FillPortion(1)).into()
+                                })
+                                .take(3 - self.menu.len() % 3),
+                            )
+                            .collect(),
+                    )
+                    .spacing(DEF_PADDING as f32)
+                    .line_spacing(DEF_PADDING as f32)
+                    .padding(DEF_PADDING as f32),
                 )
-                .spacing(DEF_PADDING as f32)
-                .line_spacing(DEF_PADDING as f32)
-                .padding(DEF_PADDING as f32),
-            ).into()
+                .into()
             }),
             Rule::vertical(DEF_PADDING),
-            column![
+            padded_column![
                 row![
-                    #nopad
                     BIG_TEXT::new("Kvitto"),
                     Space::with_width(Length::Fill),
                     SquareButton::icon(Icon::Cross).on_press(Event::ClearReceipt),
@@ -166,7 +165,6 @@ impl Component<Message> for Menu {
                 receipt,
                 Checkbox::new("Printa kvitto", print).on_toggle(Event::TogglePrint),
                 row![
-                    #nopad
                     Button::new(Payment::Swish)
                         .on_press(Event::Sell(Payment::Swish))
                         .padding(DEF_PADDING)

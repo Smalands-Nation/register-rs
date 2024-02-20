@@ -6,7 +6,7 @@ use {
         payment::Payment,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, BIG_TEXT, SMALL_TEXT},
+        widgets::{column, padded_column, padded_row, row, BIG_TEXT, SMALL_TEXT},
     },
     chrono::{Date, Local, TimeZone},
     iced::{
@@ -120,35 +120,26 @@ impl Component<Message> for Sales {
             state.is_some(),
             self.from.naive_local(),
             row![
-                #nopad
                 if !self.receipts.is_empty() {
-                    Row::with_children(
-                        self.receipts
-                            .iter()
-                            .map(|(payment, rec)| {
-                                Container::new(
-                                    column![
-                                        #nopad
-                                        BIG_TEXT::new(String::from(*payment)),
-                                        Space::new(
-                                            Length::Fill,
-                                            Length::Fixed(SMALL_TEXT::size() as f32),
-                                        ),
-                                        rec.clone(),
-                                    ]
-                                    .width(Length::Fixed(RECEIPT_WIDTH))
-                                    .padding(DEF_PADDING),
-                                )
-                                .style(theme::Container::Border)
-                                .into()
-                            })
-                    )
+                    Row::with_children(self.receipts.iter().map(|(payment, rec)| {
+                        Container::new(
+                            column![
+                                BIG_TEXT::new(String::from(*payment)),
+                                Space::new(Length::Fill, Length::Fixed(SMALL_TEXT::size() as f32),),
+                                rec.clone(),
+                            ]
+                            .width(Length::Fixed(RECEIPT_WIDTH))
+                            .padding(DEF_PADDING),
+                        )
+                        .style(theme::Container::Border)
+                        .into()
+                    }))
                     .width(Length::Fill)
                     .align_items(Alignment::Center)
                     .padding(DEF_PADDING)
                     .spacing(DEF_PADDING)
                 } else {
-                    row![
+                    padded_row![
                         Space::with_width(Length::Fill),
                         BIG_TEXT::new("Ingen försäljning än"),
                         Space::with_width(Length::Fill),
@@ -158,7 +149,7 @@ impl Component<Message> for Sales {
                     .align_items(Alignment::Center)
                 },
                 Rule::vertical(DEF_PADDING),
-                column![
+                padded_column![
                     BIG_TEXT::new("Visa Försäljning"),
                     Space::with_height(Length::Fill),
                     Text::new("Fr.o.m."),

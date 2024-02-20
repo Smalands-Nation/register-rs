@@ -89,17 +89,15 @@ where
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
         Button::new(
             column![
-                #nopad
                 Scrollable::new(
                     Column::with_children(
-                        self
-                            .items
-                            .iter()
-                            .map(|item| Element::from(item.clone()))
+                        self.items.iter().map(|item| Element::from(item.clone()))
                     )
                     .spacing(DEF_PADDING),
                 )
-                .direction(scrollable::Direction::Vertical(scrollable::Properties::new()))
+                .direction(scrollable::Direction::Vertical(
+                    scrollable::Properties::new()
+                ))
                 .height(Length::Fill),
                 Text::new(format!("Total: {}kr", self.sum)),
             ]

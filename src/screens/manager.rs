@@ -4,7 +4,7 @@ use {
         icons::Icon,
         item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, NumberInput, SquareButton, BIG_TEXT},
+        widgets::{column, padded_column, padded_row, row, NumberInput, SquareButton, BIG_TEXT},
     },
     frost::wrap::{Direction, Wrap},
     iced::{
@@ -168,7 +168,6 @@ impl Component<Message> for Manager {
         let password = state.password.clone();
         Modal::new(
             row![
-                #nopad
                 Scrollable::new(
                     Wrap::with_children(
                         Direction::Row(3),
@@ -176,11 +175,10 @@ impl Component<Message> for Manager {
                             .iter()
                             .cloned()
                             .enumerate()
-                            .map(|(i ,item)| {
-                                item
-                                .on_press(Event::EditItem(i))
-                                .on_toggle(move |b| Event::ToggleItem(i, b))
-                                .into()
+                            .map(|(i, item)| {
+                                item.on_press(Event::EditItem(i))
+                                    .on_toggle(move |b| Event::ToggleItem(i, b))
+                                    .into()
                             })
                             .chain(
                                 std::iter::repeat_with(|| {
@@ -195,9 +193,8 @@ impl Component<Message> for Manager {
                     .padding(DEF_PADDING),
                 ),
                 Rule::vertical(DEF_PADDING),
-                column![
+                padded_column![
                     row![
-                        #nopad
                         BIG_TEXT::new(match &state.mode {
                             Mode::New => String::from("Ny"),
                             Mode::Update(v) => {
@@ -226,7 +223,6 @@ impl Component<Message> for Manager {
                             .width(Length::Fill)
                     } else {
                         Button::new(row![
-                            #nopad
                             BIG_TEXT::new("Spara"),
                             Space::with_width(Length::Fill),
                             Icon::Lock,
@@ -242,7 +238,7 @@ impl Component<Message> for Manager {
             state.login_modal.then(move || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
-                    column![
+                    padded_column![
                         Text::new("Lösendord"),
                         TextInput::new("", &password)
                             .on_input(Event::UpdatePassword)

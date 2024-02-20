@@ -9,29 +9,31 @@ pub type BIG_TEXT = frost::text::Text<45>;
 #[allow(non_camel_case_types)]
 pub type SMALL_TEXT = frost::text::Text<20>;
 
-//TODO scrap these macros, not having to write into is not worth the broken formatting
-//make functions here to create padded ones and migrate the code to use fns in widget instead of
-//<Widget>::New everywhere possible
 macro_rules! _column {
-    (#nopad $($elem:expr),+ $(,)?) => {
-        ::iced::widget::Column::with_children(vec![$($elem.into()),*])
+    ($($elem:expr),* $(,)?) => {
+        ::iced::widget::column!( $($elem),*).height(::iced::Length::Fill)
     };
+}
+macro_rules! _row {
+    ($($elem:expr),* $(,)?) => {
+        ::iced::widget::row!( $($elem),*).width(::iced::Length::Fill)
+    };
+}
+
+macro_rules! padded_column {
     ($($elem:expr),+ $(,)?) => {
-        $crate::widgets::column!(#nopad $($elem),*)
+        $crate::widgets::column!( $($elem),*)
             .spacing($crate::theme::DEF_PADDING)
             .padding($crate::theme::DEF_PADDING)
     };
 }
-macro_rules! _row {
-    (#nopad $($elem:expr),+ $(,)?) => {
-        ::iced::widget::Row::with_children(vec![$($elem.into()),*])
-    };
+macro_rules! padded_row {
     ($($elem:expr),+ $(,)?) => {
-        $crate::widgets::row!(#nopad $($elem),*)
+        $crate::widgets::row!( $($elem),*)
             .spacing($crate::theme::DEF_PADDING)
             .padding($crate::theme::DEF_PADDING)
     };
 }
 
 //NOTE reexport with renames to avoid conflict with std
-pub(crate) use {_column as column, _row as row};
+pub(crate) use {_column as column, _row as row, padded_column, padded_row};

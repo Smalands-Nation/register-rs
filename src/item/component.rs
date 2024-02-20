@@ -4,10 +4,9 @@ use {
         theme::{Container, DEF_PADDING, ITEM_WIDTH, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
     },
-    frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
-        widget::{Button, Checkbox, Column, Component, Text},
+        widget::{Button, Checkbox, Component, Text},
         Element, Length,
     },
 };
@@ -72,37 +71,23 @@ where
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
         Button::new(
             column![
-                #nopad
                 Text::new(self.name.to_string()),
                 match self.kind {
                     ItemKind::Regular { num: 0 } | ItemKind::Special | ItemKind::InStock(_) =>
-                        row![
-                            #nopad
-                            SMALL_TEXT::new(format!("{} kr", self.price))
-                                .width(Length::Fill)
-                                .horizontal_alignment(Horizontal::Left),
-                        ],
+                        row![SMALL_TEXT::new(format!("{} kr", self.price))
+                            .width(Length::Fill)
+                            .horizontal_alignment(Horizontal::Left)],
                     ItemKind::Regular { num } => row![
-                        #nopad
                         SMALL_TEXT::new(format!("{}x{} kr", num, self.price)),
-                        SMALL_TEXT::new(format!("{} kr", num* self.price))
+                        SMALL_TEXT::new(format!("{} kr", num * self.price))
                             .width(Length::Fill)
                             .horizontal_alignment(Horizontal::Right),
                     ],
                 },
-
                 if let ItemKind::InStock(stock) = self.kind {
-                    column![
-                        #nopad
-                        Checkbox::new(
-                            "I Lager",
-                            stock,
-                        ).on_toggle(
-                            Event::Toggle,
-                        ),
-                    ]
+                    column![Checkbox::new("I Lager", stock).on_toggle(Event::Toggle)]
                 } else {
-                    Column::new()
+                    column![]
                 }
             ]
             .spacing(SMALL_PADDING),

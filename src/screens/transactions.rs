@@ -7,7 +7,7 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, SquareButton},
+        widgets::{column, padded_column, row, SquareButton},
     },
     chrono::{DateTime, Local},
     frost::clickable::Clickable,
@@ -97,27 +97,21 @@ impl Component<Message> for Transactions {
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         row![
-            #nopad
             Container::new(row![
-                #nopad
                 //TODO Clickable::new(Icon::Left)
                 //    .width(Length::Fill)
                 //    .height(Length::Fill)
                 //    .center_x()
                 //    .center_y()
                 //    .on_press(Event::ScrollLeft),
-                Row::with_children(
-                    self.receipts
-                        .iter()
-                        .skip(state.offset * 3)
-                        .take(3)
-                        .map(|(t, rec)| {
-                            Container::new(rec.clone().on_press(Event::Select(*t)))
-                                .padding(DEF_PADDING)
-                                .style(theme::Container::Border)
-                                .into()
-                        })
-                )
+                Row::with_children(self.receipts.iter().skip(state.offset * 3).take(3).map(
+                    |(t, rec)| {
+                        Container::new(rec.clone().on_press(Event::Select(*t)))
+                            .padding(DEF_PADDING)
+                            .style(theme::Container::Border)
+                            .into()
+                    }
+                ))
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING),
                 //TODO Clickable::new(Icon::Right)
@@ -130,13 +124,12 @@ impl Component<Message> for Transactions {
             .center_x()
             .width(Length::Fill),
             Rule::vertical(DEF_PADDING),
-            column![
+            padded_column![
                 match state.selected {
                     Some((_, ref rec)) => Element::from(rec.clone()),
                     None => Space::new(Length::Fixed(RECEIPT_WIDTH), Length::Fill).into(),
                 },
                 row![
-                    #nopad
                     SquareButton::icon(Icon::Cross).on_press(Event::Deselect),
                     Space::with_width(Length::Fill),
                     SquareButton::icon(Icon::Print).on_press(Event::Print),
