@@ -7,7 +7,7 @@ use {
     frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
-        widget::{Checkbox, Column, Component, Text},
+        widget::{Button, Checkbox, Column, Component, Text},
         Element, Length,
     },
 };
@@ -70,7 +70,7 @@ where
     }
 
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
-        Clickable::new(
+        Button::new(
             column![
                 #nopad
                 Text::new(self.name.to_string()),

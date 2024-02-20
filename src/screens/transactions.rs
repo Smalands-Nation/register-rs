@@ -100,12 +100,12 @@ impl Component<Message> for Transactions {
             #nopad
             Container::new(row![
                 #nopad
-                Clickable::new(Icon::Left)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .center_x()
-                    .center_y()
-                    .on_press(Event::ScrollLeft),
+                //TODO Clickable::new(Icon::Left)
+                //    .width(Length::Fill)
+                //    .height(Length::Fill)
+                //    .center_x()
+                //    .center_y()
+                //    .on_press(Event::ScrollLeft),
                 Row::with_children(
                     self.receipts
                         .iter()
@@ -120,12 +120,12 @@ impl Component<Message> for Transactions {
                 )
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING),
-                Clickable::new(Icon::Right)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .center_x()
-                    .center_y()
-                    .on_press(Event::ScrollRight),
+                //TODO Clickable::new(Icon::Right)
+                //    .width(Length::Fill)
+                //    .height(Length::Fill)
+                //    .center_x()
+                //    .center_y()
+                //    .on_press(Event::ScrollRight),
             ])
             .center_x()
             .width(Length::Fill),

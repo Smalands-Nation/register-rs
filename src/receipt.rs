@@ -7,7 +7,7 @@ use {
     },
     frost::clickable::Clickable,
     iced::{
-        widget::{scrollable, Column, Component, Scrollable, Text},
+        widget::{scrollable, Button, Column, Component, Scrollable, Text},
         Element, Length,
     },
     indexmap::IndexSet,
@@ -87,7 +87,7 @@ where
     }
 
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
-        Clickable::new(
+        Button::new(
             column![
                 #nopad
                 Scrollable::new(

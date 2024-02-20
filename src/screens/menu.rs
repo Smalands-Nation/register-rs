@@ -133,26 +133,26 @@ impl Component<Message> for Menu {
                 .width(Length::Fixed(RECEIPT_WIDTH))
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
-            Scrollable::new(
-                Wrap::with_children(
-                    Direction::Row(3),
-                    self.menu
-                        .iter()
-                        .cloned()
-                        .enumerate()
-                        .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
-                        .chain(
-                            std::iter::repeat_with(|| {
-                                Space::with_width(Length::FillPortion(1)).into()
-                            })
-                            .take(3 - self.menu.len() % 3)
-                        )
-                        .collect(),
-                )
-                .width(Length::Fill)
-                .spacing(DEF_PADDING)
-                .padding(DEF_PADDING),
-            ),
+            //Scrollable::new(
+            //    Wrap::with_children(
+            //        Direction::Row(3),
+            //        self.menu
+            //            .iter()
+            //            .cloned()
+            //            .enumerate()
+            //            .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
+            //            .chain(
+            //                std::iter::repeat_with(|| {
+            //                    Space::with_width(Length::FillPortion(1)).into()
+            //                })
+            //                .take(3 - self.menu.len() % 3)
+            //            )
+            //            .collect(),
+            //    )
+            //    .width(Length::Fill)
+            //    .spacing(DEF_PADDING)
+            //    .padding(DEF_PADDING),
+            //),
             Rule::vertical(DEF_PADDING),
             column![
                 row![

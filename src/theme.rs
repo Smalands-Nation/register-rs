@@ -9,7 +9,7 @@ pub const DEF_PADDING: u16 = 10;
 pub const SMALL_PADDING: u16 = 5;
 
 pub const RECEIPT_WIDTH: f32 = 300.0;
-pub const SQUARE_BUTTON: f32 = 15.0 + crate::widgets::BIG_TEXT::size() as f32;
+pub const SQUARE_BUTTON: f32 = 25.0 + crate::widgets::BIG_TEXT::size() as f32;
 
 #[derive(Default, Clone, Copy)]
 pub enum Container {

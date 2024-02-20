@@ -82,8 +82,8 @@ impl<'a, M> Component<M> for Calc<'a, M> {
                 .width(Length::Fill)
                 .horizontal_alignment(Horizontal::Right),
             ]
-            .height(Length::Fixed(DEF_TEXT))
-            .width(Length::Fixed(SQUARE_BUTTON * 3.0 + DEF_PADDING as f32 * 2.0)),
+            .height(Length::Shrink)
+            .width(Length::Fill),
             Space::with_height(Length::Fixed(DEF_PADDING as f32)),
             Wrap::with_children(
                 Direction::Row(3),
