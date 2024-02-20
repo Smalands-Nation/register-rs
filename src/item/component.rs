@@ -1,7 +1,7 @@
 use {
     super::{Category, ItemKind},
     crate::{
-        theme::{Container, DEF_PADDING, SMALL_PADDING},
+        theme::{Container, DEF_PADDING, ITEM_WIDTH, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
     },
     frost::clickable::Clickable,
@@ -108,7 +108,7 @@ where
             .spacing(SMALL_PADDING),
         )
         .padding(DEF_PADDING)
-        .width(Length::Fill)
+        .width(Length::Fixed(ITEM_WIDTH))
         .style(if self.on_press.is_some() {
             self.category.into()
         } else {

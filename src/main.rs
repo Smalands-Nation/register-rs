@@ -117,41 +117,41 @@ impl Application for App {
 
     fn view(&self) -> Element<Self::Message> {
         Modal::new(
-            column![
-                #nopad
-                Container::new(
-                    Tabs::new(|id| Message::SwapTab(id))
-                        .icon_font(icons::ICON_FONT)
-                        .height(Length::Shrink)
-                        .push(
-                            TabId::Menu,
-                            TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
-                            self.tab.as_menu()
-                        )
-                        .push(
-                            TabId::Transactions,
-                            TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
-                            self.tab.as_transactions(),
-                        )
-                        .push(
-                            TabId::Sales {from: Local::today(), to: Local::today()},
-                            TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
-                            self.tab.as_sales(),
-                        )
-                        .push(
-                            TabId::Manager,
-                            TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
-                            self.tab.as_manager(),
-                        )
-                        .push(
-                            TabId::Info,
-                            TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
-                            self.tab.as_info(),
-                        )
-                        .set_active_tab(&self.tab.id()),
-                )
-                .padding(2),
-            ],
+            Container::new(
+                Tabs::new(|id| Message::SwapTab(id))
+                    .icon_font(icons::ICON_FONT)
+                    .height(Length::Shrink)
+                    .push(
+                        TabId::Menu,
+                        TabLabel::IconText(Icon::Menu.into(), String::from("Meny")),
+                        self.tab.as_menu(),
+                    )
+                    .push(
+                        TabId::Transactions,
+                        TabLabel::IconText(Icon::Receipt.into(), String::from("Kvitton")),
+                        self.tab.as_transactions(),
+                    )
+                    .push(
+                        TabId::Sales {
+                            from: Local::today(),
+                            to: Local::today(),
+                        },
+                        TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
+                        self.tab.as_sales(),
+                    )
+                    .push(
+                        TabId::Manager,
+                        TabLabel::IconText(Icon::Settings.into(), String::from("Hantera")),
+                        self.tab.as_manager(),
+                    )
+                    .push(
+                        TabId::Info,
+                        TabLabel::IconText(Icon::Info.into(), String::from("Systeminfo")),
+                        self.tab.as_info(),
+                    )
+                    .set_active_tab(&self.tab.id()),
+            )
+            .padding(2),
             self.modal.clone().map(move |(title, content)| {
                 Card::new(Text::new(title), SMALL_TEXT::new(content))
                     .max_width(650.0)

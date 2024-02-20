@@ -52,6 +52,7 @@ features = [
     "number_input", 
     "date_picker",
     "badge",
+    "wrap"
 ]
 
 [dependencies.genpdf]
