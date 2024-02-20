@@ -96,7 +96,6 @@ where
                             .items
                             .iter()
                             .map(|item| Element::from(item.clone()))
-                            .collect(),
                     )
                     .spacing(DEF_PADDING),
                 )

@@ -116,8 +116,7 @@ impl Component<Message> for Transactions {
                                 .padding(DEF_PADDING)
                                 .style(theme::Container::Border)
                                 .into()
-                        },)
-                        .collect()
+                        })
                 )
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING),

@@ -19,7 +19,6 @@ lazy_static = "1.4.0"
 rusqlite_migration = "1.1.0"
 futures = "0.3.30"
 
-palette="0.7.1"
 frost = {git = "https://github.com/Strosel/frost", tag="v0.12.0"}
 
 [dependencies.self_update]

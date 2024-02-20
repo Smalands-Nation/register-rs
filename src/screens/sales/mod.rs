@@ -142,7 +142,6 @@ impl Component<Message> for Sales {
                                 .style(theme::Container::Border)
                                 .into()
                             })
-                            .collect(),
                     )
                     .width(Length::Fill)
                     .align_items(Alignment::Center)
