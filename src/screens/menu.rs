@@ -70,8 +70,12 @@ impl Component<Message> for Menu {
                 let mut item = self.menu[i].clone();
                 if let Some(0) = item.has_amount() {
                     item.set_amount(state.multiplier as i32);
+                    state.receipt.add(item);
+                } else if item.is_special() {
+                    for _ in 0..state.multiplier {
+                        state.receipt.add(item.clone());
+                    }
                 }
-                state.receipt.add(item);
                 state.multiplier = 1;
             }
             Event::TogglePrint(b) => state.print = b,
