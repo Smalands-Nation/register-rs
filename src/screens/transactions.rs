@@ -7,12 +7,11 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, padded_column, row, SquareButton},
+        widgets::{padded_column, row, SquareButton},
     },
     chrono::{DateTime, Local},
-    frost::clickable::Clickable,
     iced::{
-        widget::{Component, Container, Row, Rule, Space},
+        widget::{scrollable::Direction, Component, Container, Row, Rule, Scrollable, Space},
         Element, Length,
     },
     indexmap::IndexMap,
@@ -97,31 +96,17 @@ impl Component<Message> for Transactions {
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         row![
-            Container::new(row![
-                //TODO Clickable::new(Icon::Left)
-                //    .width(Length::Fill)
-                //    .height(Length::Fill)
-                //    .center_x()
-                //    .center_y()
-                //    .on_press(Event::ScrollLeft),
-                Row::with_children(self.receipts.iter().skip(state.offset * 3).take(3).map(
-                    |(t, rec)| {
-                        Container::new(rec.clone().on_press(Event::Select(*t)))
-                            .padding(DEF_PADDING)
-                            .style(theme::Container::Border)
-                            .into()
-                    }
-                ))
+            Scrollable::new(
+                Row::with_children(self.receipts.iter().map(|(t, rec)| {
+                    Container::new(rec.clone().on_press(Event::Select(*t)))
+                        .padding(DEF_PADDING)
+                        .style(theme::Container::Border)
+                        .into()
+                }))
                 .spacing(DEF_PADDING)
-                .padding(DEF_PADDING),
-                //TODO Clickable::new(Icon::Right)
-                //    .width(Length::Fill)
-                //    .height(Length::Fill)
-                //    .center_x()
-                //    .center_y()
-                //    .on_press(Event::ScrollRight),
-            ])
-            .center_x()
+                .padding(DEF_PADDING)
+            )
+            .direction(Direction::Horizontal(Default::default()))
             .width(Length::Fill),
             Rule::vertical(DEF_PADDING),
             padded_column![
