@@ -2,7 +2,7 @@ use {
     crate::{
         icons::Icon,
         screens::{Message, Tab, TabId},
-        theme::{DEF_PADDING, DEF_TEXT},
+        theme::{TabStyle, DEF_PADDING, DEF_TEXT},
         widgets::{column, SMALL_TEXT},
     },
     chrono::Local,
@@ -118,7 +118,10 @@ impl Application for App {
     fn view(&self) -> Element<Self::Message> {
         Modal::new(
             Container::new(
-                Tabs::new(|id| Message::SwapTab(id))
+                Tabs::new(Message::SwapTab)
+                    .tab_bar_style(TabStyle.into())
+                    .text_size(DEF_TEXT)
+                    .icon_size(DEF_TEXT)
                     .icon_font(icons::ICON_FONT)
                     .height(Length::Shrink)
                     .push(

@@ -1,6 +1,9 @@
-use iced::{
-    widget::{button, container},
-    Background, Color,
+use {
+    iced::{
+        widget::{button, container},
+        Background, Color,
+    },
+    iced_aw::style::tab_bar,
 };
 
 pub const DEF_TEXT: f32 = 35.0;
@@ -83,5 +86,43 @@ impl button::StyleSheet for Container {
 
     fn disabled(&self, style: &Self::Style) -> button::Appearance {
         Self::active(self, style)
+    }
+}
+
+pub struct TabStyle;
+
+impl From<TabStyle> for tab_bar::TabBarStyles {
+    fn from(value: TabStyle) -> Self {
+        Self::Custom(std::rc::Rc::new(value))
+    }
+}
+
+impl tab_bar::StyleSheet for TabStyle {
+    type Style = iced::Theme;
+
+    fn active(&self, _style: &Self::Style, is_active: bool) -> tab_bar::Appearance {
+        tab_bar::Appearance {
+            border_color: Some(Color::TRANSPARENT),
+            border_width: 4.0,
+            tab_label_background: if is_active {
+                Background::Color(Color::WHITE)
+            } else {
+                Background::Color([0.8, 0.8, 0.8].into())
+            },
+            tab_label_border_color: Color::TRANSPARENT,
+            tab_label_border_width: 2.0,
+            ..Default::default()
+        }
+    }
+
+    fn hovered(&self, style: &Self::Style, is_active: bool) -> tab_bar::Appearance {
+        tab_bar::Appearance {
+            tab_label_background: if is_active {
+                Background::Color(Color::WHITE)
+            } else {
+                Background::Color([0.9, 0.9, 0.9].into())
+            },
+            ..self.active(style, is_active)
+        }
     }
 }
