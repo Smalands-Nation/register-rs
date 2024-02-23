@@ -171,7 +171,10 @@ impl Component<Message> for Menu {
                 ]
                 .align_items(Alignment::Center),
                 receipt,
-                Checkbox::new("Printa kvitto", print).on_toggle(Event::TogglePrint),
+                Checkbox::new("Printa kvitto", print)
+                    .text_size(30)
+                    .width(Length::Fill)
+                    .on_toggle(Event::TogglePrint),
                 row![
                     Button::new(Payment::Swish)
                         .on_press(Event::Sell(Payment::Swish))

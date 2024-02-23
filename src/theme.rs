@@ -6,7 +6,7 @@ use {
     iced_aw::style::tab_bar,
 };
 
-pub const DEF_TEXT: f32 = 35.0;
+pub const DEF_TEXT: f32 = 33.0;
 
 pub const DEF_PADDING: u16 = 10;
 pub const SMALL_PADDING: u16 = 5;

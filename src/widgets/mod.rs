@@ -5,9 +5,9 @@ pub mod square_button;
 pub use {numberinput::NumberInput, square_button::SquareButton};
 
 #[allow(non_camel_case_types)]
-pub type BIG_TEXT = frost::text::Text<45>;
+pub type BIG_TEXT = frost::text::Text<43>;
 #[allow(non_camel_case_types)]
-pub type SMALL_TEXT = frost::text::Text<20>;
+pub type SMALL_TEXT = frost::text::Text<18>;
 
 macro_rules! _column {
     ($($elem:expr),* $(,)?) => {
