@@ -4,14 +4,15 @@ use {
         icons::Icon,
         item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, padded_column, padded_row, row, NumberInput, SquareButton, BIG_TEXT},
+        widgets::{padded_column, row, NumberInput, SquareButton, BIG_TEXT},
     },
-    frost::wrap::{Direction, Wrap},
     iced::{
-        widget::{Button, Component, PickList, Rule, Scrollable, Space, Text, TextInput},
-        Alignment, Element, Length,
+        widget::{
+            Button, Component, PickList, Responsive, Rule, Scrollable, Space, Text, TextInput,
+        },
+        Alignment, Element, Length, Size,
     },
-    iced_aw::{Card, Modal},
+    iced_aw::{Card, Modal, Wrap},
     rusqlite::params,
 };
 
@@ -19,8 +20,9 @@ pub struct Manager {
     menu: Vec<Item>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Mode {
+    #[default]
     New,
     Update(String),
 }
@@ -110,17 +112,18 @@ impl Component<Message> for Manager {
             }
             Event::Save => {
                 //Non breaking space gang
-                let name = state.name.replace(' ', "\u{00A0}");
-                let price = state.price;
-                let category = state.category;
+                let name = std::mem::take(&mut state.name).replace(' ', "\u{00A0}");
                 if !name.is_empty() {
-                    return match &state.mode {
+                    let price = std::mem::take(&mut state.price);
+                    let category = std::mem::take(&mut state.category);
+                    return match std::mem::take(&mut state.mode) {
                         Mode::New => Some(
                             Sideffect::new(|| async move {
                                 crate::DB.lock().await.execute(
-                                "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
-                                params![name, price],
-                            )?;
+                                    "INSERT INTO menu (name, price, available, category) 
+                                    VALUES (?1, ?2, true, ?3)",
+                                    params![name, price, category],
+                                )?;
 
                                 TabId::Manager.load().await
                             })
@@ -168,30 +171,29 @@ impl Component<Message> for Manager {
         let password = state.password.clone();
         Modal::new(
             row![
-                Scrollable::new(
-                    Wrap::with_children(
-                        Direction::Row(3),
-                        self.menu
-                            .iter()
-                            .cloned()
-                            .enumerate()
-                            .map(|(i, item)| {
-                                item.on_press(Event::EditItem(i))
-                                    .on_toggle(move |b| Event::ToggleItem(i, b))
-                                    .into()
-                            })
-                            .chain(
-                                std::iter::repeat_with(|| {
-                                    Space::with_width(Length::FillPortion(1)).into()
+                Responsive::new(|Size { width, .. }| {
+                    Scrollable::new(
+                        Wrap::with_elements(
+                            self.menu
+                                .iter()
+                                .cloned()
+                                .enumerate()
+                                .map(|(i, item)| {
+                                    item.on_press(Event::EditItem(i))
+                                        .on_toggle(move |b| Event::ToggleItem(i, b))
+                                        .width(Length::Fixed(
+                                            width / 3.0 - 2.0 * DEF_PADDING as f32,
+                                        ))
+                                        .into()
                                 })
-                                .take(3 - self.menu.len() % 3)
-                            )
-                            .collect(),
+                                .collect(),
+                        )
+                        .spacing(DEF_PADDING as f32)
+                        .line_spacing(DEF_PADDING as f32)
+                        .padding(DEF_PADDING as f32),
                     )
-                    .width(Length::Fill)
-                    .spacing(DEF_PADDING)
-                    .padding(DEF_PADDING),
-                ),
+                    .into()
+                }),
                 Rule::vertical(DEF_PADDING),
                 padded_column![
                     row![
@@ -211,9 +213,10 @@ impl Component<Message> for Manager {
                         .on_input(Event::UpdateName)
                         .padding(DEF_PADDING),
                     Text::new("Pris (kr)"),
-                    NumberInput::new(1..=1000, Event::UpdatePrice, Some(state.price)),
+                    NumberInput::new(1..=1000, Event::UpdatePrice, state.price),
                     Text::new("Typ"),
-                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory),
+                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory)
+                        .width(Length::Fill),
                     Space::with_height(Length::FillPortion(5)),
                     if !state.locked {
                         Button::new(BIG_TEXT::new("Spara"))
@@ -248,7 +251,8 @@ impl Component<Message> for Manager {
                         Button::new(Text::new("Logga In"))
                             .style(theme::Container::Border)
                             .on_press(Event::Login),
-                    ],
+                    ]
+                    .height(Length::Shrink),
                 )
                 .max_width(650.0)
                 .on_close(Event::CloseLogin)

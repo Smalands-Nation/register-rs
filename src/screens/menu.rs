@@ -148,12 +148,6 @@ impl Component<Message> for Menu {
                                     .width(Length::Fixed(width / 3.0 - 2.0 * DEF_PADDING as f32))
                                     .into()
                             })
-                            .chain(
-                                std::iter::repeat_with(|| {
-                                    Space::with_width(Length::FillPortion(1)).into()
-                                })
-                                .take(3 - self.menu.len() % 3),
-                            )
                             .collect(),
                     )
                     .spacing(DEF_PADDING as f32)

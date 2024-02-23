@@ -92,9 +92,12 @@ where
                     ],
                 },
                 if let ItemKind::InStock(stock) = self.kind {
-                    column![Checkbox::new("I Lager", stock).on_toggle(Event::Toggle)]
+                    Checkbox::new("I Lager", stock)
+                        .text_size(SMALL_TEXT::size())
+                        .on_toggle(Event::Toggle)
+                        .into()
                 } else {
-                    column![]
+                    Element::new(column![])
                 }
             ]
             .height(Length::Shrink)
