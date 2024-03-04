@@ -43,6 +43,7 @@ impl<M> Component<M> for Info {
                             .style(BadgeStyles::Info)
                             .padding(DEF_PADDING),
                     ]
+                    .width(Length::Shrink)
                     .align_items(Alignment::Center),
                     match &self.status {
                         Status::Updated(ver) => padded_row![
@@ -59,8 +60,10 @@ impl<M> Component<M> for Info {
                                 .padding(DEF_PADDING),
                         ],
                     }
+                    .width(Length::Shrink)
                     .align_items(Alignment::Center),
                 ]
+                .height(Length::Shrink)
                 .align_items(Alignment::Center)
                 .spacing(DEF_PADDING),
             )
