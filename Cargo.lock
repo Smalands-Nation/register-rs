@@ -1705,8 +1705,8 @@ dependencies = [
 
 [[package]]
 name = "iced_aw"
-version = "0.7.0"
-source = "git+https://github.com/iced-rs/iced_aw?branch=main#2f5812504457c8601a3c32ddd56568f7cc3b64c7"
+version = "0.8.0"
+source = "git+https://github.com/iced-rs/iced_aw?branch=main#e745f753b6944fcbd07371e9ed34e1a2d8918e69"
 dependencies = [
  "cfg-if",
  "chrono",

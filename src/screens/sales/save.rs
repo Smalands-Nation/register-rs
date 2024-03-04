@@ -179,7 +179,7 @@ fn create_pdf(
     path.push(if from == to {
         format!("{}.pdf", from.format("%F"))
     } else {
-        format!("{} {}", from.format("%F"), to.format("%F"))
+        format!("{}_{}.pdf", from.format("%F"), to.format("%F"))
     });
     doc.render_to_file(path.clone())
         .expect("Failed to write PDF file");

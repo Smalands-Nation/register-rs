@@ -80,6 +80,7 @@ impl Application for App {
                     .map(Message::from),
                 font::load(include_bytes!("../resources/google-fonts-icons.ttf").as_slice())
                     .map(Message::from),
+                font::load(iced_aw::graphics::icons::BOOTSTRAP_FONT_BYTES).map(Message::from),
                 command!(TabId::Menu.load().await),
             ]),
         )

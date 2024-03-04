@@ -116,64 +116,74 @@ impl Component<Message> for Sales {
     }
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
-        DatePicker::new(
-            state.is_some(),
-            self.from.naive_local(),
-            row![
-                if !self.receipts.is_empty() {
-                    Row::with_children(self.receipts.iter().map(|(payment, rec)| {
-                        Container::new(
-                            column![
-                                BIG_TEXT::new(String::from(*payment)),
-                                Space::new(Length::Fill, Length::Fixed(SMALL_TEXT::size() as f32),),
-                                rec.clone(),
-                            ]
-                            .width(Length::Fixed(RECEIPT_WIDTH))
-                            .padding(DEF_PADDING),
-                        )
-                        .style(theme::Container::Border)
-                        .into()
-                    }))
-                    .width(Length::Fill)
-                    .align_items(Alignment::Center)
-                    .padding(DEF_PADDING)
-                    .spacing(DEF_PADDING)
-                } else {
-                    padded_row![
-                        Space::with_width(Length::Fill),
-                        BIG_TEXT::new("Ingen försäljning än"),
-                        Space::with_width(Length::Fill),
-                    ]
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .align_items(Alignment::Center)
-                },
-                Rule::vertical(DEF_PADDING),
-                padded_column![
-                    BIG_TEXT::new("Visa Försäljning"),
-                    Space::with_height(Length::Fill),
-                    Text::new("Fr.o.m."),
-                    Button::new(Text::new(self.from.to_string()))
+        row![
+            if !self.receipts.is_empty() {
+                Row::with_children(self.receipts.iter().map(|(payment, rec)| {
+                    Container::new(
+                        column![
+                            BIG_TEXT::new(String::from(*payment)),
+                            Space::new(Length::Fill, Length::Fixed(SMALL_TEXT::size() as f32)),
+                            rec.clone(),
+                        ]
+                        .width(Length::Fixed(RECEIPT_WIDTH))
+                        .padding(DEF_PADDING),
+                    )
+                    .style(theme::Container::Border)
+                    .into()
+                }))
+                .width(Length::Fill)
+                .align_items(Alignment::Center)
+                .padding(DEF_PADDING)
+                .spacing(DEF_PADDING)
+            } else {
+                padded_row![
+                    Space::with_width(Length::Fill),
+                    BIG_TEXT::new("Ingen försäljning än"),
+                    Space::with_width(Length::Fill),
+                ]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_items(Alignment::Center)
+            },
+            Rule::vertical(DEF_PADDING),
+            padded_column![
+                BIG_TEXT::new("Visa Försäljning"),
+                Space::with_height(Length::Fill),
+                Text::new("Fr.o.m."),
+                DatePicker::new(
+                    matches!(state, Some(Picker::From)),
+                    self.from.naive_local(),
+                    Button::new(Text::new(self.from.format("%F").to_string()))
+                        .width(Length::Fill)
                         .padding(DEF_PADDING)
                         .style(theme::Container::Border)
                         .on_press(Event::OpenDate(Picker::From)),
-                    Text::new("T.o.m."),
-                    Button::new(Text::new(self.to.to_string()))
+                    Event::CloseDate,
+                    Event::UpdateDate,
+                )
+                .font_size(SMALL_TEXT::size()),
+                Text::new("T.o.m."),
+                DatePicker::new(
+                    matches!(state, Some(Picker::To)),
+                    self.from.naive_local(),
+                    Button::new(Text::new(self.to.format("%F").to_string()))
+                        .width(Length::Fill)
                         .padding(DEF_PADDING)
                         .style(theme::Container::Border)
                         .on_press(Event::OpenDate(Picker::To)),
-                    Space::with_height(Length::Fill),
-                    Button::new(BIG_TEXT::new("Exportera"))
-                        .on_press(Event::Save)
-                        .padding(DEF_PADDING)
-                        .style(theme::Container::Border)
-                        .width(Length::Fill),
-                ]
-                .width(Length::Fixed(RECEIPT_WIDTH)),
-            ],
-            Event::CloseDate,
-            Event::UpdateDate,
-        )
+                    Event::CloseDate,
+                    Event::UpdateDate,
+                )
+                .font_size(SMALL_TEXT::size()),
+                Space::with_height(Length::Fill),
+                Button::new(BIG_TEXT::new("Exportera"))
+                    .on_press(Event::Save)
+                    .padding(DEF_PADDING)
+                    .style(theme::Container::Border)
+                    .width(Length::Fill),
+            ]
+            .width(Length::Fixed(RECEIPT_WIDTH)),
+        ]
         .into()
     }
 }
