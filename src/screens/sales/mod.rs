@@ -1,21 +1,19 @@
 use {
-    super::{Message, Sideffect, Tab},
+    super::{Message, Sideffect, TabId},
     crate::{
         error::Error,
         item::Item,
         payment::Payment,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, BIG_TEXT, SMALL_TEXT},
-        Element, Renderer,
+        widgets::{column, padded_column, padded_row, row, BIG_TEXT, SMALL_TEXT},
     },
-    chrono::{Date, Local, TimeZone},
+    chrono::NaiveDate,
     iced::{
-        widget::{Button, Container, Row, Rule, Space, Text},
-        Alignment, Length,
+        widget::{Button, Component, Container, Row, Rule, Space, Text},
+        Alignment, Element, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
-    iced_lazy::Component,
     indexmap::IndexMap,
 };
 
@@ -28,8 +26,8 @@ pub enum Picker {
 }
 
 pub struct Sales {
-    from: Date<Local>,
-    to: Date<Local>,
+    from: NaiveDate,
+    to: NaiveDate,
     receipts: IndexMap<Payment, Receipt<Event>>,
 }
 
@@ -42,7 +40,7 @@ pub enum Event {
 }
 
 impl Sales {
-    pub fn new(from: Date<Local>, to: Date<Local>, sales: Vec<(Item, Payment)>) -> Self {
+    pub fn new(from: NaiveDate, to: NaiveDate, sales: Vec<(Item, Payment)>) -> Self {
         Self {
             from,
             to,
@@ -64,7 +62,7 @@ impl Sales {
     }
 }
 
-impl Component<Message, Renderer> for Sales {
+impl Component<Message> for Sales {
     type State = Option<Picker>;
     type Event = Event;
 
@@ -95,7 +93,7 @@ impl Component<Message, Renderer> for Sales {
                 return None;
             }
             Event::UpdateDate(d) => {
-                let date = Local.from_local_date(&d.into()).unwrap();
+                let date = d.into();
                 match state {
                     Some(Picker::From) => {
                         self.from = date;
@@ -114,95 +112,84 @@ impl Component<Message, Renderer> for Sales {
 
         let from = self.from;
         let to = self.to;
-        Some(
-            Sideffect::new(|| async move {
-                Tab::Sales {
-                    from,
-                    to,
-                    data: vec![],
-                }
-                .load()
-                .await
-            })
-            .into(),
-        )
+        Some(Sideffect::new(|| async move { TabId::Sales { from, to }.load().await }).into())
     }
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
-        DatePicker::new(
-            state.is_some(),
-            self.from.naive_local(),
-            row![
-                #nopad
-                if !self.receipts.is_empty() {
-                    Row::with_children(
-                        self.receipts
-                            .iter()
-                            .map(|(payment, rec)| {
-                                Container::new(
-                                    column![
-                                        #nopad
-                                        BIG_TEXT::new(String::from(*payment)),
-                                        Space::new(
-                                            Length::Fill,
-                                            Length::Units(SMALL_TEXT::size()),
-                                        ),
-                                        rec.clone(),
-                                    ]
-                                    .width(Length::Units(RECEIPT_WIDTH))
-                                    .padding(DEF_PADDING),
-                                )
-                                .style(theme::Container::Border)
-                                .into()
-                            })
-                            .collect(),
+        row![
+            if !self.receipts.is_empty() {
+                Row::with_children(self.receipts.iter().map(|(payment, rec)| {
+                    Container::new(
+                        column![
+                            BIG_TEXT::new(String::from(*payment)),
+                            Space::new(Length::Fill, Length::Fixed(SMALL_TEXT::size() as f32)),
+                            rec.clone(),
+                        ]
+                        .width(Length::Fixed(RECEIPT_WIDTH))
+                        .padding(DEF_PADDING),
                     )
-                    .width(Length::Fill)
-                    .align_items(Alignment::Center)
-                    .padding(DEF_PADDING)
-                    .spacing(DEF_PADDING)
-                } else {
-                    row![
-                        Space::with_width(Length::Fill),
-                        BIG_TEXT::new("Ingen försäljning än"),
-                        Space::with_width(Length::Fill),
-                    ]
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .align_items(Alignment::Center)
-                },
-                Rule::vertical(DEF_PADDING),
-                column![
-                    BIG_TEXT::new("Visa Försäljning"),
-                    Space::with_height(Length::Fill),
-                    Text::new("Fr.o.m."),
-                    Button::new(Text::new(self.from.to_string()))
+                    .style(theme::Container::Border)
+                    .into()
+                }))
+                .width(Length::Fill)
+                .align_items(Alignment::Center)
+                .padding(DEF_PADDING)
+                .spacing(DEF_PADDING)
+            } else {
+                padded_row![
+                    Space::with_width(Length::Fill),
+                    BIG_TEXT::new("Ingen försäljning än"),
+                    Space::with_width(Length::Fill),
+                ]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_items(Alignment::Center)
+            },
+            Rule::vertical(DEF_PADDING),
+            padded_column![
+                BIG_TEXT::new("Visa Försäljning"),
+                Space::with_height(Length::Fill),
+                Text::new("Fr.o.m."),
+                DatePicker::new(
+                    matches!(state, Some(Picker::From)),
+                    self.from,
+                    Button::new(Text::new(self.from.format("%F").to_string()))
+                        .width(Length::Fill)
                         .padding(DEF_PADDING)
                         .style(theme::Container::Border)
                         .on_press(Event::OpenDate(Picker::From)),
-                    Text::new("T.o.m."),
-                    Button::new(Text::new(self.to.to_string()))
+                    Event::CloseDate,
+                    Event::UpdateDate,
+                )
+                .font_size(SMALL_TEXT::size()),
+                Text::new("T.o.m."),
+                DatePicker::new(
+                    matches!(state, Some(Picker::To)),
+                    self.from,
+                    Button::new(Text::new(self.to.format("%F").to_string()))
+                        .width(Length::Fill)
                         .padding(DEF_PADDING)
                         .style(theme::Container::Border)
                         .on_press(Event::OpenDate(Picker::To)),
-                    Space::with_height(Length::Fill),
-                    Button::new(BIG_TEXT::new("Exportera"))
-                        .on_press(Event::Save)
-                        .padding(DEF_PADDING)
-                        .style(theme::Container::Border)
-                        .width(Length::Fill),
-                ]
-                .width(Length::Units(RECEIPT_WIDTH)),
-            ],
-            Event::CloseDate,
-            Event::UpdateDate,
-        )
+                    Event::CloseDate,
+                    Event::UpdateDate,
+                )
+                .font_size(SMALL_TEXT::size()),
+                Space::with_height(Length::Fill),
+                Button::new(BIG_TEXT::new("Exportera"))
+                    .on_press(Event::Save)
+                    .padding(DEF_PADDING)
+                    .style(theme::Container::Border)
+                    .width(Length::Fill),
+            ]
+            .width(Length::Fixed(RECEIPT_WIDTH)),
+        ]
         .into()
     }
 }
 
 impl<'a> From<Sales> for Element<'a, Message> {
     fn from(sales: Sales) -> Self {
-        iced_lazy::component(sales)
+        iced::widget::component(sales)
     }
 }

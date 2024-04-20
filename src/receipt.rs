@@ -2,16 +2,13 @@ use {
     crate::{
         item::Item,
         payment::Payment,
-        theme::{DEF_PADDING, RECEIPT_WIDTH},
+        theme::{Container, DEF_PADDING, RECEIPT_WIDTH},
         widgets::column,
-        Element, Renderer,
     },
-    frost::clickable::Clickable,
     iced::{
-        widget::{scrollable, Column, Scrollable, Text},
-        Length,
+        widget::{scrollable, Button, Column, Component, Scrollable, Text},
+        Element, Length,
     },
-    iced_lazy::Component,
     indexmap::IndexSet,
 };
 
@@ -73,7 +70,7 @@ where
     }
 }
 
-impl<'a, M> Component<M, Renderer> for Receipt<M>
+impl<'a, M> Component<M> for Receipt<M>
 where
     M: Clone + std::fmt::Debug + 'a,
 {
@@ -89,27 +86,26 @@ where
     }
 
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
-        Clickable::new(
+        Button::new(
             column![
-                #nopad
                 Scrollable::new(
                     Column::with_children(
-                        self
-                            .items
-                            .iter()
-                            .map(|item| Element::from(item.clone()))
-                            .collect(),
+                        self.items.iter().map(|item| Element::from(item.clone()))
                     )
                     .spacing(DEF_PADDING),
                 )
-                .vertical_scroll(scrollable::Properties::new())
-                .height(Length::Fill),
+                .direction(scrollable::Direction::Vertical(
+                    scrollable::Properties::new()
+                ))
+                .height(Length::Fill)
+                .width(Length::Fill),
                 Text::new(format!("Total: {}kr", self.sum)),
             ]
-            .width(Length::Units(RECEIPT_WIDTH))
+            .width(Length::Fixed(RECEIPT_WIDTH))
             .spacing(DEF_PADDING),
         )
         .padding(0)
+        .style(Container::Empty)
         .height(Length::Fill)
         .on_press(true)
         .into()
@@ -121,6 +117,6 @@ where
     M: Clone + std::fmt::Debug + 'a,
 {
     fn from(value: Receipt<M>) -> Self {
-        iced_lazy::component(value)
+        iced::widget::component(value)
     }
 }

@@ -1,4 +1,4 @@
-use {crate::Element, category::*};
+use {category::*, iced::Element};
 
 pub mod category;
 pub mod component;
@@ -164,6 +164,6 @@ where
     M: Clone + 'a,
 {
     fn from(value: Item) -> Self {
-        iced_lazy::component(component::Item::from(value))
+        iced::widget::component(component::Item::from(value))
     }
 }

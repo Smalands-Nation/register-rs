@@ -1,17 +1,14 @@
 use {
     super::{Category, ItemKind},
     crate::{
-        theme::{Container, DEF_PADDING, SMALL_PADDING},
+        theme::{Container, DEF_PADDING, RECEIPT_WIDTH, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
-        Element, Renderer,
     },
-    frost::clickable::Clickable,
     iced::{
         alignment::Horizontal,
-        widget::{Checkbox, Column, Text},
-        Length,
+        widget::{Button, Checkbox, Component, Text},
+        Element, Length,
     },
-    iced_lazy::Component,
 };
 
 pub struct Item<'a, M> {
@@ -21,6 +18,7 @@ pub struct Item<'a, M> {
     kind: ItemKind,
     on_press: Option<M>,
     on_toggle: Option<Box<dyn Fn(bool) -> M + 'a>>,
+    width: Length,
 }
 
 impl<'a, M> Item<'a, M> {
@@ -36,6 +34,11 @@ impl<'a, M> Item<'a, M> {
         self.on_toggle = Some(Box::new(msg));
         self
     }
+
+    pub fn width(mut self, width: Length) -> Self {
+        self.width = width;
+        self
+    }
 }
 
 impl<M> From<super::Item> for Item<'_, M> {
@@ -47,6 +50,7 @@ impl<M> From<super::Item> for Item<'_, M> {
             kind: value.kind,
             on_press: None,
             on_toggle: None,
+            width: Length::Fixed(RECEIPT_WIDTH),
         }
     }
 }
@@ -57,7 +61,7 @@ pub enum Event {
     Toggle(bool),
 }
 
-impl<M> Component<M, Renderer> for Item<'_, M>
+impl<M> Component<M> for Item<'_, M>
 where
     M: Clone,
 {
@@ -72,44 +76,35 @@ where
     }
 
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
-        Clickable::new(
+        Button::new(
             column![
-                #nopad
                 Text::new(self.name.to_string()),
                 match self.kind {
                     ItemKind::Regular { num: 0 } | ItemKind::Special | ItemKind::InStock(_) =>
-                        row![
-                            #nopad
-                            SMALL_TEXT::new(format!("{} kr", self.price))
-                                .width(Length::Fill)
-                                .horizontal_alignment(Horizontal::Left),
-                        ],
+                        row![SMALL_TEXT::new(format!("{} kr", self.price))
+                            .width(Length::Fill)
+                            .horizontal_alignment(Horizontal::Left)],
                     ItemKind::Regular { num } => row![
-                        #nopad
                         SMALL_TEXT::new(format!("{}x{} kr", num, self.price)),
-                        SMALL_TEXT::new(format!("{} kr", num* self.price))
+                        SMALL_TEXT::new(format!("{} kr", num * self.price))
                             .width(Length::Fill)
                             .horizontal_alignment(Horizontal::Right),
                     ],
                 },
-
                 if let ItemKind::InStock(stock) = self.kind {
-                    column![
-                        #nopad
-                        Checkbox::new(
-                            "I Lager",
-                            stock,
-                            Event::Toggle,
-                        ),
-                    ]
+                    Checkbox::new("I Lager", stock)
+                        .text_size(SMALL_TEXT::size())
+                        .on_toggle(Event::Toggle)
+                        .into()
                 } else {
-                    Column::new()
+                    Element::new(column![])
                 }
             ]
+            .height(Length::Shrink)
             .spacing(SMALL_PADDING),
         )
         .padding(DEF_PADDING)
-        .width(Length::Fill)
+        .width(self.width)
         .style(if self.on_press.is_some() {
             self.category.into()
         } else {
@@ -125,6 +120,6 @@ where
     M: Clone + 'a,
 {
     fn from(value: Item<'a, M>) -> Self {
-        iced_lazy::component(value)
+        iced::widget::component(value)
     }
 }

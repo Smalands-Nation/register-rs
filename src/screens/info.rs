@@ -1,15 +1,13 @@
 use {
     crate::{
         theme::DEF_PADDING,
-        widgets::{column, row, SMALL_TEXT},
-        Element, Renderer,
+        widgets::{column, padded_column, padded_row, SMALL_TEXT},
     },
     iced::{
-        widget::{Container, Text},
-        Alignment, Length,
+        widget::{Component, Container, Text},
+        Alignment, Element, Length,
     },
     iced_aw::{style::badge::BadgeStyles, Badge},
-    iced_lazy::Component,
     self_update::{cargo_crate_version, Status},
 };
 
@@ -27,7 +25,7 @@ impl Info {
     }
 }
 
-impl<M> Component<M, Renderer> for Info {
+impl<M> Component<M> for Info {
     type State = ();
     type Event = ();
 
@@ -37,33 +35,35 @@ impl<M> Component<M, Renderer> for Info {
 
     fn view(&self, _: &Self::State) -> Element<Self::Event> {
         column![
-            #nopad
             Container::new(
-                column![
-                    row![
+                padded_column![
+                    padded_row![
                         Text::new("Smålands_register version"),
                         Badge::new(Text::new(self.current))
                             .style(BadgeStyles::Info)
                             .padding(DEF_PADDING),
                     ]
+                    .width(Length::Shrink)
                     .align_items(Alignment::Center),
                     match &self.status {
-                        Status::Updated(ver) => row![
+                        Status::Updated(ver) => padded_row![
                             Text::new("Ny version"),
                             Badge::new(Text::new(ver))
                                 .style(BadgeStyles::Warning)
                                 .padding(DEF_PADDING),
                             Text::new("installeras vid omstart."),
                         ],
-                        Status::UpToDate(_) => row![
+                        Status::UpToDate(_) => padded_row![
                             Text::new("Detta är"),
                             Badge::new(Text::new("Senaste versionen."))
                                 .style(BadgeStyles::Success)
                                 .padding(DEF_PADDING),
                         ],
                     }
+                    .width(Length::Shrink)
                     .align_items(Alignment::Center),
                 ]
+                .height(Length::Shrink)
                 .align_items(Alignment::Center)
                 .spacing(DEF_PADDING),
             )
@@ -83,6 +83,6 @@ where
     M: 'a,
 {
     fn from(info: Info) -> Self {
-        iced_lazy::component(info)
+        iced::widget::component(info)
     }
 }

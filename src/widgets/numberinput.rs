@@ -1,25 +1,27 @@
 use {
-    crate::{theme::DEF_PADDING, Element, Renderer},
-    iced::widget::TextInput,
-    iced_lazy::Component,
+    crate::theme::DEF_PADDING,
+    iced::{
+        widget::{Component, TextInput},
+        Element,
+    },
     std::{cmp::PartialOrd, fmt::Display, ops::RangeInclusive, str::FromStr},
 };
 
 pub struct NumberInput<'a, N, M> {
     on_change: Box<dyn Fn(N) -> M + 'a>,
     range: RangeInclusive<N>,
-    initial_value: Option<N>,
+    state: Option<N>,
 }
 
 impl<'a, N, M> NumberInput<'a, N, M> {
-    pub fn new<F>(range: RangeInclusive<N>, on_change: F, initial_value: Option<N>) -> Self
+    pub fn new<F>(range: RangeInclusive<N>, on_change: F, value: N) -> Self
     where
         F: Fn(N) -> M + 'a,
     {
         Self {
             on_change: Box::new(on_change),
             range,
-            initial_value,
+            state: Some(value),
         }
     }
 }
@@ -29,25 +31,24 @@ pub enum Event {
     Input(String),
 }
 
-impl<'a, N, M> Component<M, Renderer> for NumberInput<'a, N, M>
+impl<'a, N, M> Component<M> for NumberInput<'a, N, M>
 where
     N: Display + FromStr + Default + PartialOrd + Copy,
     M: Clone,
 {
-    type State = Option<N>;
+    type State = ();
     type Event = Event;
 
-    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<M> {
-        self.initial_value = None;
+    fn update(&mut self, _state: &mut Self::State, event: Self::Event) -> Option<M> {
         match event {
             Event::Input(s) => {
                 if s.is_empty() {
-                    *state = None;
+                    self.state = None;
                     None
                 } else {
                     let n: N = s.parse().ok()?;
                     self.range.contains(&n).then(|| {
-                        *state = Some(n);
+                        self.state = Some(n);
                         (self.on_change)(n)
                     })
                 }
@@ -55,15 +56,16 @@ where
         }
     }
 
-    fn view(&self, state: &Self::State) -> Element<Self::Event> {
+    fn view(&self, _state: &Self::State) -> Element<Self::Event> {
         TextInput::new(
             "",
-            &state
+            &self
+                .state
                 .map(|s| s.to_string())
-                .or(self.initial_value.map(|n| n.to_string()))
+                .or(self.state.map(|n| n.to_string()))
                 .unwrap_or_default(),
-            Event::Input,
         )
+        .on_input(Event::Input)
         .padding(DEF_PADDING)
         .into()
     }
@@ -75,6 +77,6 @@ where
     M: Clone + 'a,
 {
     fn from(calc: NumberInput<'a, N, M>) -> Self {
-        iced_lazy::component(calc)
+        iced::widget::component(calc)
     }
 }

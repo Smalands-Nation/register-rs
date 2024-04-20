@@ -1,6 +1,6 @@
 use {
     crate::{error::Result, item::Item, payment::Payment, receipt::Receipt},
-    chrono::{Date, Local},
+    chrono::NaiveDate,
     genpdf::{
         elements::{Break, Image, LinearLayout, Paragraph, TableLayout, Text},
         fonts,
@@ -14,14 +14,10 @@ use {
 fn create_pdf(
     path: impl Into<PathBuf>,
     stats: IndexSet<(Payment, Item)>,
-    (from, to): (Date<Local>, Date<Local>),
+    (from, to): (NaiveDate, NaiveDate),
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
-        if let iced::Font::External { bytes, .. } = crate::FONT {
-            bytes.to_vec()
-        } else {
-            vec![]
-        },
+        include_bytes!("../../../resources/IBMPlexMono-Regular.ttf").to_vec(),
         None,
     )
     .unwrap();
@@ -183,7 +179,7 @@ fn create_pdf(
     path.push(if from == to {
         format!("{}.pdf", from.format("%F"))
     } else {
-        format!("{} {}", from.format("%F"), to.format("%F"))
+        format!("{}_{}.pdf", from.format("%F"), to.format("%F"))
     });
     doc.render_to_file(path.clone())
         .expect("Failed to write PDF file");
@@ -205,7 +201,7 @@ use chrono::Datelike;
 #[cfg(not(debug_assertions))]
 pub async fn save<M: Clone>(
     data: IndexMap<Payment, Receipt<M>>,
-    (from, to): (Date<Local>, Date<Local>),
+    (from, to): (NaiveDate, NaiveDate),
 ) -> Result<PathBuf> {
     let mut path = dirs::document_dir().ok_or("No document path")?;
     path.push("sales");
@@ -225,7 +221,7 @@ pub async fn save<M: Clone>(
 #[cfg(debug_assertions)]
 pub async fn save<M: Clone>(
     data: IndexMap<Payment, Receipt<M>>,
-    (from, to): (Date<Local>, Date<Local>),
+    (from, to): (NaiveDate, NaiveDate),
 ) -> Result<PathBuf> {
     let stats = make_stats(data);
     create_pdf(".", stats, (from, to))

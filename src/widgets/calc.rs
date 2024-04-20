@@ -1,17 +1,12 @@
 use {
     super::{column, row, SquareButton},
-    crate::{
-        icons::Icon,
-        theme::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
-        Element, Renderer,
-    },
+    crate::{icons::Icon, theme::DEF_PADDING},
     frost::wrap::{Direction, Wrap},
     iced::{
         alignment::{Alignment, Horizontal},
-        widget::{Rule, Space, Text},
-        Length,
+        widget::{Component, Rule, Space, Text},
+        Element, Length,
     },
-    iced_lazy::Component,
 };
 
 pub struct Calc<'a, M> {
@@ -38,7 +33,7 @@ impl<'a, M> Calc<'a, M> {
     }
 }
 
-impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
+impl<'a, M> Component<M> for Calc<'a, M> {
     type State = u32;
     type Event = Event;
 
@@ -71,9 +66,7 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
 
     fn view(&self, state: &Self::State) -> Element<Event> {
         column![
-            #nopad
             row![
-                #nopad
                 Text::new(format!("{:>3}x", self.multi)).horizontal_alignment(Horizontal::Left),
                 Rule::vertical(DEF_PADDING),
                 Text::new(if *state != 0 {
@@ -84,9 +77,9 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
                 .width(Length::Fill)
                 .horizontal_alignment(Horizontal::Right),
             ]
-            .height(Length::Units(DEF_TEXT))
-            .width(Length::Units(SQUARE_BUTTON * 3 + DEF_PADDING * 2)),
-            Space::with_height(Length::Units(DEF_PADDING)),
+            .height(Length::Shrink)
+            .width(Length::Fill),
+            Space::with_height(Length::Fixed(DEF_PADDING as f32)),
             Wrap::with_children(
                 Direction::Row(3),
                 (0..12)
@@ -104,6 +97,7 @@ impl<'a, M> Component<M, Renderer> for Calc<'a, M> {
             )
             .spacing(DEF_PADDING),
         ]
+        .height(Length::Shrink)
         .align_items(Alignment::Center)
         .into()
     }
@@ -114,6 +108,6 @@ where
     M: 'a,
 {
     fn from(calc: Calc<'a, M>) -> Self {
-        iced_lazy::component(calc)
+        iced::widget::component(calc)
     }
 }

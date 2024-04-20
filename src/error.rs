@@ -1,7 +1,7 @@
 use giftwrap::Wrap;
 use std::sync::Arc;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Wrap, Debug, Clone)]
 pub enum Error {
@@ -14,6 +14,8 @@ pub enum Error {
     SelfUpdate(Arc<self_update::errors::Error>),
     #[giftwrap(wrapDepth = 0)]
     Tokio(Arc<tokio::task::JoinError>),
+    #[giftwrap(wrapDepth = 0)]
+    FontError(Arc<iced::font::Error>),
     Other(String),
 }
 

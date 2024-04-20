@@ -5,9 +5,14 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::{error::Result, item::Item, payment::Payment, Element},
-    chrono::{Date, DateTime, Local},
+    crate::{
+        error::{Error, Result},
+        item::Item,
+        payment::Payment,
+    },
+    chrono::{DateTime, Local, NaiveDate},
     futures::{future::BoxFuture, FutureExt},
+    iced::Element,
     rusqlite::params,
     std::future::{Future, IntoFuture},
 };
@@ -22,7 +27,7 @@ macro_rules! sql {
             .await
             .prepare($sql)?
             .query_map($params, $map_row)?
-            .collect::<std::result::Result<$collect, rusqlite::Error>>()?
+            .collect::<Result<$collect, rusqlite::Error>>()?
     };
 
     ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
@@ -35,41 +40,12 @@ pub enum Tab {
     Menu(Vec<Item>),
     Transactions(Vec<(DateTime<Local>, Item, Payment)>),
     Sales {
-        from: Date<Local>,
-        to: Date<Local>,
+        from: NaiveDate,
+        to: NaiveDate,
         data: Vec<(Item, Payment)>,
     },
     Manager(Vec<Item>),
     Info(self_update::Status),
-}
-
-impl From<&Tab> for usize {
-    fn from(value: &Tab) -> Self {
-        match value {
-            Tab::Menu(_) => 0,
-            Tab::Transactions(_) => 1,
-            Tab::Sales { .. } => 2,
-            Tab::Manager(_) => 3,
-            Tab::Info(_) => 4,
-        }
-    }
-}
-
-impl From<usize> for Tab {
-    fn from(value: usize) -> Self {
-        match value {
-            0 => Self::Menu(vec![]),
-            1 => Self::Transactions(vec![]),
-            2 => Self::Sales {
-                from: Local::today(),
-                to: Local::today(),
-                data: vec![],
-            },
-            3 => Self::Manager(vec![]),
-            4 => Self::Info(self_update::Status::UpToDate("".into())),
-            n => unreachable!("Tab {} does not exist", n),
-        }
-    }
 }
 
 impl Tab {
@@ -113,9 +89,46 @@ impl Tab {
         }
     }
 
+    pub fn id(&self) -> TabId {
+        match self {
+            Self::Menu(_) => TabId::Menu,
+            Self::Transactions(_) => TabId::Transactions,
+            Self::Sales { from, to, .. } => TabId::Sales {
+                from: *from,
+                to: *to,
+            },
+            Self::Manager(_) => TabId::Manager,
+            Self::Info(_) => TabId::Info,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq)]
+pub enum TabId {
+    Menu,
+    Transactions,
+    Sales { from: NaiveDate, to: NaiveDate },
+    Manager,
+    Info,
+}
+
+impl PartialEq for TabId {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Menu, Self::Menu)
+                | (Self::Transactions, Self::Transactions)
+                | (Self::Sales { .. }, Self::Sales { .. })
+                | (Self::Manager, Self::Manager)
+                | (Self::Info, Self::Info)
+        )
+    }
+}
+
+impl TabId {
     pub async fn load(self) -> Result<Message> {
         Ok(Message::LoadTab(match self {
-            Self::Menu(_) => Self::Menu(sql!(
+            Self::Menu => Tab::Menu(sql!(
                 "SELECT name, price, special, category FROM menu
                     WHERE available=true
                     ORDER BY
@@ -133,7 +146,7 @@ impl Tab {
                 Vec<_>
             )),
 
-            Self::Transactions(_) => Self::Transactions(sql!(
+            Self::Transactions => Tab::Transactions(sql!(
                 "SELECT * FROM receipts_view \
                     WHERE time > date('now','-1 day') ORDER BY time DESC",
                 params![],
@@ -147,10 +160,20 @@ impl Tab {
                 Vec<_>
             )),
 
-            Self::Sales { from, to, .. } => {
-                let from_time = from.and_hms(0, 0, 0);
-                let to_time = to.and_hms(23, 59, 59);
-                Self::Sales {
+            Self::Sales { from, to } => {
+                let from_time = from
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
+                let to_time = to
+                    .and_hms_opt(23, 59, 59)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
+                Tab::Sales {
                     from,
                     to,
                     data: sql!(
@@ -169,7 +192,7 @@ impl Tab {
                 }
             }
 
-            Self::Manager(_) => Self::Manager(sql!(
+            Self::Manager => Tab::Manager(sql!(
                 "SELECT name, price, available, category FROM menu \
                     WHERE special = 0 
                     ORDER BY 
@@ -186,7 +209,7 @@ impl Tab {
                 Vec<_>
             )),
 
-            Self::Info(_) => Self::Info(crate::config::update()?),
+            Self::Info => Tab::Info(crate::config::update()?),
         }))
     }
 }
@@ -223,7 +246,7 @@ impl std::fmt::Debug for Sideffect {
 pub enum Message {
     #[default]
     None,
-    SwapTab(Tab),
+    SwapTab(TabId),
     LoadTab(Tab),
     CloseModal,
     OpenModal {
@@ -239,16 +262,17 @@ impl From<()> for Message {
     }
 }
 
-impl<T> From<Result<T>> for Message
+impl<T, E> From<Result<T, E>> for Message
 where
     T: Into<Message>,
+    E: Into<Error>,
 {
-    fn from(r: Result<T>) -> Self {
+    fn from(r: Result<T, E>) -> Self {
         match r {
             Ok(t) => t.into(),
             Err(e) => Self::OpenModal {
                 title: "Error",
-                content: format!("{e:#?}"),
+                content: format!("{:#?}", e.into()),
             },
         }
     }

@@ -7,16 +7,14 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{calc::Calc, column, row, SquareButton, BIG_TEXT},
-        Element, Renderer,
+        widgets::{calc::Calc, padded_column, row, SquareButton, BIG_TEXT},
     },
     chrono::Local,
-    frost::wrap::{Direction, Wrap},
     iced::{
-        widget::{Button, Checkbox, Container, Rule, Scrollable, Space},
-        Alignment, Length,
+        widget::{Button, Checkbox, Component, Container, Responsive, Rule, Scrollable, Space},
+        Alignment, Element, Length, Size,
     },
-    iced_lazy::Component,
+    iced_aw::Wrap,
     rusqlite::params,
 };
 
@@ -56,7 +54,7 @@ impl Menu {
     }
 }
 
-impl Component<Message, Renderer> for Menu {
+impl Component<Message> for Menu {
     type State = State;
     type Event = Event;
 
@@ -72,8 +70,12 @@ impl Component<Message, Renderer> for Menu {
                 let mut item = self.menu[i].clone();
                 if let Some(0) = item.has_amount() {
                     item.set_amount(state.multiplier as i32);
+                    state.receipt.add(item);
+                } else if item.is_special() {
+                    for _ in 0..state.multiplier {
+                        state.receipt.add(item.clone());
+                    }
                 }
-                state.receipt.add(item);
                 state.multiplier = 1;
             }
             Event::TogglePrint(b) => state.print = b,
@@ -127,47 +129,47 @@ impl Component<Message, Renderer> for Menu {
             print,
         } = state.clone();
         row![
-            #nopad
-            Container::new(Calc::new(multiplier ,Event::Multiplier))
+            Container::new(Calc::new(multiplier, Event::Multiplier))
                 .padding(DEF_PADDING)
                 .center_x()
                 .center_y()
-                .width(Length::Units(RECEIPT_WIDTH))
+                .width(Length::Fixed(RECEIPT_WIDTH))
                 .height(Length::Fill),
             Rule::vertical(DEF_PADDING),
-            Scrollable::new(
-                Wrap::with_children(
-                    Direction::Row(3),
-                    self.menu
-                        .iter()
-                        .cloned()
-                        .enumerate()
-                        .map(|(i, item)| item.on_press(Event::SellItem(i)).into())
-                        .chain(
-                            std::iter::repeat_with(|| {
-                                Space::with_width(Length::FillPortion(1)).into()
+            Responsive::new(|Size { width, .. }| {
+                Scrollable::new(
+                    Wrap::with_elements(
+                        self.menu
+                            .iter()
+                            .cloned()
+                            .enumerate()
+                            .map(|(i, item)| {
+                                item.on_press(Event::SellItem(i))
+                                    .width(Length::Fixed(width / 3.0 - 2.0 * DEF_PADDING as f32))
+                                    .into()
                             })
-                            .take(3 - self.menu.len() % 3)
-                        )
-                        .collect(),
+                            .collect(),
+                    )
+                    .spacing(DEF_PADDING as f32)
+                    .line_spacing(DEF_PADDING as f32)
+                    .padding(DEF_PADDING as f32),
                 )
-                .width(Length::Fill)
-                .spacing(DEF_PADDING)
-                .padding(DEF_PADDING),
-            ),
+                .into()
+            }),
             Rule::vertical(DEF_PADDING),
-            column![
+            padded_column![
                 row![
-                    #nopad
                     BIG_TEXT::new("Kvitto"),
                     Space::with_width(Length::Fill),
                     SquareButton::icon(Icon::Cross).on_press(Event::ClearReceipt),
                 ]
                 .align_items(Alignment::Center),
                 receipt,
-                Checkbox::new("Printa kvitto", print, Event::TogglePrint),
+                Checkbox::new("Printa kvitto", print)
+                    .text_size(30)
+                    .width(Length::Fill)
+                    .on_toggle(Event::TogglePrint),
                 row![
-                    #nopad
                     Button::new(Payment::Swish)
                         .on_press(Event::Sell(Payment::Swish))
                         .padding(DEF_PADDING)
@@ -181,7 +183,7 @@ impl Component<Message, Renderer> for Menu {
                 ]
                 .spacing(DEF_PADDING)
             ]
-            .width(Length::Units(RECEIPT_WIDTH)),
+            .width(Length::Fixed(RECEIPT_WIDTH)),
         ]
         .into()
     }
@@ -189,6 +191,6 @@ impl Component<Message, Renderer> for Menu {
 
 impl<'a> From<Menu> for Element<'a, Message> {
     fn from(menu: Menu) -> Self {
-        iced_lazy::component(menu)
+        iced::widget::component(menu)
     }
 }

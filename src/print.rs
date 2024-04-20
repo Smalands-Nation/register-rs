@@ -14,11 +14,7 @@ fn create_pdf<M>(
     time: DateTime<Local>,
 ) -> Result<PathBuf> {
     let font = fonts::FontData::new(
-        if let iced::Font::External { bytes, .. } = crate::FONT {
-            bytes.to_vec()
-        } else {
-            vec![]
-        },
+        include_bytes!("../resources/IBMPlexMono-Regular.ttf").to_vec(),
         None,
     )
     .unwrap();

@@ -3,7 +3,6 @@ use {
     crate::{
         icons::Icon,
         theme::{Container, SQUARE_BUTTON},
-        Renderer,
     },
     iced::{
         alignment::{Horizontal, Vertical},
@@ -16,7 +15,7 @@ use {
 pub struct SquareButton;
 
 impl SquareButton {
-    pub fn text<'a, M>(txt: impl Into<Cow<'a, str>>) -> Button<'a, M, Renderer>
+    pub fn text<'a, M>(txt: impl Into<Cow<'a, str>>) -> Button<'a, M>
     where
         M: Clone,
     {
@@ -26,17 +25,17 @@ impl SquareButton {
                 .vertical_alignment(Vertical::Center),
         )
         .style(Container::Border)
-        .width(Length::Units(SQUARE_BUTTON))
-        .height(Length::Units(SQUARE_BUTTON))
+        .width(Length::Fixed(SQUARE_BUTTON))
+        .height(Length::Fixed(SQUARE_BUTTON))
     }
 
-    pub fn icon<'a, M>(icon: Icon) -> Button<'a, M, Renderer>
+    pub fn icon<'a, M>(icon: Icon) -> Button<'a, M>
     where
         M: Clone + 'a,
     {
         Button::new(icon)
             .style(Container::Border)
-            .width(Length::Units(SQUARE_BUTTON))
-            .height(Length::Units(SQUARE_BUTTON))
+            .width(Length::Fixed(SQUARE_BUTTON))
+            .height(Length::Fixed(SQUARE_BUTTON))
     }
 }

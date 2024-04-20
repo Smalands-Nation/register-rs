@@ -1,19 +1,18 @@
 use {
-    super::{Message, Sideffect, Tab},
+    super::{Message, Sideffect, TabId},
     crate::{
         icons::Icon,
         item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{column, row, NumberInput, SquareButton, BIG_TEXT},
-        Element, Renderer,
+        widgets::{padded_column, row, NumberInput, SquareButton, BIG_TEXT},
     },
-    frost::wrap::{Direction, Wrap},
     iced::{
-        widget::{Button, PickList, Rule, Scrollable, Space, Text, TextInput},
-        Alignment, Length,
+        widget::{
+            Button, Component, PickList, Responsive, Rule, Scrollable, Space, Text, TextInput,
+        },
+        Alignment, Element, Length, Size,
     },
-    iced_aw::{Card, Modal},
-    iced_lazy::Component,
+    iced_aw::{Card, Modal, Wrap},
     rusqlite::params,
 };
 
@@ -21,8 +20,9 @@ pub struct Manager {
     menu: Vec<Item>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Mode {
+    #[default]
     New,
     Update(String),
 }
@@ -72,7 +72,7 @@ impl Manager {
     }
 }
 
-impl Component<Message, Renderer> for Manager {
+impl Component<Message> for Manager {
     type State = State;
     type Event = Event;
 
@@ -89,7 +89,7 @@ impl Component<Message, Renderer> for Manager {
                                 params![a, name],
                             )?;
 
-                            Tab::Manager(vec![]).load().await
+                            TabId::Manager.load().await
                         })
                         .into(),
                     );
@@ -112,19 +112,20 @@ impl Component<Message, Renderer> for Manager {
             }
             Event::Save => {
                 //Non breaking space gang
-                let name = state.name.replace(' ', "\u{00A0}");
-                let price = state.price;
-                let category = state.category;
+                let name = std::mem::take(&mut state.name).replace(' ', "\u{00A0}");
                 if !name.is_empty() {
-                    return match &state.mode {
+                    let price = std::mem::take(&mut state.price);
+                    let category = std::mem::take(&mut state.category);
+                    return match std::mem::take(&mut state.mode) {
                         Mode::New => Some(
                             Sideffect::new(|| async move {
                                 crate::DB.lock().await.execute(
-                                "INSERT INTO menu (name, price, available) VALUES (?1, ?2, true)",
-                                params![name, price],
-                            )?;
+                                    "INSERT INTO menu (name, price, available, category) 
+                                    VALUES (?1, ?2, true, ?3)",
+                                    params![name, price, category],
+                                )?;
 
-                                Tab::Manager(vec![]).load().await
+                                TabId::Manager.load().await
                             })
                             .into(),
                         ),
@@ -137,7 +138,7 @@ impl Component<Message, Renderer> for Manager {
                                     params![name, price, category, old_name],
                                 )?;
 
-                                    Tab::Manager(vec![]).load().await
+                                    TabId::Manager.load().await
                                 })
                                 .into(),
                             )
@@ -169,38 +170,33 @@ impl Component<Message, Renderer> for Manager {
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         let password = state.password.clone();
         Modal::new(
-            state.login_modal,
             row![
-                #nopad
-                Scrollable::new(
-                    Wrap::with_children(
-                        Direction::Row(3),
-                        self.menu
-                            .iter()
-                            .cloned()
-                            .enumerate()
-                            .map(|(i ,item)| {
-                                item
-                                .on_press(Event::EditItem(i))
-                                .on_toggle(move |b| Event::ToggleItem(i, b))
-                                .into()
-                            })
-                            .chain(
-                                std::iter::repeat_with(|| {
-                                    Space::with_width(Length::FillPortion(1)).into()
+                Responsive::new(|Size { width, .. }| {
+                    Scrollable::new(
+                        Wrap::with_elements(
+                            self.menu
+                                .iter()
+                                .cloned()
+                                .enumerate()
+                                .map(|(i, item)| {
+                                    item.on_press(Event::EditItem(i))
+                                        .on_toggle(move |b| Event::ToggleItem(i, b))
+                                        .width(Length::Fixed(
+                                            width / 3.0 - 2.0 * DEF_PADDING as f32,
+                                        ))
+                                        .into()
                                 })
-                                .take(3 - self.menu.len() % 3)
-                            )
-                            .collect(),
+                                .collect(),
+                        )
+                        .spacing(DEF_PADDING as f32)
+                        .line_spacing(DEF_PADDING as f32)
+                        .padding(DEF_PADDING as f32),
                     )
-                    .width(Length::Fill)
-                    .spacing(DEF_PADDING)
-                    .padding(DEF_PADDING),
-                ),
+                    .into()
+                }),
                 Rule::vertical(DEF_PADDING),
-                column![
+                padded_column![
                     row![
-                        #nopad
                         BIG_TEXT::new(match &state.mode {
                             Mode::New => String::from("Ny"),
                             Mode::Update(v) => {
@@ -213,12 +209,14 @@ impl Component<Message, Renderer> for Manager {
                     .align_items(Alignment::Center),
                     Space::with_height(Length::FillPortion(1)),
                     Text::new("Namn"),
-                    TextInput::new("", state.name.as_str(), Event::UpdateName)
+                    TextInput::new("", state.name.as_str())
+                        .on_input(Event::UpdateName)
                         .padding(DEF_PADDING),
                     Text::new("Pris (kr)"),
-                    NumberInput::new(1..=1000, Event::UpdatePrice, Some(state.price)),
+                    NumberInput::new(1..=1000, Event::UpdatePrice, state.price),
                     Text::new("Typ"),
-                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory),
+                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory)
+                        .width(Length::Fill),
                     Space::with_height(Length::FillPortion(5)),
                     if !state.locked {
                         Button::new(BIG_TEXT::new("Spara"))
@@ -228,7 +226,6 @@ impl Component<Message, Renderer> for Manager {
                             .width(Length::Fill)
                     } else {
                         Button::new(row![
-                            #nopad
                             BIG_TEXT::new("Spara"),
                             Space::with_width(Length::Fill),
                             Icon::Lock,
@@ -239,26 +236,27 @@ impl Component<Message, Renderer> for Manager {
                         .width(Length::Fill)
                     },
                 ]
-                .width(Length::Units(RECEIPT_WIDTH)),
+                .width(Length::Fixed(RECEIPT_WIDTH)),
             ],
-            move || {
+            state.login_modal.then(move || {
                 Card::new(
                     Text::new("Login krävs för att ändra i produkt"),
-                    column![
+                    padded_column![
                         Text::new("Lösendord"),
-                        TextInput::new("", &password, Event::UpdatePassword)
-                            .password()
+                        TextInput::new("", &password)
+                            .on_input(Event::UpdatePassword)
+                            .secure(true)
                             .padding(DEF_PADDING)
                             .on_submit(Event::Login),
                         Button::new(Text::new("Logga In"))
                             .style(theme::Container::Border)
                             .on_press(Event::Login),
-                    ],
+                    ]
+                    .height(Length::Shrink),
                 )
-                .max_width(650)
+                .max_width(650.0)
                 .on_close(Event::CloseLogin)
-                .into()
-            },
+            }),
         )
         .into()
     }
@@ -266,6 +264,6 @@ impl Component<Message, Renderer> for Manager {
 
 impl<'a> From<Manager> for Element<'a, Message> {
     fn from(manager: Manager) -> Self {
-        iced_lazy::component(manager)
+        iced::widget::component(manager)
     }
 }

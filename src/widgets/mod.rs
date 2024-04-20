@@ -5,31 +5,35 @@ pub mod square_button;
 pub use {numberinput::NumberInput, square_button::SquareButton};
 
 #[allow(non_camel_case_types)]
-pub type BIG_TEXT = frost::text::Text<45>;
+pub type BIG_TEXT = frost::text::Text<43>;
 #[allow(non_camel_case_types)]
-pub type SMALL_TEXT = frost::text::Text<20>;
+pub type SMALL_TEXT = frost::text::Text<18>;
 
 macro_rules! _column {
-    (#nopad $($elem:expr),+ $(,)?) => {
-        ::iced::widget::Column::with_children(vec![$($elem.into()),*])
+    ($($elem:expr),* $(,)?) => {
+        ::iced::widget::column!( $($elem),*).height(::iced::Length::Fill)
     };
+}
+macro_rules! _row {
+    ($($elem:expr),* $(,)?) => {
+        ::iced::widget::row!( $($elem),*).width(::iced::Length::Fill)
+    };
+}
+
+macro_rules! padded_column {
     ($($elem:expr),+ $(,)?) => {
-        $crate::widgets::column!(#nopad $($elem),*)
+        $crate::widgets::column!( $($elem),*)
             .spacing($crate::theme::DEF_PADDING)
             .padding($crate::theme::DEF_PADDING)
     };
 }
-macro_rules! _row {
-    (#nopad $($elem:expr),+ $(,)?) => {
-        //::iced::widget::Row::with_children(vec![$($elem.into()),*])
-        ::iced::widget::Row::with_children(vec![$($crate::Element::from($elem)),*])
-    };
+macro_rules! padded_row {
     ($($elem:expr),+ $(,)?) => {
-        $crate::widgets::row!(#nopad $($elem),*)
+        $crate::widgets::row!( $($elem),*)
             .spacing($crate::theme::DEF_PADDING)
             .padding($crate::theme::DEF_PADDING)
     };
 }
 
 //NOTE reexport with renames to avoid conflict with std
-pub(crate) use {_column as column, _row as row};
+pub(crate) use {_column as column, _row as row, padded_column, padded_row};

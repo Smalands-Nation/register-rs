@@ -7,10 +7,7 @@ use {
     },
 };
 
-pub const ICON_FONT: Font = Font::External {
-    name: "icofont",
-    bytes: include_bytes!("../resources/google-fonts-icons.ttf"),
-};
+pub const ICON_FONT: Font = Font::with_name("Material Symbols Outlined 48pt");
 
 pub enum Icon {
     Trash,
@@ -50,13 +47,8 @@ impl From<Icon> for String {
     }
 }
 
-impl<'a, R> From<Icon> for Text<'a, R>
-where
-    R: iced_native::Renderer + iced_native::text::Renderer,
-    R::Theme: iced_native::widget::text::StyleSheet,
-    iced::Font: Into<R::Font>,
-{
-    fn from(i: Icon) -> Text<'a, R> {
+impl<'a> From<Icon> for Text<'a> {
+    fn from(i: Icon) -> Text<'a> {
         BIG_TEXT::new(String::from(i))
             .font(ICON_FONT)
             .horizontal_alignment(Horizontal::Center)
@@ -64,12 +56,9 @@ where
     }
 }
 
-impl<'a, M, R> From<Icon> for Element<'a, M, R>
+impl<'a, M> From<Icon> for Element<'a, M>
 where
     M: 'a,
-    R: iced_native::Renderer + iced_native::text::Renderer + 'a,
-    R::Theme: iced_native::widget::text::StyleSheet,
-    iced::Font: Into<R::Font>,
 {
     fn from(i: Icon) -> Self {
         Text::from(i).into()
