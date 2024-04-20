@@ -3,7 +3,7 @@ use {
         icons::Icon,
         screens::{Message, Tab, TabId},
         theme::{TabStyle, DEF_PADDING, DEF_TEXT},
-        widgets::{column, SMALL_TEXT},
+        widgets::SMALL_TEXT,
     },
     chrono::Local,
     iced::{
@@ -137,8 +137,8 @@ impl Application for App {
                     )
                     .push(
                         TabId::Sales {
-                            from: Local::today(),
-                            to: Local::today(),
+                            from: Local::now().date_naive(),
+                            to: Local::now().date_naive(),
                         },
                         TabLabel::IconText(Icon::Money.into(), String::from("Försäljning")),
                         self.tab.as_sales(),

@@ -1,7 +1,7 @@
 use {
     crate::{
         theme::DEF_PADDING,
-        widgets::{column, padded_column, padded_row, row, SMALL_TEXT},
+        widgets::{column, padded_column, padded_row, SMALL_TEXT},
     },
     iced::{
         widget::{Component, Container, Text},

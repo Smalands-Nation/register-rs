@@ -7,7 +7,7 @@ use {
         print,
         receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
-        widgets::{calc::Calc, column, padded_column, row, SquareButton, BIG_TEXT},
+        widgets::{calc::Calc, padded_column, row, SquareButton, BIG_TEXT},
     },
     chrono::Local,
     iced::{

@@ -8,7 +8,7 @@ use {
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, padded_column, padded_row, row, BIG_TEXT, SMALL_TEXT},
     },
-    chrono::{Date, Local, TimeZone},
+    chrono::NaiveDate,
     iced::{
         widget::{Button, Component, Container, Row, Rule, Space, Text},
         Alignment, Element, Length,
@@ -26,8 +26,8 @@ pub enum Picker {
 }
 
 pub struct Sales {
-    from: Date<Local>,
-    to: Date<Local>,
+    from: NaiveDate,
+    to: NaiveDate,
     receipts: IndexMap<Payment, Receipt<Event>>,
 }
 
@@ -40,7 +40,7 @@ pub enum Event {
 }
 
 impl Sales {
-    pub fn new(from: Date<Local>, to: Date<Local>, sales: Vec<(Item, Payment)>) -> Self {
+    pub fn new(from: NaiveDate, to: NaiveDate, sales: Vec<(Item, Payment)>) -> Self {
         Self {
             from,
             to,
@@ -93,7 +93,7 @@ impl Component<Message> for Sales {
                 return None;
             }
             Event::UpdateDate(d) => {
-                let date = Local.from_local_date(&d.into()).unwrap();
+                let date = d.into();
                 match state {
                     Some(Picker::From) => {
                         self.from = date;
@@ -152,7 +152,7 @@ impl Component<Message> for Sales {
                 Text::new("Fr.o.m."),
                 DatePicker::new(
                     matches!(state, Some(Picker::From)),
-                    self.from.naive_local(),
+                    self.from,
                     Button::new(Text::new(self.from.format("%F").to_string()))
                         .width(Length::Fill)
                         .padding(DEF_PADDING)
@@ -165,7 +165,7 @@ impl Component<Message> for Sales {
                 Text::new("T.o.m."),
                 DatePicker::new(
                     matches!(state, Some(Picker::To)),
-                    self.from.naive_local(),
+                    self.from,
                     Button::new(Text::new(self.to.format("%F").to_string()))
                         .width(Length::Fill)
                         .padding(DEF_PADDING)

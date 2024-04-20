@@ -10,7 +10,7 @@ use {
         item::Item,
         payment::Payment,
     },
-    chrono::{Date, DateTime, Local},
+    chrono::{DateTime, Local, NaiveDate},
     futures::{future::BoxFuture, FutureExt},
     iced::Element,
     rusqlite::params,
@@ -40,8 +40,8 @@ pub enum Tab {
     Menu(Vec<Item>),
     Transactions(Vec<(DateTime<Local>, Item, Payment)>),
     Sales {
-        from: Date<Local>,
-        to: Date<Local>,
+        from: NaiveDate,
+        to: NaiveDate,
         data: Vec<(Item, Payment)>,
     },
     Manager(Vec<Item>),
@@ -94,8 +94,8 @@ impl Tab {
             Self::Menu(_) => TabId::Menu,
             Self::Transactions(_) => TabId::Transactions,
             Self::Sales { from, to, .. } => TabId::Sales {
-                from: from.clone(),
-                to: to.clone(),
+                from: *from,
+                to: *to,
             },
             Self::Manager(_) => TabId::Manager,
             Self::Info(_) => TabId::Info,
@@ -107,21 +107,21 @@ impl Tab {
 pub enum TabId {
     Menu,
     Transactions,
-    Sales { from: Date<Local>, to: Date<Local> },
+    Sales { from: NaiveDate, to: NaiveDate },
     Manager,
     Info,
 }
 
 impl PartialEq for TabId {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
+        matches!(
+            (self, other),
             (Self::Menu, Self::Menu)
-            | (Self::Transactions, Self::Transactions)
-            | (Self::Sales { .. }, Self::Sales { .. })
-            | (Self::Manager, Self::Manager)
-            | (Self::Info, Self::Info) => true,
-            _ => false,
-        }
+                | (Self::Transactions, Self::Transactions)
+                | (Self::Sales { .. }, Self::Sales { .. })
+                | (Self::Manager, Self::Manager)
+                | (Self::Info, Self::Info)
+        )
     }
 }
 
@@ -161,8 +161,18 @@ impl TabId {
             )),
 
             Self::Sales { from, to } => {
-                let from_time = from.and_hms(0, 0, 0);
-                let to_time = to.and_hms(23, 59, 59);
+                let from_time = from
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
+                let to_time = to
+                    .and_hms_opt(23, 59, 59)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
                 Tab::Sales {
                     from,
                     to,

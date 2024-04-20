@@ -1,9 +1,6 @@
 use {
     super::{column, row, SquareButton},
-    crate::{
-        icons::Icon,
-        theme::{DEF_PADDING, DEF_TEXT, SQUARE_BUTTON},
-    },
+    crate::{icons::Icon, theme::DEF_PADDING},
     frost::wrap::{Direction, Wrap},
     iced::{
         alignment::{Alignment, Horizontal},

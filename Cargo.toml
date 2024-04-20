@@ -12,7 +12,7 @@ update = []
 
 [dependencies]
 giftwrap = "0.5.0"
-chrono = "0.4.34"
+chrono = "0.4.38"
 dirs = "5.0.1"
 iced_core = "0.12.0"
 lazy_static = "1.4.0"
@@ -27,7 +27,7 @@ default-features = false
 features = ["rustls", "archive-zip", "compression-zip-deflate"]
 
 [dependencies.iced]
-version = "0.12.0"
+version = "0.12.1"
 features = [
     "canvas", 
     "tokio", 
@@ -40,9 +40,8 @@ version = "0.30.0"
 features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
-#FIXME version = "0.7"
 git = "https://github.com/iced-rs/iced_aw"
-branch = "main"
+rev = "1c4765d2f907e0256ebc5e7e8d513729e87c063f"
 default-features = false
 features = [
     "tab_bar", 
