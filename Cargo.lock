@@ -1710,8 +1710,9 @@ dependencies = [
 
 [[package]]
 name = "iced_aw"
-version = "0.8.0"
-source = "git+https://github.com/iced-rs/iced_aw?rev=1c4765d2f907e0256ebc5e7e8d513729e87c063f#1c4765d2f907e0256ebc5e7e8d513729e87c063f"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e68c330918a95bd73176206d65b84efe9aee6581da0e6dea0390cd146d7214c"
 dependencies = [
  "cfg-if",
  "chrono",
@@ -3533,7 +3534,7 @@ dependencies = [
 
 [[package]]
 name = "smalands-rs"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "chrono",
  "dirs",

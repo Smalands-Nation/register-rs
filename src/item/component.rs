@@ -110,6 +110,7 @@ where
         } else {
             Container::Border
         })
+        .clip(true)
         .on_press(Event::Press)
         .into()
     }

@@ -1,6 +1,6 @@
 [package]
 name = "smalands-rs"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
 edition = "2021"
 
@@ -40,8 +40,7 @@ version = "0.30.0"
 features = ["chrono", "bundled"]
 
 [dependencies.iced_aw]
-git = "https://github.com/iced-rs/iced_aw"
-rev = "1c4765d2f907e0256ebc5e7e8d513729e87c063f"
+version = "0.9"
 default-features = false
 features = [
     "tab_bar", 

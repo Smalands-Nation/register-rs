@@ -150,6 +150,7 @@ impl Component<Message> for Menu {
                             })
                             .collect(),
                     )
+                    .align_items(Alignment::End)
                     .spacing(DEF_PADDING as f32)
                     .line_spacing(DEF_PADDING as f32)
                     .padding(DEF_PADDING as f32),

@@ -23,7 +23,8 @@ lazy_static! {
                         INNER JOIN menu ON receipt_item.item = menu.name;
             "#
         ),
-        M::up("ALTER TABLE menu ADD COLUMN category TEXT DEFAULT 'other' NOT NULL;")
+        M::up("ALTER TABLE menu ADD COLUMN category TEXT DEFAULT 'other' NOT NULL;"),
+        M::up("UPDATE menu SET name = replace(name, '\u{00A0}', ' ');")
     ]);
 }
 

@@ -80,8 +80,7 @@ impl Component<Message> for Manager {
         match event {
             Event::ToggleItem(i, a) => {
                 if let Some(i) = self.menu.get(i) {
-                    //Non breaking space gang
-                    let name = i.name.replace(' ', "\u{00A0}");
+                    let name = i.name.clone();
                     return Some(
                         Sideffect::new(|| async move {
                             crate::DB.lock().await.execute(
@@ -111,8 +110,7 @@ impl Component<Message> for Manager {
                 state.price = 0;
             }
             Event::Save => {
-                //Non breaking space gang
-                let name = std::mem::take(&mut state.name).replace(' ', "\u{00A0}");
+                let name = std::mem::take(&mut state.name);
                 if !name.is_empty() {
                     let price = std::mem::take(&mut state.price);
                     let category = std::mem::take(&mut state.category);
