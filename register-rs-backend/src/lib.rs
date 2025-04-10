@@ -5,20 +5,17 @@ use std::path::Path;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::sync::Mutex;
 
+//Used both for conveinence but also to not leak locked connection
 macro_rules! sql {
     ($sql:literal, $map_row:expr) => {
         sql!($sql, ::rusqlite::params![], $map_row, _)
     };
 
-    ($sql:literal, $params:expr, $map_row:expr) => {
-        sql!($sql, ::rusqlite::params![], $map_row, _)
+    ($sql:literal, $map_row:expr, ..) => {
+        sql!($sql, ::rusqlite::params![], $map_row, ..)
     };
 
-    ($sql:literal, $map_row:expr, $collect:ty) => {
-        sql!($sql, ::rusqlite::params![], $map_row, $collect)
-    };
-
-    ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
+    ($sql:literal, $params:expr, $map_row:expr, ..) => {
         $crate::CONNECTION
             .get()
             .ok_or($crate::Error::NotConnected)?
@@ -27,6 +24,14 @@ macro_rules! sql {
             .prepare_cached($sql)?
             .query_map($params, $map_row)?
             .map(|r| r.map_err($crate::Error::from))
+    };
+
+    ($sql:literal, $params:expr, $map_row:expr) => {
+        sql!($sql, ::rusqlite::params![], $map_row, _)
+    };
+
+    ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
+        sql!($sql, $params, $map_row, ..)
             .collect::<::std::result::Result<$collect, $crate::Error>>()
     };
 }

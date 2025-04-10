@@ -1,7 +1,7 @@
 use crate::{Result, items::Item};
 use chrono::{DateTime, Local};
 use indexmap::{IndexMap, IndexSet};
-use rusqlite::Row;
+use rusqlite::{Row, params};
 use std::collections::HashMap;
 use strum::VariantArray;
 
@@ -34,49 +34,53 @@ impl Receipt {
         from_time: DateTime<Local>,
         to_time: DateTime<Local>,
     ) -> Result<HashMap<Payment, Self>> {
-        let raw: Vec<RawEntry> = sql!(
+        sql!(
             "SELECT item, amount, price, special, method FROM receipts_view \
-            WHERE time BETWEEN ?1 AND ?2",
+                WHERE time BETWEEN ?1 AND ?2",
             params![from_time, to_time],
-            RawEntry::from_row
-        )?;
-
-        Ok(raw.into_iter().fold(
-            HashMap::with_capacity(Payment::VARIANTS.len()),
-            |mut map, raw| {
+            RawEntry::from_row,
+            ..
+        )
+        .fold(
+            Ok(HashMap::with_capacity(Payment::VARIANTS.len())),
+            |res, raw| {
                 let RawEntry {
                     time,
                     amount,
                     item,
                     payment,
-                } = raw;
-                let r = map
-                    .entry(payment)
-                    .or_insert_with(|| Self::new(time, payment));
-                r.insert(amount, item);
-                map
+                } = raw?;
+                res.map(|mut hm| {
+                    let r = hm
+                        .entry(payment)
+                        .or_insert_with(|| Self::new(time, payment));
+                    r.insert(amount, item);
+                    hm
+                })
             },
-        ))
+        )
     }
 
     pub async fn get_recents() -> Result<IndexMap<DateTime<Local>, Self>> {
-        let raw: Vec<RawEntry> = sql!(
+        sql!(
             "SELECT * FROM receipts_view \
-                    WHERE time > date('now','-1 day') ORDER BY time DESC",
-            RawEntry::from_row
-        )?;
-
-        Ok(raw.into_iter().fold(IndexMap::new(), |mut map, raw| {
+                WHERE time > date('now','-1 day') ORDER BY time DESC",
+            RawEntry::from_row,
+            ..
+        )
+        .fold(Ok(IndexMap::new()), |res, raw| {
             let RawEntry {
                 time,
                 amount,
                 item,
                 payment,
-            } = raw;
-            let r = map.entry(time).or_insert_with(|| Self::new(time, payment));
-            r.insert(amount, item);
-            map
-        }))
+            } = raw?;
+            res.map(|mut hm| {
+                let r = hm.entry(time).or_insert_with(|| Self::new(time, payment));
+                r.insert(amount, item);
+                hm
+            })
+        })
     }
 }
 
