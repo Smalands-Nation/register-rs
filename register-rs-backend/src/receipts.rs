@@ -1,6 +1,6 @@
 use crate::{Result, items::Item};
 use chrono::{DateTime, Local};
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexMap;
 use rusqlite::{Row, params};
 use std::collections::HashMap;
 use strum::VariantArray;
@@ -11,7 +11,8 @@ pub use payments::Payment;
 
 #[derive(Default)]
 pub struct Receipt {
-    items: IndexSet<(i32, Item)>,
+    //Item -> Amount
+    items: IndexMap<Item, i32>,
     time: DateTime<Local>,
     sum: i32,
     payment: Payment,
@@ -26,8 +27,8 @@ impl Receipt {
         }
     }
 
-    fn insert(&mut self, amount: i32, item: Item) {
-        self.items.insert((amount, item));
+    fn insert(&mut self, item: Item, amount: i32) {
+        *self.items.entry(item).or_insert(0) += amount;
     }
 
     pub async fn get_sales_summary(
@@ -54,7 +55,7 @@ impl Receipt {
                     let r = hm
                         .entry(payment)
                         .or_insert_with(|| Self::new(time, payment));
-                    r.insert(amount, item);
+                    r.insert(item, amount);
                     hm
                 })
             },
@@ -77,7 +78,7 @@ impl Receipt {
             } = raw?;
             res.map(|mut hm| {
                 let r = hm.entry(time).or_insert_with(|| Self::new(time, payment));
-                r.insert(amount, item);
+                r.insert(item, amount);
                 hm
             })
         })

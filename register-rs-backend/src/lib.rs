@@ -1,6 +1,6 @@
 use giftwrap::Wrap;
 use rusqlite::Connection;
-use rusqlite_migration::{Migrations, M};
+use rusqlite_migration::{M, Migrations};
 use std::path::Path;
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::sync::Mutex;
@@ -44,21 +44,27 @@ static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
         M::up(include_str!("../db.sql")),
         M::up("DROP TABLE password"),
         M::up(
-            r#"
-                ALTER TABLE receipt_item ADD COLUMN price INTEGER DEFAULT 1 NOT NULL;
-                UPDATE receipt_item SET price = (
-                    SELECT price FROM menu WHERE receipt_item.item = menu.name
-                );
-                DROP VIEW receipts_view;
-                CREATE VIEW IF NOT EXISTS receipts_view AS
-                    SELECT receipts.time, receipt_item.item, receipt_item.amount, receipt_item.price, menu.special, receipts.method 
-                    FROM receipts
-                        INNER JOIN receipt_item ON receipts.time = receipt_item.receipt
-                        INNER JOIN menu ON receipt_item.item = menu.name;
+            r#"ALTER TABLE receipt_item ADD COLUMN price INTEGER DEFAULT 1 NOT NULL;
+               UPDATE receipt_item SET price = (
+                   SELECT price FROM menu WHERE receipt_item.item = menu.name
+               );
+               DROP VIEW receipts_view;
+               CREATE VIEW IF NOT EXISTS receipts_view AS
+                   SELECT receipts.time, receipt_item.item, receipt_item.amount, receipt_item.price, menu.special, receipts.method 
+                   FROM receipts
+                       INNER JOIN receipt_item ON receipts.time = receipt_item.receipt
+                       INNER JOIN menu ON receipt_item.item = menu.name;
             "#,
         ),
         M::up("ALTER TABLE menu ADD COLUMN category TEXT DEFAULT 'other' NOT NULL;"),
         M::up("UPDATE menu SET name = replace(name, '\u{00A0}', ' ');"),
+        M::up(
+            r#"UPDATE receipt_item AS r 
+                    SET amount = r.price/m.price, price=m.price 
+                    FROM menu AS m 
+                    WHERE m.name = item AND m.special
+            "#,
+        ),
     ])
 });
 
