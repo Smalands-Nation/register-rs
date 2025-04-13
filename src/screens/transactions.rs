@@ -2,13 +2,10 @@ use {
     super::{Message, Sideffect},
     crate::{
         icons::Icon,
-        item::Item,
-        payment::Payment,
-        print,
-        receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{padded_column, row, SquareButton},
     },
+    backend::receipts::Receipt,
     chrono::{DateTime, Local},
     iced::{
         widget::{scrollable::Direction, Component, Container, Row, Rule, Scrollable, Space},
@@ -18,12 +15,12 @@ use {
 };
 
 pub struct Transactions {
-    receipts: IndexMap<DateTime<Local>, Receipt<Event>>,
+    receipts: IndexMap<DateTime<Local>, Receipt>,
 }
 
 #[derive(Default)]
 pub struct State {
-    selected: Option<(DateTime<Local>, Receipt<Event>)>,
+    selected: Option<Receipt>,
     offset: usize,
 }
 
@@ -37,23 +34,8 @@ pub enum Event {
 }
 
 impl Transactions {
-    pub fn new(receipts: Vec<(DateTime<Local>, Item, Payment)>) -> Self {
-        Self {
-            receipts: receipts.into_iter().fold(
-                IndexMap::<_, Receipt<Event>, _>::new(),
-                |mut hm, (time, item, method)| {
-                    match hm.get_mut(&time) {
-                        Some(receipt) => (*receipt).add(item),
-                        None => {
-                            let mut receipt = Receipt::new(method);
-                            receipt.add(item);
-                            hm.insert(time, receipt);
-                        }
-                    }
-                    hm
-                },
-            ),
-        }
+    pub fn new(receipts: IndexMap<DateTime<Local>, Receipt>) -> Self {
+        Self { receipts }
     }
 }
 
@@ -70,19 +52,14 @@ impl Component<Message> for Transactions {
                 state.offset += 1
             }
             Event::Select(time) => {
-                state.selected = self
-                    .receipts
-                    .get_key_value(&time)
-                    .map(|(k, v)| (*k, v.clone()));
+                state.selected = self.receipts.get(&time).cloned();
             }
             Event::Deselect => state.selected = None,
             Event::Print => {
-                if let Some((time, receipt)) = &state.selected {
-                    let receipt = receipt.clone();
-                    let time = *time;
+                if let Some(receipt) = state.selected.take() {
                     return Some(
                         Sideffect::new(|| async move {
-                            print::print(&receipt, time).await?;
+                            receipt.print().await?;
                             Ok(().into())
                         })
                         .into(),
@@ -98,10 +75,12 @@ impl Component<Message> for Transactions {
         row![
             Scrollable::new(
                 Row::with_children(self.receipts.iter().map(|(t, rec)| {
-                    Container::new(rec.clone().on_press(Event::Select(*t)))
-                        .padding(DEF_PADDING)
-                        .style(theme::Container::Border)
-                        .into()
+                    Container::new(
+                        crate::receipt::Receipt::from(rec.clone()).on_press(Event::Select(*t)),
+                    )
+                    .padding(DEF_PADDING)
+                    .style(theme::Container::Border)
+                    .into()
                 }))
                 .spacing(DEF_PADDING)
                 .padding(DEF_PADDING)
@@ -111,7 +90,7 @@ impl Component<Message> for Transactions {
             Rule::vertical(DEF_PADDING),
             padded_column![
                 match state.selected {
-                    Some((_, ref rec)) => Element::from(rec.clone()),
+                    Some(ref rec) => Element::from(crate::receipt::Receipt::from(rec.clone())),
                     None => Space::new(Length::Fixed(RECEIPT_WIDTH), Length::Fill).into(),
                 },
                 row![

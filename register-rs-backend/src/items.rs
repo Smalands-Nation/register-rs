@@ -27,11 +27,11 @@ impl Item {
 
     pub(crate) fn from_row(row: &rusqlite::Row) -> rusqlite::Result<Self> {
         Ok(Self {
-            name: row.get("name")?,
+            name: row.get("name").or_else(|_| row.get("item"))?,
             price: row.get("price")?,
             available: row.get("available").ok(),
             special: row.get("special").unwrap_or(false),
-            category: row.get("category")?,
+            category: row.get("category").unwrap_or(Category::Other),
         })
     }
 

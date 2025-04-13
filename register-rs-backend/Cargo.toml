@@ -13,8 +13,4 @@ genpdf = { version = "0.2.0", features = ["images"] }
 tokio.workspace = true
 giftwrap.workspace = true
 chrono.workspace = true
-
-[dependencies.indexmap]
-version = "2.9"
-features = ["std", "serde"]
-
+indexmap.workspace = true

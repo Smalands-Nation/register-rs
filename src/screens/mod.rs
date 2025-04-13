@@ -2,28 +2,32 @@ pub mod info;
 //pub mod manager;
 pub mod menu;
 //pub mod sales;
-//pub mod transactions;
+pub mod transactions;
 
 use {
     crate::error::{Error, Result},
-    backend::items::Item,
-    backend::receipts::Payment,
+    backend::{
+        items::Item,
+        receipts::{Payment, Receipt},
+    },
     chrono::{DateTime, Local, NaiveDate},
     futures::{future::BoxFuture, FutureExt},
     iced::Element,
+    indexmap::IndexMap,
     std::future::{Future, IntoFuture},
 };
 
 use {
     info::Info,
     //manager::Manager,
-    menu::Menu, //, sales::Sales, transactions::Transactions
+    menu::Menu, //, sales::Sales,
+    transactions::Transactions,
 };
 
 #[derive(Clone, Debug)]
 pub enum Tab {
     Menu(Vec<Item>),
-    Transactions(Vec<(DateTime<Local>, Item, Payment)>),
+    Transactions(IndexMap<DateTime<Local>, Receipt>),
     Sales {
         from: NaiveDate,
         to: NaiveDate,
@@ -44,8 +48,7 @@ impl Tab {
 
     pub fn as_transactions(&self) -> Element<Message> {
         if let Self::Transactions(transactions) = self {
-            //Transactions::new(transactions.clone()).into()
-            todo!()
+            Transactions::new(transactions.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -118,19 +121,9 @@ impl TabId {
         Ok(Message::LoadTab(match self {
             Self::Menu => Tab::Menu(backend::items::Item::get_all_available().await?),
 
-            //Self::Transactions => Tab::Transactions(sql!(
-            //    "SELECT * FROM receipts_view \
-            //        WHERE time > date('now','-1 day') ORDER BY time DESC",
-            //    params![],
-            //    |row| {
-            //        Ok((
-            //            row.get::<_, DateTime<Local>>("time")?,
-            //            Item::new_sales(row)?,
-            //            Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
-            //        ))
-            //    },
-            //    Vec<_>
-            //)),
+            Self::Transactions => {
+                Tab::Transactions(backend::receipts::Receipt::get_recents().await?)
+            }
 
             //Self::Sales { from, to } => {
             //    let from_time = from
