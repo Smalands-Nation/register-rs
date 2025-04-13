@@ -210,15 +210,14 @@ impl Stats {
 pub async fn save(Summary { from, to, data }: &Summary) -> Result<PathBuf> {
     use chrono::Datelike;
 
-    let mut path = dirs::document_dir().ok_or("No document path")?;
+    let mut path = dirs::document_dir().ok_or(Error::NoPath)?;
     path.push("sales");
     path.push(to.year().to_string());
-    match std::fs::create_dir_all(&path) {
-        Ok(_) => (),
-        Err(e) => match e.kind() {
+    if let Err(e) = std::fs::create_dir_all(&path) {
+        match e.kind() {
             std::io::ErrorKind::AlreadyExists => (),
-            ek => return Err(ek.into()),
-        },
+            ek => return Err(Error::Io(ek)),
+        }
     }
 
     Stats::new(data).create_pdf(path, (*from, *to))
@@ -233,5 +232,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub enum Error {
+    NoPath,
+    Io(std::io::ErrorKind),
     Pdf(Arc<genpdf::error::Error>),
 }
