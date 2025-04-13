@@ -50,6 +50,7 @@ macro_rules! insert {
 
 pub mod items;
 pub mod receipts;
+pub mod summary;
 
 static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
     Migrations::new(vec![
@@ -96,7 +97,7 @@ pub fn set_receipt_path(path: PathBuf) -> Result<()> {
         .map_err(|_| Error::PathAlreadySet)
 }
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Wrap, Debug, Clone)]
 pub enum Error {
@@ -106,6 +107,8 @@ pub enum Error {
     SqliteMigration(Arc<rusqlite_migration::Error>),
     #[giftwrap(wrapDepth = 0)]
     PrintError(Arc<receipts::print::Error>),
+    #[giftwrap(wrapDepth = 0)]
+    SummaryError(summary::save::Error),
     #[giftwrap(noWrap = true)]
     AlreadyConnected,
     #[giftwrap(noWrap = true)]

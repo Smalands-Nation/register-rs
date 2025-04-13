@@ -1,15 +1,12 @@
 pub mod info;
 //pub mod manager;
 pub mod menu;
-//pub mod sales;
+pub mod sales;
 pub mod transactions;
 
 use {
     crate::error::{Error, Result},
-    backend::{
-        items::Item,
-        receipts::{Payment, Receipt},
-    },
+    backend::{items::Item, receipts::Receipt, summary::Summary},
     chrono::{DateTime, Local, NaiveDate},
     futures::{future::BoxFuture, FutureExt},
     iced::Element,
@@ -20,7 +17,8 @@ use {
 use {
     info::Info,
     //manager::Manager,
-    menu::Menu, //, sales::Sales,
+    menu::Menu,
+    sales::Sales,
     transactions::Transactions,
 };
 
@@ -28,11 +26,7 @@ use {
 pub enum Tab {
     Menu(Vec<Item>),
     Transactions(IndexMap<DateTime<Local>, Receipt>),
-    Sales {
-        from: NaiveDate,
-        to: NaiveDate,
-        data: Vec<(Item, Payment)>,
-    },
+    Sales(Summary),
     Manager(Vec<Item>),
     Info(self_update::Status),
 }
@@ -55,9 +49,8 @@ impl Tab {
     }
 
     pub fn as_sales(&self) -> Element<Message> {
-        if let Self::Sales { from, to, data } = self {
-            //Sales::new(*from, *to, data.clone()).into()
-            todo!()
+        if let Self::Sales(summary) = self {
+            Sales::new(summary.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -84,9 +77,9 @@ impl Tab {
         match self {
             Self::Menu(_) => TabId::Menu,
             Self::Transactions(_) => TabId::Transactions,
-            Self::Sales { from, to, .. } => TabId::Sales {
-                from: *from,
-                to: *to,
+            Self::Sales(summary) => TabId::Sales {
+                from: summary.from().date_naive(),
+                to: summary.to().date_naive(),
             },
             Self::Manager(_) => TabId::Manager,
             Self::Info(_) => TabId::Info,
@@ -119,43 +112,25 @@ impl PartialEq for TabId {
 impl TabId {
     pub async fn load(self) -> Result<Message> {
         Ok(Message::LoadTab(match self {
-            Self::Menu => Tab::Menu(backend::items::Item::get_all_available().await?),
+            Self::Menu => Tab::Menu(Item::get_all_available().await?),
 
-            Self::Transactions => {
-                Tab::Transactions(backend::receipts::Receipt::get_recents().await?)
+            Self::Transactions => Tab::Transactions(Receipt::get_recents().await?),
+
+            Self::Sales { from, to } => {
+                let from_time = from
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
+                let to_time = to
+                    .and_hms_opt(23, 59, 59)
+                    .unwrap()
+                    .and_local_timezone(Local)
+                    .single()
+                    .unwrap();
+                Tab::Sales(Summary::get_sales_summary(from_time, to_time).await?)
             }
-
-            //Self::Sales { from, to } => {
-            //    let from_time = from
-            //        .and_hms_opt(0, 0, 0)
-            //        .unwrap()
-            //        .and_local_timezone(Local)
-            //        .single()
-            //        .unwrap();
-            //    let to_time = to
-            //        .and_hms_opt(23, 59, 59)
-            //        .unwrap()
-            //        .and_local_timezone(Local)
-            //        .single()
-            //        .unwrap();
-            //    Tab::Sales {
-            //        from,
-            //        to,
-            //        data: sql!(
-            //            "SELECT item, amount, price, special, method FROM receipts_view \
-            //                WHERE time BETWEEN ?1 AND ?2",
-            //            params![from_time, to_time],
-            //            |row| {
-            //                Ok((
-            //                    Item::new_sales(row)?,
-            //                    //method
-            //                    Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-            //                ))
-            //            },
-            //            Vec<(Item, Payment)>
-            //        ),
-            //    }
-            //}
 
             //Self::Manager => Tab::Manager(sql!(
             //    "SELECT name, price, available, category FROM menu \

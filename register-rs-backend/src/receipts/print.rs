@@ -8,7 +8,7 @@ use {
     std::{
         io::Cursor,
         path::PathBuf,
-        sync::{LazyLock, OnceLock},
+        sync::{Arc, LazyLock, OnceLock},
     },
 };
 
@@ -96,7 +96,7 @@ fn create_pdf(path: impl Into<PathBuf>, receipt: &Receipt) -> Result<PathBuf> {
     let mut path = path.into();
     path.push(format!("receipt_{}.pdf", receipt.time.format("%F_%T")).replace(':', "-"));
     doc.render_to_file(path.clone())
-        .expect("Failed to write PDF file");
+        .map_err(|e| Error::Pdf(Arc::new(e)))?;
 
     Ok(path)
 }
@@ -138,11 +138,12 @@ pub async fn print(receipt: &Receipt) -> Result<()> {
     }
 }
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub enum Error {
     PrintFailed,
     NoPath,
     Io(std::io::ErrorKind),
+    Pdf(Arc<genpdf::error::Error>),
 }

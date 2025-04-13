@@ -3,8 +3,6 @@ use chrono::{DateTime, Local};
 use getset::WithSetters;
 use indexmap::IndexMap;
 use rusqlite::{Row, params};
-use std::collections::HashMap;
-use strum::VariantArray;
 
 pub mod payments;
 pub(crate) mod print;
@@ -22,7 +20,7 @@ pub struct Receipt {
 }
 
 impl Receipt {
-    fn new(time: DateTime<Local>, payment: Payment) -> Self {
+    pub(crate) fn new(time: DateTime<Local>, payment: Payment) -> Self {
         Self {
             time,
             payment,
@@ -47,37 +45,6 @@ impl Receipt {
 
     pub fn iter(&self) -> impl Iterator<Item = (&Item, &i32)> {
         self.items.iter()
-    }
-
-    pub async fn get_sales_summary(
-        from_time: DateTime<Local>,
-        to_time: DateTime<Local>,
-    ) -> Result<HashMap<Payment, Self>> {
-        select!(
-            "SELECT item, amount, price, special, method FROM receipts_view \
-                WHERE time BETWEEN ?1 AND ?2",
-            params![from_time, to_time],
-            RawEntry::from_row,
-            ..
-        )
-        .fold(
-            Ok(HashMap::with_capacity(Payment::VARIANTS.len())),
-            |res, raw| {
-                let RawEntry {
-                    time,
-                    amount,
-                    item,
-                    payment,
-                } = raw?;
-                res.map(|mut hm| {
-                    let r = hm
-                        .entry(payment)
-                        .or_insert_with(|| Self::new(time, payment));
-                    r.insert(item, amount);
-                    hm
-                })
-            },
-        )
     }
 
     pub async fn get_recents() -> Result<IndexMap<DateTime<Local>, Self>> {
@@ -122,20 +89,23 @@ impl Receipt {
     }
 }
 
-struct RawEntry {
-    time: DateTime<Local>,
-    amount: i32,
-    item: Item,
-    payment: Payment,
+pub(crate) struct RawEntry {
+    pub(crate) time: DateTime<Local>,
+    pub(crate) amount: i32,
+    pub(crate) item: Item,
+    pub(crate) payment: Payment,
 }
 
 impl RawEntry {
-    fn from_row(row: &Row) -> rusqlite::Result<Self> {
+    pub(crate) fn from_row(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             time: row.get("time").unwrap_or_default(),
             amount: row.get("amount")?,
             item: Item::from_row(row)?,
-            payment: row.get("payment").unwrap_or_default(),
+            payment: row
+                .get("payment")
+                .or_else(|_| row.get("method"))
+                .unwrap_or_default(),
         })
     }
 }
