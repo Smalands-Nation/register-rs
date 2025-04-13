@@ -14,7 +14,7 @@ use {
 
 pub(crate) static RECEIPT_PATH: OnceLock<PathBuf> = OnceLock::new();
 
-static FONT: LazyLock<fonts::FontData> = LazyLock::new(|| {
+pub(crate) static FONT: LazyLock<fonts::FontData> = LazyLock::new(|| {
     fonts::FontData::new(
         include_bytes!("../../../resources/IBMPlexMono-Regular.ttf").to_vec(),
         None,

@@ -3302,6 +3302,7 @@ name = "register-rs-backend"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dirs",
  "genpdf",
  "getset",
  "giftwrap",

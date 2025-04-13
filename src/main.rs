@@ -2,14 +2,14 @@ use {
     crate::{
         icons::Icon,
         screens::{Message, Tab, TabId},
-        theme::{TabStyle, DEF_PADDING, DEF_TEXT},
+        theme::{DEF_PADDING, DEF_TEXT, TabStyle},
         widgets::SMALL_TEXT,
     },
     chrono::Local,
     iced::{
-        font,
+        Application, Command, Element, Font, Length, Pixels, Settings, Size, font,
         widget::{Container, Text},
-        window, Application, Command, Element, Font, Length, Pixels, Settings, Size,
+        window,
     },
     iced_aw::{Card, Modal, TabLabel, Tabs},
 };

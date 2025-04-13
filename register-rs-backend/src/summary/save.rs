@@ -1,7 +1,7 @@
 use {
     crate::{
         items::Item,
-        receipts::{Payment, Receipt},
+        receipts::{Payment, Receipt, print::FONT},
         summary::Summary,
     },
     chrono::{DateTime, Local},
@@ -61,17 +61,11 @@ impl Stats {
         path: impl Into<PathBuf>,
         (from, to): (DateTime<Local>, DateTime<Local>),
     ) -> Result<PathBuf> {
-        let font = fonts::FontData::new(
-            include_bytes!("../../../resources/IBMPlexMono-Regular.ttf").to_vec(),
-            None,
-        )
-        .unwrap();
-
         let mut doc = Document::new(fonts::FontFamily {
-            regular: font.clone(),
-            bold: font.clone(),
-            italic: font.clone(),
-            bold_italic: font,
+            regular: FONT.clone(),
+            bold: FONT.clone(),
+            italic: FONT.clone(),
+            bold_italic: FONT.clone(),
         });
         doc.set_paper_size((297, 210));
 
@@ -227,7 +221,7 @@ pub async fn save(Summary { from, to, data }: &Summary) -> Result<PathBuf> {
         },
     }
 
-    Stats::new(data).create_pdf(".", (*from, *to))
+    Stats::new(data).create_pdf(path, (*from, *to))
 }
 
 #[cfg(debug_assertions)]

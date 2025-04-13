@@ -33,7 +33,7 @@ pub fn set_receipt_path() -> Result<()> {
 }
 
 #[cfg(not(debug_assertions))]
-use self_update::{backends::github, cargo_crate_version, Status};
+use self_update::{Status, backends::github, cargo_crate_version};
 
 #[cfg(not(debug_assertions))]
 pub fn update() -> Result<Status> {
