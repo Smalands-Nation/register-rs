@@ -257,7 +257,7 @@ impl Component<Message> for Manager {
     }
 }
 
-impl<'a> From<Manager> for Element<'a, Message> {
+impl From<Manager> for Element<'_, Message> {
     fn from(manager: Manager) -> Self {
         iced::widget::component(manager)
     }

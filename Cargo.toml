@@ -2,7 +2,7 @@
 name = "smalands-rs"
 version = "0.10.2"
 authors = ["axel paulander <axel.paulander@gmail.com>"]
-edition = "2021"
+edition = "2024"
 
 [features]
 default = []

@@ -158,7 +158,7 @@ impl Component<Message> for Menu {
     }
 }
 
-impl<'a> From<Menu> for Element<'a, Message> {
+impl From<Menu> for Element<'_, Message> {
     fn from(menu: Menu) -> Self {
         iced::widget::component(menu)
     }

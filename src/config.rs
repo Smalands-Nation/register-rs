@@ -23,12 +23,11 @@ pub fn set_receipt_path() -> Result<()> {
     let mut conf_path = dirs::config_dir().ok_or("No config path")?;
     conf_path.push("smaland_register");
     conf_path.push("receipts");
-    match std::fs::create_dir_all(&conf_path) {
-        Err(e) => match e.kind() {
+    if let Err(e) = std::fs::create_dir_all(&conf_path) {
+        match e.kind() {
             std::io::ErrorKind::AlreadyExists => {}
             ek => return Err(ek.into()),
-        },
-        _ => {}
+        }
     }
     Ok(backend::set_receipt_path(conf_path)?)
 }

@@ -166,7 +166,7 @@ impl Component<Message> for Sales {
     }
 }
 
-impl<'a> From<Sales> for Element<'a, Message> {
+impl From<Sales> for Element<'_, Message> {
     fn from(sales: Sales) -> Self {
         iced::widget::component(sales)
     }

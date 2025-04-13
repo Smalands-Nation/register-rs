@@ -35,9 +35,9 @@ impl<M> From<RawReceipt> for Receipt<M> {
     }
 }
 
-impl<'a, M> Component<M> for Receipt<M>
+impl<M> Component<M> for Receipt<M>
 where
-    M: Clone + std::fmt::Debug + 'a,
+    M: Clone + std::fmt::Debug,
 {
     type Event = bool;
     type State = ();
