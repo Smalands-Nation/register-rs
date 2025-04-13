@@ -103,9 +103,8 @@ fn create_pdf(path: impl Into<PathBuf>, receipt: &Receipt) -> Result<PathBuf> {
 
 #[cfg(target_os = "windows")]
 pub async fn print(receipt: &Receipt) -> Result<()> {
-    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPath)?, &receipt)
-        .map_err(|e| format!("create_pdf: {e:#?}"))?;
-    let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
+    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPrintPath)?, &receipt)?;
+    let mut pdf_to_printer = dirs::config_dir().ok_or(Error::NoConfPath)?;
     pdf_to_printer.push("smaland_register");
     pdf_to_printer.push("PDFtoPrinter.exe");
     if std::process::Command::new(pdf_to_printer)
@@ -123,7 +122,7 @@ pub async fn print(receipt: &Receipt) -> Result<()> {
 
 #[cfg(not(target_os = "windows"))]
 pub async fn print(receipt: &Receipt) -> Result<()> {
-    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPath)?, receipt)?;
+    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPrintPath)?, receipt)?;
     println!("{:?}", filename.display());
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
@@ -143,7 +142,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone)]
 pub enum Error {
     PrintFailed,
-    NoPath,
+    NoPrintPath,
+    NoConfPath,
     Io(std::io::ErrorKind),
     Pdf(Arc<genpdf::error::Error>),
 }
