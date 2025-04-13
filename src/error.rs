@@ -6,9 +6,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Wrap, Debug, Clone)]
 pub enum Error {
     #[giftwrap(wrapDepth = 0)]
-    Sqlite(Arc<rusqlite::Error>),
-    #[giftwrap(wrapDepth = 0)]
-    SqliteMigration(Arc<rusqlite_migration::Error>),
+    Backend(Arc<backend::Error>),
     IO(std::io::ErrorKind),
     #[giftwrap(wrapDepth = 0)]
     SelfUpdate(Arc<self_update::errors::Error>),

@@ -50,9 +50,6 @@ features = [
     "wrap",
 ]
 
-[dependencies.genpdf]
-version = "0.2.0"
-features = ["images"]
 
 [dependencies.indexmap]
 version = "2.9"

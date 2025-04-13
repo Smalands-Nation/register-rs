@@ -1,18 +1,18 @@
 use giftwrap::Wrap;
 use rusqlite::Connection;
 use rusqlite_migration::{M, Migrations};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
 use tokio::sync::Mutex;
 
 //Used both for conveinence but also to not leak locked connection
-macro_rules! sql {
+macro_rules! select {
     ($sql:literal, $map_row:expr) => {
-        sql!($sql, ::rusqlite::params![], $map_row, _)
+        select!($sql, ::rusqlite::params![], $map_row, _)
     };
 
     ($sql:literal, $map_row:expr, ..) => {
-        sql!($sql, ::rusqlite::params![], $map_row, ..)
+        select!($sql, ::rusqlite::params![], $map_row, ..)
     };
 
     ($sql:literal, $params:expr, $map_row:expr, ..) => {
@@ -27,12 +27,24 @@ macro_rules! sql {
     };
 
     ($sql:literal, $params:expr, $map_row:expr) => {
-        sql!($sql, ::rusqlite::params![], $map_row, _)
+        select!($sql, ::rusqlite::params![], $map_row, _)
     };
 
     ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
-        sql!($sql, $params, $map_row, ..)
+        select!($sql, $params, $map_row, ..)
             .collect::<::std::result::Result<$collect, $crate::Error>>()
+    };
+}
+
+macro_rules! insert {
+    ($sql:literal, $params:expr) => {
+        $crate::CONNECTION
+            .get()
+            .ok_or($crate::Error::NotConnected)?
+            .lock()
+            .await
+            .prepare_cached($sql)?
+            .execute($params)
     };
 }
 
@@ -78,6 +90,12 @@ pub fn connect<P: AsRef<Path>>(path: P) -> Result<()> {
         .map_err(|_| Error::AlreadyConnected)
 }
 
+pub fn set_receipt_path(path: PathBuf) -> Result<()> {
+    receipts::print::RECEIPT_PATH
+        .set(path)
+        .map_err(|_| Error::PathAlreadySet)
+}
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Wrap, Debug, Clone)]
@@ -86,8 +104,12 @@ pub enum Error {
     Sqlite(Arc<rusqlite::Error>),
     #[giftwrap(wrapDepth = 0)]
     SqliteMigration(Arc<rusqlite_migration::Error>),
+    #[giftwrap(wrapDepth = 0)]
+    PrintError(Arc<receipts::print::Error>),
     #[giftwrap(noWrap = true)]
     AlreadyConnected,
     #[giftwrap(noWrap = true)]
     NotConnected,
+    #[giftwrap(noWrap = true)]
+    PathAlreadySet,
 }

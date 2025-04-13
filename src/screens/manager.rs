@@ -13,7 +13,6 @@ use {
         Alignment, Element, Length, Size,
     },
     iced_aw::{Card, Modal, Wrap},
-    rusqlite::params,
 };
 
 pub struct Manager {

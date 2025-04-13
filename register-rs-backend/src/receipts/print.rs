@@ -1,29 +1,33 @@
 use {
-    crate::{error::Result, receipt::Receipt},
-    chrono::{DateTime, Local},
+    super::Receipt,
     genpdf::{
+        Alignment, Document, SimplePageDecorator,
         elements::{Break, Image, Paragraph, TableLayout, Text},
-        fonts, Alignment, Document, SimplePageDecorator,
+        fonts,
     },
-    std::{io::Cursor, path::PathBuf},
+    std::{
+        io::Cursor,
+        path::PathBuf,
+        sync::{LazyLock, OnceLock},
+    },
 };
 
-fn create_pdf<M>(
-    path: impl Into<PathBuf>,
-    receipt: &Receipt<M>,
-    time: DateTime<Local>,
-) -> Result<PathBuf> {
-    let font = fonts::FontData::new(
-        include_bytes!("../resources/IBMPlexMono-Regular.ttf").to_vec(),
+pub(crate) static RECEIPT_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+static FONT: LazyLock<fonts::FontData> = LazyLock::new(|| {
+    fonts::FontData::new(
+        include_bytes!("../../../resources/IBMPlexMono-Regular.ttf").to_vec(),
         None,
     )
-    .unwrap();
+    .unwrap()
+});
 
+fn create_pdf(path: impl Into<PathBuf>, receipt: &Receipt) -> Result<PathBuf> {
     let mut doc = Document::new(fonts::FontFamily {
-        regular: font.clone(),
-        bold: font.clone(),
-        italic: font.clone(),
-        bold_italic: font,
+        regular: FONT.clone(),
+        bold: FONT.clone(),
+        italic: FONT.clone(),
+        bold_italic: FONT.clone(),
     });
     doc.set_paper_size((72, 300));
     doc.set_page_decorator({
@@ -32,7 +36,7 @@ fn create_pdf<M>(
         dec
     });
 
-    let logga = Cursor::new(include_bytes!("../resources/logga.png"));
+    let logga = Cursor::new(include_bytes!("../../../resources/logga.png"));
     doc.push(
         Image::from_reader(logga)
             .unwrap()
@@ -44,23 +48,25 @@ fn create_pdf<M>(
     doc.push(Paragraph::new("302 49 Halmstad").aligned(Alignment::Center));
     doc.push(Paragraph::new("–".repeat(24)).aligned(Alignment::Center));
 
-    for item in receipt.items.iter() {
-        doc.push(Text::new(item.name.clone()));
-        if let Some(n) = item.has_amount() {
+    for (item, amount) in receipt.items.iter() {
+        doc.push(Text::new(item.name().clone()));
+        if item.is_special() {
+            doc.push(
+                Paragraph::new(format!("{}kr", item.price() * amount)).aligned(Alignment::Right),
+            );
+        } else {
             doc.push({
                 let mut tbl = TableLayout::new(vec![1, 1]);
                 tbl.row()
-                    .element(Text::new(format!("{}x{}kr", n, item.price)))
+                    .element(Text::new(format!("{}x{}kr", amount, item.price())))
                     .element(
-                        Paragraph::new(format!("{}kr", item.price_total()))
+                        Paragraph::new(format!("{}kr", item.price() * amount))
                             .aligned(Alignment::Right),
                     )
                     .push()
                     .expect("Couldn't Table Price");
                 tbl
             });
-        } else {
-            doc.push(Paragraph::new(format!("{}kr", item.price)).aligned(Alignment::Right));
         }
     }
 
@@ -69,7 +75,7 @@ fn create_pdf<M>(
         let mut tbl = TableLayout::new(vec![1, 1]);
         tbl.row()
             .element(Text::new("Total"))
-            .element(Paragraph::new(format!("{}kr", receipt.sum)).aligned(Alignment::Right))
+            .element(Paragraph::new(format!("{}kr", receipt.sum())).aligned(Alignment::Right))
             .push()
             .expect("Couldn't Table Total");
         tbl
@@ -78,74 +84,65 @@ fn create_pdf<M>(
         let mut tbl = TableLayout::new(vec![1, 1]);
         tbl.row()
             .element(Text::new("Betalt via"))
-            .element(Paragraph::new(String::from(receipt.payment)).aligned(Alignment::Right))
+            .element(Paragraph::new(receipt.payment.to_string()).aligned(Alignment::Right))
             .push()
             .expect("Couldn't Table Payment");
         tbl
     });
     doc.push(Break::new(1));
-    doc.push(Text::new(format!("{}", time.format("%F %T"))));
+    doc.push(Text::new(format!("{}", receipt.time.format("%F %T"))));
     doc.push(Break::new(1));
 
     let mut path = path.into();
-    path.push(format!("receipt_{}.pdf", time.format("%F_%T")).replace(':', "-"));
+    path.push(format!("receipt_{}.pdf", receipt.time.format("%F_%T")).replace(':', "-"));
     doc.render_to_file(path.clone())
         .expect("Failed to write PDF file");
 
     Ok(path)
 }
 
-fn receipt_path() -> Result<PathBuf> {
-    //FIXME dbg path
-    let mut conf_path = dirs::config_dir().ok_or("No config path")?;
-    conf_path.push("smaland_register");
-    conf_path.push("receipts");
-    match std::fs::create_dir_all(&conf_path) {
-        Ok(_) => Ok(conf_path),
-        Err(e) => match e.kind() {
-            std::io::ErrorKind::AlreadyExists => Ok(conf_path),
-            ek => Err(ek.into()),
-        },
-    }
-}
-
 #[cfg(target_os = "windows")]
-pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
-    let filename = create_pdf(
-        receipt_path().map_err(|e| format!("receipt_path: {e:#?}"))?,
-        &receipt,
-        time,
-    )
-    .map_err(|e| format!("create_pdf: {e:#?}"))?;
+pub async fn print(receipt: &Receipt) -> Result<()> {
+    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPath)?, &receipt)
+        .map_err(|e| format!("create_pdf: {e:#?}"))?;
     let mut pdf_to_printer = dirs::config_dir().ok_or("No config path")?;
     pdf_to_printer.push("smaland_register");
     pdf_to_printer.push("PDFtoPrinter.exe");
     if std::process::Command::new(pdf_to_printer)
         .args([filename])
         .output()
-        .map_err(|e| format!("PDFtoPrinter: {:#?}", e.kind()))?
+        .map_err(|e| Error::Io(e.kind()))?
         .status
         .success()
     {
         Ok(())
     } else {
-        Err("Print failed")?
+        Err(Error::PrintFailed)?
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-pub async fn print<M>(receipt: &Receipt<M>, time: DateTime<Local>) -> Result<()> {
-    let filename = create_pdf(receipt_path()?, receipt, time)?;
+pub async fn print(receipt: &Receipt) -> Result<()> {
+    let filename = create_pdf(RECEIPT_PATH.get().ok_or(Error::NoPath)?, receipt)?;
     println!("{:?}", filename.display());
     if std::process::Command::new("/usr/bin/lp")
         .args([filename])
         .output()
-        .map_err(|e| e.kind())?
+        .map_err(|e| Error::Io(e.kind()))?
         .status
         .success()
     {
         Ok(())
     } else {
-        Err("Print failed".into())
+        Err(Error::PrintFailed)
     }
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    PrintFailed,
+    NoPath,
+    Io(std::io::ErrorKind),
 }

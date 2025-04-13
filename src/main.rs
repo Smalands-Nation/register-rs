@@ -12,18 +12,12 @@ use {
         window, Application, Command, Element, Font, Length, Pixels, Settings, Size,
     },
     iced_aw::{Card, Modal, TabLabel, Tabs},
-    lazy_static::lazy_static,
-    rusqlite::Connection,
-    std::sync::Arc,
-    tokio::sync::Mutex,
 };
 
 pub mod config;
 pub mod error;
 pub mod icons;
 pub mod item;
-pub mod payment;
-pub mod print;
 pub mod receipt;
 pub mod screens;
 pub mod theme;
@@ -37,11 +31,6 @@ macro_rules! command {
 }
 
 pub const FONT: Font = Font::with_name("IBM Plex Mono");
-
-lazy_static! {
-    pub static ref DB: Arc<Mutex<Connection>> =
-        Arc::new(Mutex::new(config::init_db().expect("Fatal db error")));
-}
 
 pub fn main() -> iced::Result {
     App::run(Settings {
@@ -76,6 +65,8 @@ impl Application for App {
                 tab: Tab::Menu(Vec::new()),
             },
             Command::batch([
+                command!(config::init_db()),
+                command!(config::set_receipt_path()),
                 font::load(include_bytes!("../resources/IBMPlexMono-Regular.ttf").as_slice())
                     .map(Message::from),
                 font::load(include_bytes!("../resources/google-fonts-icons.ttf").as_slice())
@@ -105,7 +96,7 @@ impl Application for App {
             Message::OpenModal { title, content } => {
                 if title == "Error" {
                     //TODO structured logging??
-                    println!("Message::Error({content:#?})");
+                    println!("Message::Error({content})");
                 }
                 self.modal = Some((title, content));
                 Command::none()

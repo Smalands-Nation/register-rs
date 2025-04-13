@@ -1,20 +1,23 @@
 use crate::{Result, items::Item};
 use chrono::{DateTime, Local};
+use getset::WithSetters;
 use indexmap::IndexMap;
 use rusqlite::{Row, params};
 use std::collections::HashMap;
 use strum::VariantArray;
 
 pub mod payments;
+pub(crate) mod print;
 
 pub use payments::Payment;
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, WithSetters)]
 pub struct Receipt {
     //Item -> Amount
     items: IndexMap<Item, i32>,
+    #[getset(set_with = "pub")]
     time: DateTime<Local>,
-    sum: i32,
+    #[getset(set_with = "pub")]
     payment: Payment,
 }
 
@@ -27,15 +30,30 @@ impl Receipt {
         }
     }
 
-    fn insert(&mut self, item: Item, amount: i32) {
+    pub fn insert(&mut self, item: Item, amount: i32) {
         *self.items.entry(item).or_insert(0) += amount;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn sum(&self) -> i32 {
+        self.items
+            .iter()
+            .map(|(item, amount)| item.price() * amount)
+            .sum::<i32>()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&Item, &i32)> {
+        self.items.iter()
     }
 
     pub async fn get_sales_summary(
         from_time: DateTime<Local>,
         to_time: DateTime<Local>,
     ) -> Result<HashMap<Payment, Self>> {
-        sql!(
+        select!(
             "SELECT item, amount, price, special, method FROM receipts_view \
                 WHERE time BETWEEN ?1 AND ?2",
             params![from_time, to_time],
@@ -63,7 +81,7 @@ impl Receipt {
     }
 
     pub async fn get_recents() -> Result<IndexMap<DateTime<Local>, Self>> {
-        sql!(
+        select!(
             "SELECT * FROM receipts_view \
                 WHERE time > date('now','-1 day') ORDER BY time DESC",
             RawEntry::from_row,
@@ -82,6 +100,25 @@ impl Receipt {
                 hm
             })
         })
+    }
+
+    pub async fn print(&self) -> Result<()> {
+        Ok(print::print(self).await?)
+    }
+
+    pub async fn insert_sale(mut self) -> Result<()> {
+        //FIXME start transaction? otherwise could get incomplete receipts
+        insert!(
+            "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
+            params![self.time, self.payment]
+        )?;
+
+        //FIXME (not tested) this might inf-lock the db since we dont drop the handle from above
+        for (item, amount) in self.items.drain(..) {
+            item.insert_sale(self.time, amount).await?;
+        }
+
+        Ok(())
     }
 }
 
