@@ -2,20 +2,22 @@ use {
     super::{Message, Sideffect},
     crate::{
         icons::Icon,
-        item::Item,
-        payment::Payment,
-        print,
-        receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{calc::Calc, padded_column, row, SquareButton, BIG_TEXT},
     },
+    backend::{
+        items::Item,
+        receipts::{Payment, Receipt},
+    },
     chrono::Local,
     iced::{
-        widget::{Button, Checkbox, Component, Container, Responsive, Rule, Scrollable, Space},
+        widget::{
+            image::{Handle, Image},
+            Button, Checkbox, Component, Container, Responsive, Rule, Scrollable, Space,
+        },
         Alignment, Element, Length, Size,
     },
     iced_aw::Wrap,
-    rusqlite::params,
 };
 
 pub struct Menu {
@@ -25,7 +27,7 @@ pub struct Menu {
 #[derive(Clone)]
 pub struct State {
     multiplier: u32,
-    receipt: Receipt<Event>,
+    receipt: Receipt,
     print: bool,
 }
 
@@ -33,7 +35,7 @@ impl Default for State {
     fn default() -> Self {
         Self {
             multiplier: 1,
-            receipt: Receipt::new(Payment::Swish),
+            receipt: Receipt::default(),
             print: false,
         }
     }
@@ -64,55 +66,28 @@ impl Component<Message> for Menu {
                 state.multiplier = m;
             }
             Event::ClearReceipt => {
-                state.receipt = Receipt::new(Payment::Swish);
+                state.receipt = Receipt::default();
             }
             Event::SellItem(i) => {
-                let mut item = self.menu[i].clone();
-                if let Some(0) = item.has_amount() {
-                    item.set_amount(state.multiplier as i32);
-                    state.receipt.add(item);
-                } else if item.is_special() {
-                    for _ in 0..state.multiplier {
-                        state.receipt.add(item.clone());
-                    }
-                }
+                let item = self.menu[i].clone();
+                state.receipt.insert(item, state.multiplier as i32);
                 state.multiplier = 1;
             }
             Event::TogglePrint(b) => state.print = b,
             Event::Sell(p) => {
                 if !state.receipt.is_empty() {
-                    let mut receipt = Receipt::new(Payment::Swish);
-                    std::mem::swap(&mut receipt, &mut state.receipt);
+                    let receipt = std::mem::take(&mut state.receipt)
+                        .with_payment(p)
+                        .with_time(Local::now());
                     let should_print = state.print;
                     return Some(
                         Sideffect::new(|| async move {
-                            let time = Local::now();
                             if should_print {
-                                print::print(&receipt, time).await?;
+                                receipt.print().await?;
                             }
 
-                            let con = crate::DB.lock().await;
-
-                            con.execute(
-                                "INSERT INTO receipts (time, method) VALUES (?1, ?2)",
-                                params![time, String::from(p)],
-                            )?;
-
-                            let mut stmt = con.prepare(
-                                "INSERT INTO receipt_item (receipt, item, amount, price) \
-                                            VALUES (?1, ?2, ?3, ?4)",
-                            )?;
-
-                            for item in receipt.items.iter() {
-                                stmt.execute(params![
-                                    time,
-                                    item.name,
-                                    item.has_amount().unwrap_or(0), //Special item has no ammount
-                                    item.price,
-                                ])?;
-                            }
-
-                            Ok(().into())
+                            receipt.insert_sale().await?;
+                            Ok(Message::None)
                         })
                         .into(),
                     );
@@ -144,7 +119,8 @@ impl Component<Message> for Menu {
                             .cloned()
                             .enumerate()
                             .map(|(i, item)| {
-                                item.on_press(Event::SellItem(i))
+                                crate::item::component::Item::from(item)
+                                    .on_press(Event::SellItem(i))
                                     .width(Length::Fixed(width / 3.0 - 2.0 * DEF_PADDING as f32))
                                     .into()
                             })
@@ -165,22 +141,14 @@ impl Component<Message> for Menu {
                     SquareButton::icon(Icon::Cross).on_press(Event::ClearReceipt),
                 ]
                 .align_items(Alignment::Center),
-                receipt,
+                crate::receipt::Receipt::from(receipt),
                 Checkbox::new("Printa kvitto", print)
                     .text_size(30)
                     .width(Length::Fill)
                     .on_toggle(Event::TogglePrint),
                 row![
-                    Button::new(Payment::Swish)
-                        .on_press(Event::Sell(Payment::Swish))
-                        .padding(DEF_PADDING)
-                        .style(theme::Container::Border)
-                        .width(Length::Fill),
-                    Button::new(Payment::Paypal)
-                        .on_press(Event::Sell(Payment::Paypal))
-                        .padding(DEF_PADDING)
-                        .style(theme::Container::Border)
-                        .width(Length::Fill),
+                    payment_to_button(Payment::Swish),
+                    payment_to_button(Payment::Paypal)
                 ]
                 .spacing(DEF_PADDING)
             ]
@@ -190,8 +158,22 @@ impl Component<Message> for Menu {
     }
 }
 
-impl<'a> From<Menu> for Element<'a, Message> {
+impl From<Menu> for Element<'_, Message> {
     fn from(menu: Menu) -> Self {
         iced::widget::component(menu)
     }
+}
+
+fn payment_to_button<'a>(p: Payment) -> Button<'a, Event> {
+    let image = Image::new(Handle::from_memory(match p {
+        Payment::Swish => include_bytes!("../../resources/swish.png").to_vec(),
+        Payment::Paypal => include_bytes!("../../resources/paypal.png").to_vec(),
+        _ => unreachable!("Payment to Image"),
+    }));
+
+    Button::new(image)
+        .on_press(Event::Sell(p))
+        .padding(DEF_PADDING)
+        .style(theme::Container::Border)
+        .width(Length::Fill)
 }

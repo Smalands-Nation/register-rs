@@ -1,27 +1,35 @@
 use {
-    super::{Category, ItemKind},
     crate::{
         theme::{Container, DEF_PADDING, RECEIPT_WIDTH, SMALL_PADDING},
         widgets::{column, row, SMALL_TEXT},
     },
+    backend::items::{Category, Item as RawItem},
     iced::{
         alignment::Horizontal,
         widget::{Button, Checkbox, Component, Text},
-        Element, Length,
+        Color, Element, Length,
     },
 };
 
 pub struct Item<'a, M> {
-    name: String,
-    price: i32,
-    category: Category,
-    kind: ItemKind,
+    item: RawItem,
+    amount: Option<i32>,
     on_press: Option<M>,
     on_toggle: Option<Box<dyn Fn(bool) -> M + 'a>>,
     width: Length,
 }
 
 impl<'a, M> Item<'a, M> {
+    pub fn new(item: RawItem, amount: i32) -> Self {
+        Self {
+            item,
+            amount: Some(amount),
+            on_press: None,
+            on_toggle: None,
+            width: Length::Fixed(RECEIPT_WIDTH),
+        }
+    }
+
     pub fn on_press(mut self, msg: M) -> Self {
         self.on_press = Some(msg);
         self
@@ -41,13 +49,11 @@ impl<'a, M> Item<'a, M> {
     }
 }
 
-impl<M> From<super::Item> for Item<'_, M> {
-    fn from(value: super::Item) -> Self {
+impl<M> From<RawItem> for Item<'_, M> {
+    fn from(item: RawItem) -> Self {
         Self {
-            name: value.name,
-            price: value.price,
-            category: value.category,
-            kind: value.kind,
+            item,
+            amount: None,
             on_press: None,
             on_toggle: None,
             width: Length::Fixed(RECEIPT_WIDTH),
@@ -78,21 +84,24 @@ where
     fn view(&self, _state: &Self::State) -> Element<Self::Event> {
         Button::new(
             column![
-                Text::new(self.name.to_string()),
-                match self.kind {
-                    ItemKind::Regular { num: 0 } | ItemKind::Special | ItemKind::InStock(_) =>
-                        row![SMALL_TEXT::new(format!("{} kr", self.price))
+                Text::new(self.item.name()),
+                match self.amount {
+                    None | Some(0) => row![SMALL_TEXT::new(format!("{} kr", self.item.price()))
+                        .width(Length::Fill)
+                        .horizontal_alignment(Horizontal::Left)],
+                    Some(num) if self.item.is_special() =>
+                        row![SMALL_TEXT::new(format!("{} kr", num * self.item.price()))
                             .width(Length::Fill)
-                            .horizontal_alignment(Horizontal::Left)],
-                    ItemKind::Regular { num } => row![
-                        SMALL_TEXT::new(format!("{}x{} kr", num, self.price)),
-                        SMALL_TEXT::new(format!("{} kr", num * self.price))
+                            .horizontal_alignment(Horizontal::Right),],
+                    Some(num) => row![
+                        SMALL_TEXT::new(format!("{}x{} kr", num, self.item.price())),
+                        SMALL_TEXT::new(format!("{} kr", num * self.item.price()))
                             .width(Length::Fill)
                             .horizontal_alignment(Horizontal::Right),
                     ],
                 },
-                if let ItemKind::InStock(stock) = self.kind {
-                    Checkbox::new("I Lager", stock)
+                if let Some(stock) = self.item.available() {
+                    Checkbox::new("I Lager", *stock)
                         .text_size(SMALL_TEXT::size())
                         .on_toggle(Event::Toggle)
                         .into()
@@ -106,7 +115,12 @@ where
         .padding(DEF_PADDING)
         .width(self.width)
         .style(if self.on_press.is_some() {
-            self.category.into()
+            Container::BorderFill(match self.item.category() {
+                Category::Alcohol => Color::from_rgb8(0xFF, 0x6F, 0x59),
+                Category::Drink => Color::from_rgb8(0xC0, 0xDA, 0x74),
+                Category::Food => Color::from_rgb8(0xA7, 0xC6, 0xDA),
+                Category::Other => Color::WHITE,
+            })
         } else {
             Container::Border
         })

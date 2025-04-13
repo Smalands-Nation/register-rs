@@ -33,7 +33,7 @@ impl<'a, M> Calc<'a, M> {
     }
 }
 
-impl<'a, M> Component<M> for Calc<'a, M> {
+impl<M> Component<M> for Calc<'_, M> {
     type State = u32;
     type Event = Event;
 

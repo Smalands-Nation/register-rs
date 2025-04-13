@@ -1,34 +1,6 @@
-use {
-    crate::error::Result,
-    lazy_static::lazy_static,
-    rusqlite::Connection,
-    rusqlite_migration::{Migrations, M},
-};
+use crate::error::Result;
 
-lazy_static! {
-    static ref MIGRATIONS: Migrations<'static> = Migrations::new(vec![
-        M::up(include_str!("../db.sql")),
-        M::up("DROP TABLE password"),
-        M::up(
-            r#"
-                ALTER TABLE receipt_item ADD COLUMN price INTEGER DEFAULT 1 NOT NULL;
-                UPDATE receipt_item SET price = (
-                    SELECT price FROM menu WHERE receipt_item.item = menu.name
-                );
-                DROP VIEW receipts_view;
-                CREATE VIEW IF NOT EXISTS receipts_view AS
-                    SELECT receipts.time, receipt_item.item, receipt_item.amount, receipt_item.price, menu.special, receipts.method 
-                    FROM receipts
-                        INNER JOIN receipt_item ON receipts.time = receipt_item.receipt
-                        INNER JOIN menu ON receipt_item.item = menu.name;
-            "#
-        ),
-        M::up("ALTER TABLE menu ADD COLUMN category TEXT DEFAULT 'other' NOT NULL;"),
-        M::up("UPDATE menu SET name = replace(name, '\u{00A0}', ' ');")
-    ]);
-}
-
-pub fn init_db() -> Result<Connection> {
+pub fn init_db() -> Result<()> {
     match dirs::config_dir() {
         Some(mut conf_path) => {
             conf_path.push("smaland_register");
@@ -40,18 +12,28 @@ pub fn init_db() -> Result<Connection> {
                 },
             };
             conf_path.push("db.db");
-            let mut conn = Connection::open(conf_path)?;
-
-            MIGRATIONS.to_latest(&mut conn)?;
-
-            Ok(conn)
+            Ok(backend::connect(conf_path)?)
         }
         None => Err("No config dir".into()),
     }
 }
 
+pub fn set_receipt_path() -> Result<()> {
+    //FIXME dbg path
+    let mut conf_path = dirs::config_dir().ok_or("No config path")?;
+    conf_path.push("smaland_register");
+    conf_path.push("receipts");
+    if let Err(e) = std::fs::create_dir_all(&conf_path) {
+        match e.kind() {
+            std::io::ErrorKind::AlreadyExists => {}
+            ek => return Err(ek.into()),
+        }
+    }
+    Ok(backend::set_receipt_path(conf_path)?)
+}
+
 #[cfg(not(debug_assertions))]
-use self_update::{backends::github, cargo_crate_version, Status};
+use self_update::{Status, backends::github, cargo_crate_version};
 
 #[cfg(not(debug_assertions))]
 pub fn update() -> Result<Status> {

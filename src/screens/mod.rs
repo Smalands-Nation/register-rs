@@ -5,45 +5,22 @@ pub mod sales;
 pub mod transactions;
 
 use {
-    crate::{
-        error::{Error, Result},
-        item::Item,
-        payment::Payment,
-    },
+    crate::error::{Error, Result},
+    backend::{items::Item, receipts::Receipt, summary::Summary},
     chrono::{DateTime, Local, NaiveDate},
     futures::{future::BoxFuture, FutureExt},
     iced::Element,
-    rusqlite::params,
+    indexmap::IndexMap,
     std::future::{Future, IntoFuture},
 };
 
 use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
-#[macro_export]
-macro_rules! sql {
-    ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
-        $crate::DB
-            .lock()
-            .await
-            .prepare($sql)?
-            .query_map($params, $map_row)?
-            .collect::<Result<$collect, rusqlite::Error>>()?
-    };
-
-    ($sql:literal, $params:expr, $map_row:expr, $collect:ty) => {
-        sql!($sql, ::rusqlite::params![], $map_row, $collect)
-    };
-}
-
 #[derive(Clone, Debug)]
 pub enum Tab {
     Menu(Vec<Item>),
-    Transactions(Vec<(DateTime<Local>, Item, Payment)>),
-    Sales {
-        from: NaiveDate,
-        to: NaiveDate,
-        data: Vec<(Item, Payment)>,
-    },
+    Transactions(IndexMap<DateTime<Local>, Receipt>),
+    Sales(Summary),
     Manager(Vec<Item>),
     Info(self_update::Status),
 }
@@ -66,8 +43,8 @@ impl Tab {
     }
 
     pub fn as_sales(&self) -> Element<Message> {
-        if let Self::Sales { from, to, data } = self {
-            Sales::new(*from, *to, data.clone()).into()
+        if let Self::Sales(summary) = self {
+            Sales::new(summary.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -93,9 +70,9 @@ impl Tab {
         match self {
             Self::Menu(_) => TabId::Menu,
             Self::Transactions(_) => TabId::Transactions,
-            Self::Sales { from, to, .. } => TabId::Sales {
-                from: *from,
-                to: *to,
+            Self::Sales(summary) => TabId::Sales {
+                from: summary.from().date_naive(),
+                to: summary.to().date_naive(),
             },
             Self::Manager(_) => TabId::Manager,
             Self::Info(_) => TabId::Info,
@@ -128,37 +105,9 @@ impl PartialEq for TabId {
 impl TabId {
     pub async fn load(self) -> Result<Message> {
         Ok(Message::LoadTab(match self {
-            Self::Menu => Tab::Menu(sql!(
-                "SELECT name, price, special, category FROM menu
-                    WHERE available=true
-                    ORDER BY
-                        special ASC,
-                        CASE category
-                            WHEN 'alcohol' THEN 1
-                            WHEN 'drink' THEN 2
-                            WHEN 'food' THEN 3
-                            WHEN 'other' THEN 4
-                            ELSE 5
-                        END,
-                        name DESC",
-                params![],
-                Item::new_menu,
-                Vec<_>
-            )),
+            Self::Menu => Tab::Menu(Item::get_all_available().await?),
 
-            Self::Transactions => Tab::Transactions(sql!(
-                "SELECT * FROM receipts_view \
-                    WHERE time > date('now','-1 day') ORDER BY time DESC",
-                params![],
-                |row| {
-                    Ok((
-                        row.get::<_, DateTime<Local>>("time")?,
-                        Item::new_sales(row)?,
-                        Payment::try_from(row.get::<usize, String>(5)?).unwrap_or_default(),
-                    ))
-                },
-                Vec<_>
-            )),
+            Self::Transactions => Tab::Transactions(Receipt::get_recents().await?),
 
             Self::Sales { from, to } => {
                 let from_time = from
@@ -173,41 +122,10 @@ impl TabId {
                     .and_local_timezone(Local)
                     .single()
                     .unwrap();
-                Tab::Sales {
-                    from,
-                    to,
-                    data: sql!(
-                        "SELECT item, amount, price, special, method FROM receipts_view \
-                            WHERE time BETWEEN ?1 AND ?2",
-                        params![from_time, to_time],
-                        |row| {
-                            Ok((
-                                Item::new_sales(row)?,
-                                //method
-                                Payment::try_from(row.get::<usize, String>(4)?).unwrap_or_default(),
-                            ))
-                        },
-                        Vec<(Item, Payment)>
-                    ),
-                }
+                Tab::Sales(Summary::get_sales_summary(from_time, to_time).await?)
             }
 
-            Self::Manager => Tab::Manager(sql!(
-                "SELECT name, price, available, category FROM menu \
-                    WHERE special = 0 
-                    ORDER BY 
-                        CASE category 
-                            WHEN 'alcohol' THEN 1
-                            WHEN 'drink' THEN 2
-                            WHEN 'food' THEN 3
-                            WHEN 'other' THEN 4
-                            ELSE 5
-                        END,
-                        name DESC",
-                params![],
-                Item::new_stock,
-                Vec<_>
-            )),
+            Self::Manager => Tab::Manager(Item::get_all().await?),
 
             Self::Info => Tab::Info(crate::config::update()?),
         }))

@@ -2,22 +2,17 @@ use {
     super::{Message, Sideffect, TabId},
     crate::{
         error::Error,
-        item::Item,
-        payment::Payment,
-        receipt::Receipt,
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{column, padded_column, padded_row, row, BIG_TEXT, SMALL_TEXT},
     },
+    backend::summary::Summary,
     chrono::NaiveDate,
     iced::{
         widget::{Button, Component, Container, Row, Rule, Space, Text},
         Alignment, Element, Length,
     },
     iced_aw::date_picker::{self, DatePicker},
-    indexmap::IndexMap,
 };
-
-mod save;
 
 #[derive(Debug, Clone)]
 pub enum Picker {
@@ -28,7 +23,7 @@ pub enum Picker {
 pub struct Sales {
     from: NaiveDate,
     to: NaiveDate,
-    receipts: IndexMap<Payment, Receipt<Event>>,
+    summary: Summary,
 }
 
 #[derive(Debug, Clone)]
@@ -40,25 +35,10 @@ pub enum Event {
 }
 
 impl Sales {
-    pub fn new(from: NaiveDate, to: NaiveDate, sales: Vec<(Item, Payment)>) -> Self {
-        Self {
-            from,
-            to,
-            receipts: sales.into_iter().fold(
-                IndexMap::<_, Receipt<Event>, _>::new(),
-                |mut hm, (item, method)| {
-                    match hm.get_mut(&method) {
-                        Some(summary) => summary.add(item),
-                        None => {
-                            let mut summary = Receipt::new(method);
-                            summary.add(item);
-                            hm.insert(method, summary);
-                        }
-                    }
-                    hm
-                },
-            ),
-        }
+    pub fn new(summary: Summary) -> Self {
+        let from = summary.from().naive_local().date();
+        let to = summary.to().naive_local().date();
+        Self { from, to, summary }
     }
 }
 
@@ -69,14 +49,12 @@ impl Component<Message> for Sales {
     fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
             Event::Save => {
-                let from = self.from;
-                let to = self.to;
-                let stats = self.receipts.clone();
+                let summary = self.summary.clone();
                 //Always return error to give info via modal
                 return Some(
                     Sideffect::new(|| async move {
-                        if !stats.is_empty() {
-                            let path = save::save(stats, (from, to)).await?;
+                        if !summary.is_empty() {
+                            let path = summary.save().await?;
                             Ok(Message::OpenModal {
                                 title: "Sparad",
                                 content: format!("Sparad till {}", path.to_string_lossy()),
@@ -117,13 +95,13 @@ impl Component<Message> for Sales {
 
     fn view(&self, state: &Self::State) -> Element<Self::Event> {
         row![
-            if !self.receipts.is_empty() {
-                Row::with_children(self.receipts.iter().map(|(payment, rec)| {
+            if !self.summary.is_empty() {
+                Row::with_children(self.summary.receipts().map(|(payment, rec)| {
                     Container::new(
                         column![
-                            BIG_TEXT::new(String::from(*payment)),
+                            BIG_TEXT::new(payment.to_string()),
                             Space::new(Length::Fill, Length::Fixed(SMALL_TEXT::size() as f32)),
-                            rec.clone(),
+                            crate::receipt::Receipt::from(rec.clone()),
                         ]
                         .width(Length::Fixed(RECEIPT_WIDTH))
                         .padding(DEF_PADDING),
@@ -188,7 +166,7 @@ impl Component<Message> for Sales {
     }
 }
 
-impl<'a> From<Sales> for Element<'a, Message> {
+impl From<Sales> for Element<'_, Message> {
     fn from(sales: Sales) -> Self {
         iced::widget::component(sales)
     }

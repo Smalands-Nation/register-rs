@@ -2,10 +2,10 @@ use {
     super::{Message, Sideffect, TabId},
     crate::{
         icons::Icon,
-        item::{category::Category, Item},
         theme::{self, DEF_PADDING, RECEIPT_WIDTH},
         widgets::{padded_column, row, NumberInput, SquareButton, BIG_TEXT},
     },
+    backend::items::{category::Category, Item},
     iced::{
         widget::{
             Button, Component, PickList, Responsive, Rule, Scrollable, Space, Text, TextInput,
@@ -13,7 +13,7 @@ use {
         Alignment, Element, Length, Size,
     },
     iced_aw::{Card, Modal, Wrap},
-    rusqlite::params,
+    strum::VariantArray,
 };
 
 pub struct Manager {
@@ -79,15 +79,13 @@ impl Component<Message> for Manager {
     fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message> {
         match event {
             Event::ToggleItem(i, a) => {
-                if let Some(i) = self.menu.get(i) {
-                    let name = i.name.clone();
+                if let Some(item) = self.menu.get(i) {
+                    let item = item.clone();
                     return Some(
                         Sideffect::new(|| async move {
-                            crate::DB.lock().await.execute(
-                                "UPDATE menu SET available=?1 WHERE name=?2",
-                                params![a, name],
-                            )?;
-
+                            //TODO check if we can mutate item over thread boundary instead of
+                            //realoading entire stock
+                            item.change_availability(a).await?;
                             TabId::Manager.load().await
                         })
                         .into(),
@@ -96,10 +94,10 @@ impl Component<Message> for Manager {
             }
             Event::EditItem(i) => {
                 let item = &self.menu[i];
-                state.mode = Mode::Update(item.name.clone());
-                state.name = item.name.clone();
-                state.price = item.price;
-                state.category = Some(item.category);
+                state.mode = Mode::Update(item.name().clone());
+                state.name = item.name().clone();
+                state.price = *item.price();
+                state.category = Some(*item.category());
             }
             Event::UpdateName(s) => state.name = s,
             Event::UpdatePrice(n) => state.price = n,
@@ -110,32 +108,30 @@ impl Component<Message> for Manager {
                 state.price = 0;
             }
             Event::Save => {
-                let name = std::mem::take(&mut state.name);
+                use std::mem::take;
+                let name = take(&mut state.name);
                 if !name.is_empty() {
-                    let price = std::mem::take(&mut state.price);
-                    let category = std::mem::take(&mut state.category);
+                    let item = Item::new()
+                        .with_name(name)
+                        .with_price(take(&mut state.price))
+                        .with_category(take(&mut state.category).unwrap_or_default());
                     return match std::mem::take(&mut state.mode) {
                         Mode::New => Some(
                             Sideffect::new(|| async move {
-                                crate::DB.lock().await.execute(
-                                    "INSERT INTO menu (name, price, available, category) 
-                                    VALUES (?1, ?2, true, ?3)",
-                                    params![name, price, category],
-                                )?;
+                                item.insert_new().await?;
 
+                                //TODO see change_availability
                                 TabId::Manager.load().await
                             })
                             .into(),
                         ),
                         Mode::Update(old_name) => {
-                            let old_name = old_name.clone();
+                            let old = Item::new().with_name(old_name);
                             Some(
                                 Sideffect::new(|| async move {
-                                    crate::DB.lock().await.execute(
-                                    "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
-                                    params![name, price, category, old_name],
-                                )?;
+                                    old.update(item).await?;
 
+                                    //TODO see change_availability
                                     TabId::Manager.load().await
                                 })
                                 .into(),
@@ -177,7 +173,8 @@ impl Component<Message> for Manager {
                                 .cloned()
                                 .enumerate()
                                 .map(|(i, item)| {
-                                    item.on_press(Event::EditItem(i))
+                                    crate::item::component::Item::from(item)
+                                        .on_press(Event::EditItem(i))
                                         .on_toggle(move |b| Event::ToggleItem(i, b))
                                         .width(Length::Fixed(
                                             width / 3.0 - 2.0 * DEF_PADDING as f32,
@@ -213,7 +210,7 @@ impl Component<Message> for Manager {
                     Text::new("Pris (kr)"),
                     NumberInput::new(1..=1000, Event::UpdatePrice, state.price),
                     Text::new("Typ"),
-                    PickList::new(&Category::ALL[..], state.category, Event::UpdateCategory)
+                    PickList::new(Category::VARIANTS, state.category, Event::UpdateCategory)
                         .width(Length::Fill),
                     Space::with_height(Length::FillPortion(5)),
                     if !state.locked {
@@ -260,7 +257,7 @@ impl Component<Message> for Manager {
     }
 }
 
-impl<'a> From<Manager> for Element<'a, Message> {
+impl From<Manager> for Element<'_, Message> {
     fn from(manager: Manager) -> Self {
         iced::widget::component(manager)
     }

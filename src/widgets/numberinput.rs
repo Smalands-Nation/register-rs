@@ -31,7 +31,7 @@ pub enum Event {
     Input(String),
 }
 
-impl<'a, N, M> Component<M> for NumberInput<'a, N, M>
+impl<N, M> Component<M> for NumberInput<'_, N, M>
 where
     N: Display + FromStr + Default + PartialOrd + Copy,
     M: Clone,
