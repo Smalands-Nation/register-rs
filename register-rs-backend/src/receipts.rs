@@ -10,12 +10,12 @@ pub(crate) mod print;
 pub use payments::Payment;
 
 #[derive(Debug, Default, Clone, WithSetters)]
+#[getset(set_with = "pub")]
 pub struct Receipt {
     //Item -> Amount
+    #[getset(skip)]
     items: IndexMap<Item, i32>,
-    #[getset(set_with = "pub")]
     time: DateTime<Local>,
-    #[getset(set_with = "pub")]
     payment: Payment,
 }
 

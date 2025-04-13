@@ -3,7 +3,7 @@ use {
     strum::{Display, VariantArray},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, VariantArray, Display)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, VariantArray, Display)]
 pub enum Category {
     #[strum(to_string = "Alkohol")]
     Alcohol,
@@ -11,6 +11,7 @@ pub enum Category {
     Drink,
     #[strum(to_string = "Mat")]
     Food,
+    #[default]
     #[strum(to_string = "Övrigt")]
     Other,
 }

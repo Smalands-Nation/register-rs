@@ -11,11 +11,11 @@ use strum::VariantArray;
 pub(crate) mod save;
 
 #[derive(Debug, Default, Clone, Getters)]
+#[getset(get = "pub")]
 pub struct Summary {
-    #[getset(get = "pub")]
     from: DateTime<Local>,
-    #[getset(get = "pub")]
     to: DateTime<Local>,
+    #[getset(skip)]
     data: HashMap<Payment, Receipt>,
 }
 

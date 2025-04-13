@@ -3764,6 +3764,7 @@ dependencies = [
  "lazy_static",
  "register-rs-backend",
  "self_update",
+ "strum 0.27.1",
  "tokio",
 ]
 

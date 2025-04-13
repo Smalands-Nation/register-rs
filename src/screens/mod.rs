@@ -1,5 +1,5 @@
 pub mod info;
-//pub mod manager;
+pub mod manager;
 pub mod menu;
 pub mod sales;
 pub mod transactions;
@@ -14,13 +14,7 @@ use {
     std::future::{Future, IntoFuture},
 };
 
-use {
-    info::Info,
-    //manager::Manager,
-    menu::Menu,
-    sales::Sales,
-    transactions::Transactions,
-};
+use {info::Info, manager::Manager, menu::Menu, sales::Sales, transactions::Transactions};
 
 #[derive(Clone, Debug)]
 pub enum Tab {
@@ -58,8 +52,7 @@ impl Tab {
 
     pub fn as_manager(&self) -> Element<Message> {
         if let Self::Manager(menu) = self {
-            //Manager::new(menu.clone()).into()
-            todo!()
+            Manager::new(menu.clone()).into()
         } else {
             iced::widget::Text::new("Empty").into()
         }
@@ -132,24 +125,9 @@ impl TabId {
                 Tab::Sales(Summary::get_sales_summary(from_time, to_time).await?)
             }
 
-            //Self::Manager => Tab::Manager(sql!(
-            //    "SELECT name, price, available, category FROM menu \
-            //        WHERE special = 0
-            //        ORDER BY
-            //            CASE category
-            //                WHEN 'alcohol' THEN 1
-            //                WHEN 'drink' THEN 2
-            //                WHEN 'food' THEN 3
-            //                WHEN 'other' THEN 4
-            //                ELSE 5
-            //            END,
-            //            name DESC",
-            //    params![],
-            //    Item::new_stock,
-            //    Vec<_>
-            //)),
+            Self::Manager => Tab::Manager(Item::get_all().await?),
+
             Self::Info => Tab::Info(crate::config::update()?),
-            _ => todo!(),
         }))
     }
 }

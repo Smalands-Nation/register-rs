@@ -1,26 +1,28 @@
 use crate::Result;
 use chrono::{DateTime, Local};
-use getset::Getters;
+use getset::{Getters, WithSetters};
 use rusqlite::params;
 
 pub mod category;
 
 pub use category::Category;
 
-#[derive(Debug, Clone, PartialEq, Eq, Getters)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Getters, WithSetters)]
+#[getset(get = "pub", set_with = "pub")]
 pub struct Item {
-    #[getset(get = "pub")]
     name: String,
-    #[getset(get = "pub")]
     price: i32,
-    #[getset(get = "pub")]
     available: Option<bool>,
+    #[getset(skip)]
     special: bool,
-    #[getset(get = "pub")]
     category: Category,
 }
 
 impl Item {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn is_special(&self) -> bool {
         self.special
     }
@@ -74,6 +76,31 @@ impl Item {
         insert!(
             "INSERT INTO receipt_item (receipt, item, amount, price) VALUES (?1, ?2, ?3, ?4)",
             params![time, self.name, amount, self.price,]
+        )?;
+        Ok(())
+    }
+
+    pub async fn insert_new(self) -> Result<()> {
+        insert!(
+            "INSERT INTO menu (name, price, available, category) 
+                VALUES (?1, ?2, true, ?3)",
+            params![self.name, self.price, self.category]
+        )?;
+        Ok(())
+    }
+
+    pub async fn update(self, new: Self) -> Result<()> {
+        insert!(
+            "UPDATE menu SET name=?1, price=?2, category=?3 WHERE name=?4",
+            params![new.name, new.price, new.category, self.name]
+        )?;
+        Ok(())
+    }
+
+    pub async fn change_availability(self, availability: bool) -> Result<()> {
+        insert!(
+            "UPDATE menu SET available=?1 WHERE name=?2",
+            params![availability, self.name]
         )?;
         Ok(())
     }
